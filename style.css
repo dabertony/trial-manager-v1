@@ -1,0 +1,387 @@
+body{
+  font-family:Arial;
+  margin:0;
+  background:#edf2f7;
+}
+
+header{
+  background:#111827;
+  color:white;
+  padding:12px;
+  text-align:center;
+  font-weight:bold;
+}
+
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:999;
+
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+
+  background:#1e293b;
+  color:white;
+  padding:10px;
+  margin-bottom:12px;
+
+  border-bottom:2px solid #ddd;
+
+  box-shadow:0 2px 6px rgba(0,0,0,0.08);
+}
+
+.topbar-title{
+  font-size:20px;
+  font-weight:bold;
+}
+
+.topbar-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.container{
+  padding:10px 20px;;
+}
+
+button{
+  padding:8px;
+  margin:4px;
+  border:none;
+  border-radius:6px;
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+}
+
+input,
+select{
+
+  padding:8px;
+  margin:4px;
+
+  border:1px solid #ccc;
+  border-radius:6px;
+
+  background:white;
+  color:black;
+
+  font-size:14px;
+
+  box-sizing:border-box;
+}
+input:focus,
+select:focus{
+
+  outline:none;
+
+  border:1px solid #2563eb;
+
+  box-shadow:0 0 0 2px rgba(37,99,235,0.2);
+}
+
+button:not(.delete):not(.score-btn){
+  background:#2563eb;
+  color:white;
+}
+
+.delete{
+  background:#dc2626;
+}
+
+
+  .tie-btn{
+  all:unset;
+  cursor:pointer;
+  font-size:14px;
+  margin-left:4px;
+}
+
+.tie-btn:hover{
+  background:none !important;
+  background-color:transparent !important;
+}
+
+.ab-btn{
+  float:right;
+  padding:4px 8px;
+  font-size:11px;
+}
+
+.card{
+  background:white;
+  padding:10px;
+  margin:6px 0;
+  border-radius:10px;
+}
+
+.competition-card{
+  background:white;
+  padding:10px 12px;
+  margin:6px 0;
+  border-radius:10px;
+  border-left:5px solid #2563eb;
+  box-shadow:0 1px 4px rgba(0,0,0,0.08);
+  cursor:pointer;
+  transition:0.15s;
+}
+
+.competition-card:hover{
+  transform:scale(1.005);
+}
+
+.cat-elite{border-left:60px solid #facc15;} /* jaune */
+.cat-n1{border-left:60px solid #dc2626;}    /* rouge */
+.cat-n2{border-left:60px solid #2563eb;}    /* bleu */
+.cat-n3{border-left:60px solid #16a34a;}    /* vert */
+.cat-n4{border-left:60px solid #d1d5db;}    /* blanc/gris clair */
+.cat-n5{border-left:60px solid #ea580c;}    /* orange */
+
+.cat-f{border-left:60px solid #ec4899;}     /* rose */
+.cat-v{border-left:60px solid #6b7280;}     /* gris */
+
+.comp-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+
+.comp-title{
+  font-size:16px;
+  font-weight:bold;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.comp-date{
+  color:#6b7280;
+  font-size:12px;
+  margin-top:4px;
+}
+
+.comp-delete{
+  background:#dc2626;
+  color:white;
+  border:none;
+  border-radius:60px;
+  padding:4px 8px;
+  font-size:11px;
+  cursor:pointer;
+  flex-shrink:0;
+}
+
+.locked-badge{
+  display:inline-block;
+  background:#dc2626;
+  color:white;
+  padding:2px 8px;
+  border-radius:20px;
+  font-size:11px;
+  margin-left:8px;
+}
+  
+.score-btn{
+  margin:2px;
+  background:#e5e7eb;
+  color:black;
+  border:1px solid #cbd5e1;
+}
+
+.selected{
+  background:#22c55e !important;
+  color:white;
+}
+
+.section-title{
+  margin-top:24px;
+  font-size:20px;
+  font-weight:bold;
+}
+
+.category-status{
+  margin:6px 0 12px 0;
+  padding:8px;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:bold;
+}
+
+.status-provisoire{
+  background:#fff7ed;
+  color:#c2410c;
+}
+
+.status-ok{
+  background:#ecfdf5;
+  color:#166534;
+}
+
+table{
+  border-collapse:collapse;
+  width:100%;
+  margin-top:10px;
+  background:white;
+  table-layout:fixed;
+  font-size:15px;
+}
+
+th,td{
+  border:1px solid #ccc;
+  padding:10px;
+  text-align:center;
+  overflow:hidden;
+  white-space:nowrap;
+  }
+
+th{
+  background:#111827;
+  color:white;
+  font-size:16px;
+  vertical-align:middle;
+  line-height:1.2;
+white-space:normal;
+}
+
+.col-name{width:190px;}
+.col-club{width:130px;}
+.col-cat{width:90px;}
+.col-small{width:30px;}
+.col-tour{width:40px;}
+.col-best{width:90px;}
+.col-total{width:75px;}
+.col-rank{width:75px;}
+.col-points{width:75px;}
+
+.tie-icon{
+  color:#9333ea;
+  font-weight:bold;
+}
+
+.print-note{
+  margin-top:8px;
+  color:#7f1d1d;
+  font-size:10px;
+  font-weight:bold;
+}
+
+.print-note2{
+  margin-top:8px;
+  color:#7f1d1d;
+  font-size:10px;
+  font-weight:bold;
+}
+
+.print-note3{
+  margin-top:8px;
+  color:#7f1d1d;
+  font-size:10px;
+  font-weight:bold;
+}
+
+/* ===== IMPRESSION PDF ===== */
+
+.print-header{
+  display:none;
+}
+
+.print-footer{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:10px;
+  padding-top:6px;
+  border-top:1px solid #999;
+  font-size:10px;
+}
+
+.print-page{
+  page-break-after:always;
+  break-after:page;
+  margin-bottom:30px;
+}
+
+@media print{
+
+  *{
+    -webkit-print-color-adjust:exact !important;
+    print-color-adjust:exact !important;
+  }
+
+  table{
+    border-collapse:collapse !important;
+  }
+
+  th,td{
+  border:1.5px solid #000 !important;
+}
+
+td{
+  color:#000 !important;
+}
+
+th{
+  background:#111827 !important;
+  color:#fff !important;
+}
+
+  body{
+    background:white;
+  }
+
+
+  button{
+    display:none !important;
+  }
+
+  .competition-card{
+    display:none;
+  }
+
+  .print-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+    padding-bottom:8px;
+    border-bottom:2px solid black;
+    font-size:12px;
+  }
+
+  .print-footer{
+    position:fixed;
+    bottom:5mm;
+    left:10mm;
+    right:10mm;
+    font-size:10px;
+  }
+  
+  table{
+    width:100%;
+    font-size:10px;
+    page-break-inside:avoid;
+  }
+
+  tr{
+    page-break-inside:avoid;
+  }
+
+  .section-title{
+    margin-top:0;
+  }
+
+  @page{
+    size:A4 landscape;
+    margin:10mm;
+  }
+  body{
+  margin:0;
+  padding:0;
+}
+
+}
