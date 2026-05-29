@@ -2120,15 +2120,21 @@ if (femaleList.length) {
   let ufoOrdered = femaleList
     .filter(p => p.lic === "UFOLEP");
 
-  ufoOrdered.forEach((p, i) => {
+  femaleList.forEach(p => {
 
-    p.rankUfolep = i + 1;
+  p.rankUfolep = "-";
+  p.ufoPoints = 0;
+});
 
-    p.ufoPoints =
-      p.status === "AB"
-        ? 1
-        : Engine.getUfolepPoints(i + 1);
-  });
+ufoOrdered.forEach((p, i) => {
+
+  p.rankUfolep = i + 1;
+
+  p.ufoPoints =
+    p.status === "AB"
+      ? 1
+      : Engine.getUfolepPoints(i + 1);
+});
 
   html = renderTable(
     "FEMININ",
@@ -2183,15 +2189,21 @@ if(veteranList.length){
   let ufoOrdered = veteranList
     .filter(p => p.lic === "UFOLEP");
 
-  ufoOrdered.forEach((p, i) => {
+  veteranList.forEach(p => {
 
-    p.rankUfolep = i + 1;
+  p.rankUfolep = "-";
+  p.ufoPoints = 0;
+});
 
-    p.ufoPoints =
-      p.status === "AB"
-        ? 1
-        : Engine.getUfolepPoints(i + 1);
-  });
+ufoOrdered.forEach((p, i) => {
+
+  p.rankUfolep = i + 1;
+
+  p.ufoPoints =
+    p.status === "AB"
+      ? 1
+      : Engine.getUfolepPoints(i + 1);
+});
 
   html = renderTable(
     "VETERAN",
@@ -3148,8 +3160,6 @@ function showChampionship(jokers){
   <div class="topbar">
 
     <div class="topbar-title">
-      Championnat UFOLEP
-      (${jokers} joker${jokers>1?"s":""})
     </div>
 
     <div class="topbar-actions">
@@ -3459,11 +3469,14 @@ function showClubChampionship(){
 
   let html=`
 
+  <h2>
+  Classement Clubs UFOLEP
+  </h2>
+
   <div class="topbar">
 
     <div class="topbar-title">
-      Classement Clubs UFOLEP
-    </div>
+          </div>
 
     <div class="topbar-actions">
 

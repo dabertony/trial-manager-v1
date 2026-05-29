@@ -375,6 +375,11 @@ th{
     margin-top:0;
   }
 
+  .topbar,
+.topbar *{
+  display:none !important;
+}
+
   @page{
     size:A4 landscape;
     margin:10mm;
