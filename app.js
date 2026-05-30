@@ -1618,6 +1618,7 @@ if(c.locked){
 
   <h3>Tour ${t}</h3>
 
+  
   <div id="zones"></div>
 
   <button onclick="saveScore(${ci},'${id}',${t})">
@@ -1636,7 +1637,7 @@ if(c.locked){
   for(let i=0;i<c.zones;i++){
 
     z+=`
-    <div>
+    <div class="zone-block">
 
       Zone ${i+1} :
 
@@ -1922,7 +1923,7 @@ function renderTable(title,list,c,htmlRef,ci,provisional){
 
     <th class="col-best">MEILLEUR<br>TOUR</th>
     <th class="col-total">TOTAL</th>
-    <th class="col-rank">PLACE<br>Scratch</th>
+    <th class="col-rank">PLACE<br>SCRATCH</th>
     <th class="col-rank">PLACE<br>UFOLEP</th>
     <th class="col-points">POINTS<br>UFOLEP</th>
 

@@ -33,7 +33,7 @@ header{
 }
 
 .topbar-title{
-  font-size:20px;
+  font-size:28px;
   font-weight:bold;
 }
 
@@ -48,19 +48,20 @@ header{
 }
 
 button{
-  padding:8px;
-  margin:4px;
+  padding:14px 20px;
+  margin:6px;
   border:none;
   border-radius:6px;
   background:#2563eb;
   color:white;
   cursor:pointer;
+  font-size:18px;
 }
 
 input,
 select{
 
-  padding:8px;
+  padding:14px;
   margin:4px;
 
   border:1px solid #ccc;
@@ -69,10 +70,11 @@ select{
   background:white;
   color:black;
 
-  font-size:14px;
+  font-size:18px;
 
   box-sizing:border-box;
 }
+
 input:focus,
 select:focus{
 
@@ -113,9 +115,10 @@ button:not(.delete):not(.score-btn){
 
 .card{
   background:white;
-  padding:10px;
-  margin:6px 0;
+  padding:18px;
+  margin:8px 0;
   border-radius:10px;
+  font-size:20px;
 }
 
 .competition-card{
@@ -185,12 +188,24 @@ button:not(.delete):not(.score-btn){
   font-size:11px;
   margin-left:8px;
 }
-  
+ 
 .score-btn{
-  margin:2px;
+  margin:10px;
+  margin-bottom:12px;
   background:#e5e7eb;
   color:black;
   border:1px solid #cbd5e1;
+
+  min-width:70px;
+  min-height:70px;
+
+  font-size:30px;
+  font-weight:bold;
+}
+
+.zone-block{
+  text-align:center;
+  margin:25px 0;
 }
 
 .selected{
@@ -248,15 +263,15 @@ th{
 white-space:normal;
 }
 
-.col-name{width:190px;}
-.col-club{width:130px;}
+.col-name{width:210px;}
+.col-club{width:115px;}
 .col-cat{width:90px;}
 .col-small{width:30px;}
 .col-tour{width:40px;}
 .col-best{width:90px;}
-.col-total{width:75px;}
-.col-rank{width:75px;}
-.col-points{width:75px;}
+.col-total{width:70px;}
+.col-rank{width:70px;}
+.col-points{width:70px;}
 
 .tie-icon{
   color:#9333ea;
