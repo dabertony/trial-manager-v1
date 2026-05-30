@@ -1616,18 +1616,24 @@ if(c.locked){
 
   let html=`
 
-  <h3>Tour ${t}</h3>
+  <h3 class="score-tour">
+  Tour ${t}
+</h3>
 
-  
   <div id="zones"></div>
+  <div class="score-actions">
 
   <button onclick="saveScore(${ci},'${id}',${t})">
     Valider
   </button>
 
-  <button class="delete" onclick="pilotDetail(${ci},'${id}')">
+  <button
+    class="delete"
+    onclick="pilotDetail(${ci},'${id}')">
     Retour
   </button>
+
+</div>
   `;
 
   app.innerHTML=html;
@@ -1636,23 +1642,25 @@ if(c.locked){
 
   for(let i=0;i<c.zones;i++){
 
-    z+=`
-    <div class="zone-block">
+z+=`
+<div class="zone-block">
 
-      Zone ${i+1} :
+  <span class="zone-label">
+    Zone ${i+1} :
+  </span>
 
-      ${[0,1,2,3,5].map(v=>`
+  ${[0,1,2,3,5].map(v=>`
 
-      <button
-        class="score-btn ${currentScores[i]===v ? "selected" : ""}"
-        onclick="setScore(${i},${v},this)">
-        ${v}
-      </button>
+  <button
+    class="score-btn ${currentScores[i]===v ? "selected" : ""}"
+    onclick="setScore(${i},${v},this)">
+    ${v}
+  </button>
 
-      `).join("")}
+  `).join("")}
 
-    </div>
-    `;
+</div>
+`;
   }
 
   document.getElementById("zones").innerHTML=z;
