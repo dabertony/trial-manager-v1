@@ -162,6 +162,37 @@ button:not(.delete):not(.score-btn){
   flex-wrap:wrap;
 }
 
+.score-pilot{
+
+text-align:center;
+
+font-size:24px;
+
+font-weight:700;
+
+color:#1e293b;
+
+margin-top:-8px;
+
+margin-bottom:28px;
+
+padding:10px;
+
+background:white;
+
+border-radius:12px;
+
+box-shadow:
+0 2px 6px rgba(0,0,0,.08);
+
+max-width:500px;
+
+margin-left:auto;
+
+margin-right:auto;
+
+}
+
 .comp-date{
   color:#6b7280;
   font-size:12px;
@@ -422,5 +453,82 @@ th{
   margin:0;
   padding:0;
 }
+}
+.competition-panel{
 
+max-width:900px;
+
+margin:auto;
+
+padding:20px;
+
+}
+
+.competition-menu{
+
+margin-top:16px;
+
+display:grid;
+
+grid-template-columns:1fr 1fr;
+
+gap:12px;
+
+}
+
+.menu-card{
+
+display:flex;
+
+align-items:center;
+
+justify-content:center;
+
+min-height:62px;
+
+padding:10px 14px;
+
+border-radius:12px;
+
+background:white;
+
+font-size:16px;
+
+font-weight:700;
+
+cursor:pointer;
+
+user-select:none;
+
+box-shadow:
+0 2px 8px rgba(0,0,0,.08);
+
+border:2px solid transparent;
+
+transition:
+transform .10s,
+box-shadow .10s,
+border .10s;
+
+}
+
+.menu-card:hover{
+
+transform:translateY(-1px);
+
+border-color:#2563eb;
+
+box-shadow:
+0 5px 10px rgba(37,99,235,.12);
+
+}
+
+.menu-card:active{
+
+transform:scale(.99);
+
+}
+
+.menu-card::after{
+content:"";
 }

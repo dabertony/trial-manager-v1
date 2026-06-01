@@ -632,43 +632,188 @@ Charger Sauvegarde
 
   state.competitions.forEach((c,i)=>{
 
-  html+=`
+html+=`
 
-  <div class="competition-card"
-       onclick="openCompetition(${i})">
+<div class="competition-card"
+onclick="openCompetition(${i})">
 
-    <div class="comp-header">
+<div class="comp-header">
 
-      <div>
+<div>
 
-        <div class="comp-title">
+<div class="comp-title">
 
-          ${c.name}
+${c.name}
 
-          ${c.locked
-            ? `<span class="locked-badge">VERROUILLÉE</span>`
-            : ""
-          }
+${c.locked
+? `<span class="locked-badge">
+🔒 VERROUILLÉE
+</span>`
+:""}
 
-        </div>
+</div>
 
-        <div class="comp-date">
-          📅 ${c.date || "Date inconnue"}
-        </div>
+<div class="comp-date">
 
-      </div>
+📅 ${c.date || "Date inconnue"}
 
-      <button class="comp-delete"
-        onclick="event.stopPropagation();deleteCompetition(${i})">
+<br>
 
-        X
+${c.tours} tours • ${c.zones} zones
 
-      </button>
+</div>
 
-    </div>
+</div>
 
-  </div>
-  `;
+
+<div style="
+display:flex;
+gap:8px;
+align-items:center;
+">
+
+${
+!c.locked
+? `
+
+<button
+onclick="
+event.stopPropagation();
+editCompetition(${i});
+">
+
+⚙ Modifier infos
+
+</button>
+
+`
+:""
+}
+
+<button
+class="comp-delete"
+
+onclick="
+event.stopPropagation();
+deleteCompetition(${i});
+">
+
+X
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
+
+if(state.ui.openCompetition===i){
+
+html+=`
+
+<div class="competition-menu">
+
+
+<div
+class="menu-card"
+
+onclick="selectPilot(${i})">
+
+📝 SAISIE DES SCORES
+
+</div>
+
+
+<div
+class="menu-card"
+
+onclick="manageParticipants(${i})">
+
+👥 PARTICIPANTS
+
+</div>
+
+
+<div
+class="menu-card"
+
+onclick="showResults(${i})">
+
+🏆 CLASSEMENTS
+
+</div>
+
+
+<div
+class="menu-card"
+
+onclick="exportParticipantsExcel(${i})">
+
+📄 EXPORT EXCEL PARTICIPANTS
+
+
+</div>
+
+
+${
+c.locked
+? `
+
+<div
+class="menu-card"
+
+onclick="unlockCompetition(${i})">
+
+🔓 DÉVERROUILLER
+
+</div>
+
+`
+:`
+
+<div
+class="menu-card"
+
+onclick="lockCompetition(${i})">
+
+✔ VALIDER LA COMPÉTITION
+
+</div>
+
+`
+}
+
+
+<div style="
+text-align:center;
+margin-top:20px;
+">
+
+<button
+onclick="
+event.stopPropagation();
+
+state.ui.openCompetition=null;
+
+home();
+">
+
+Fermer
+
+</button>
+
+</div>
+
+</div>
+
+`;
+
+}
+
 });
 
   app.innerHTML=html;
@@ -794,8 +939,8 @@ function showPilots(){
 
         </button>
 
-        <button onclick="goHome()">
-          Retour
+        <button onclick="returnCompetitionMenu()">
+        Retour
         </button>
 
       </div>
@@ -1067,106 +1212,24 @@ function saveCompetitionEdit(i){
 }
 
 function openCompetition(i){
-  state.ui.currentScreen = "competition";
 
-  state.ui.selectedCompetition = i;
-  let c=state.competitions[i];
+if(state.ui.openCompetition===i){
 
-  let lockedBanner="";
+state.ui.openCompetition=null;
 
-if(c.locked){
+}else{
 
-lockedBanner=`
-
-<div style="
-  background:#dc2626;
-  color:white;
-  padding:14px;
-  border-radius:10px;
-  margin:12px 0;
-  font-weight:bold;
-  text-align:center;
-  line-height:1.5;
-  box-shadow:0 2px 6px rgba(0,0,0,0.2);
-">
-
-  🔒 COMPÉTITION VERROUILLÉE
-
-  <br><br>
-
-  Cette compétition est officiellement validée.
-
-  <br>
-
-  Plus aucune modification n'est possible :
-  participants, scores, abandons et départages sont figés définitivement.
-
-  <br><br>
-
-  Les classements généraux UFOLEP utilisent uniquement
-  les compétitions verrouillées.
-
-</div>
-`;
+state.ui.openCompetition=i;
 
 }
 
-app.innerHTML=`
+home();
 
-${lockedBanner}
-
-<button onclick="manageParticipants(${i})"
-${c.locked ? "disabled" : ""}>
-Participants
-</button>
-
-<button onclick="exportParticipantsExcel(${i})">
-Export Excel liste Des Participants
-</button>
-
-<button onclick="selectPilot(${i})"
-${c.locked ? "disabled" : ""}>
-Saisie Des Scores
-</button>
-
-<button onclick="showResults(${i})">
-Classements
-</button>
-
-${
-  !c.locked
-  ? `
-    <button onclick="editCompetition(${i})">
-      Modifier Infos Compétition
-    </button>
-    `
-  : ""
 }
 
-${
-  c.locked
-  ? `
-    <span class="locked-badge">ARCHIVÉE</span>
+function returnCompetitionMenu(){
 
-    <button class="delete"
-      onclick="unlockCompetition(${i})">
-
-      Déverrouiller Admin
-
-    </button>
-    `
-  : `
-    <button onclick="lockCompetition(${i})">
-      Verrouiller
-    </button>
-    `
-}
-
-  <button onclick="goHome()">
-Retour
-</button>
-
-`;
+home();
 
 }
 
@@ -1258,8 +1321,8 @@ if(c.locked){
     Les participants sont figés.
   </div>
 
-  <button onclick="openCompetition(${i})">
-    Retour
+  <button onclick="returnCompetitionMenu()">
+  Retour
   </button>
   `;
 
@@ -1281,8 +1344,8 @@ if(c.locked){
 
   <div class="topbar-actions">
 
-    <button onclick="openCompetition(${i})">
-      Retour
+    <button onclick="returnCompetitionMenu()">
+    Retour
     </button>
 
   </div>
@@ -1387,8 +1450,8 @@ if(c.locked){
     Les scores sont figés.
   </div>
 
-  <button onclick="openCompetition(${i})">
-    Retour
+  <button onclick="returnCompetitionMenu()">
+  Retour
   </button>
   `;
 
@@ -1411,8 +1474,8 @@ if(c.locked){
 
   <div class="topbar-actions">
 
-    <button onclick="openCompetition(${i})">
-      Retour
+    <button onclick="returnCompetitionMenu()">
+    Retour
     </button>
 
   </div>
@@ -1614,13 +1677,24 @@ if(c.locked){
     currentScores=[...old];
   }
 
-  let html=`
+let pilot =
+state.pilots.find(
+p=>p.id===id
+);
 
-  <h3 class="score-tour">
-  Tour ${t}
+let html=`
+
+<h3 class="score-tour">
+Tour ${t}
 </h3>
 
-  <div id="zones"></div>
+<div class="score-pilot">
+
+${pilot?.name || ""}
+
+</div>
+
+<div id="zones"></div>
   <div class="score-actions">
 
   <button onclick="saveScore(${ci},'${id}',${t})">
@@ -2047,8 +2121,8 @@ html += `
       Export PDF
     </button>
 
-    <button onclick="openCompetition(${i})">
-      Retour
+    <button onclick="returnCompetitionMenu()">
+    Retour
     </button>
 
   </div>
@@ -3738,8 +3812,8 @@ function exportParticipantsExcel(i){
 
     </div>
 
-    <button onclick="openCompetition(${i})">
-      Retour
+    <button onclick="returnCompetitionMenu()">
+    Retour
     </button>
   `;
 }
