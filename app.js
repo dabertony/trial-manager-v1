@@ -891,7 +891,17 @@ return p && p.cat.startsWith(level);
 }).length;
 
 html += `
-<div>${level} : <b>${count}</b></div>
+
+<div class="info-line">
+
+<span class="info-label">${level}</span>
+
+<span>:</span>
+
+<b>${count}</b>
+
+</div>
+
 `;
 
 });
@@ -958,7 +968,17 @@ return p
 totalAB += count;
 
 html += `
-<div>${level} : <b>${count}</b></div>
+
+<div class="info-line">
+
+<span class="info-label">${level}</span>
+
+<span>:</span>
+
+<b>${count}</b>
+
+</div>
+
 `;
 
 });
@@ -986,6 +1006,8 @@ html += `
 
 `;
 
+// ===== TABLEAUX PRINCIPAUX =====
+
 levels.forEach(level=>{
 
 let groupCats =
@@ -1011,7 +1033,8 @@ groups[key].push(p);
 
 });
 
-let remaining = 0;
+let totalTieGroups = 0;
+let resolvedTieGroups = 0;
 
 Object.values(groups).forEach(group=>{
 
@@ -1028,6 +1051,8 @@ if(!validGroup){
 return;
 }
 
+totalTieGroups++;
+
 let ids = group
 .map(p=>p.id)
 .sort();
@@ -1037,38 +1062,125 @@ level.toUpperCase()
 + "-"
 + ids.join("-");
 
-if(!c.tiebreaks[tieKey]){
-
-remaining++;
-
+if(c.tiebreaks[tieKey]){
+resolvedTieGroups++;
 }
 
 });
 
+let icon =
+(totalTieGroups === 0 ||
+resolvedTieGroups === totalTieGroups)
+? "🟩"
+: "🟨";
+
+let value =
+totalTieGroups === 0
+? "Aucun"
+: `${resolvedTieGroups}/${totalTieGroups}`;
+
 html += `
 
-<div>
+<div class="info-line">
 
-${remaining === 0 ? "🟩" : "🟨"}
+<span>${icon}</span>
 
-${level.padEnd(5," ")}
+<span class="info-label">
+${level}
+</span>
 
-:
+<span>:</span>
 
-<b>
-
-${remaining === 0
-? "OK"
-: remaining
-}
-
-</b>
+<b>${value}</b>
 
 </div>
 
 `;
 
 });
+
+
+// ===== FEMININ =====
+
+let femaleGroups = {};
+
+stats
+.filter(p=>
+categoryOrderFemale[p.cat] !== undefined
+)
+.forEach(p=>{
+
+let key =
+p.cat + "-" + equalityKey(p);
+
+if(!femaleGroups[key]){
+femaleGroups[key] = [];
+}
+
+femaleGroups[key].push(p);
+
+});
+
+let femaleTotal = 0;
+let femaleResolved = 0;
+
+Object.values(femaleGroups).forEach(group=>{
+
+if(group.length <= 1){
+return;
+}
+
+let validGroup = group.every(p=>
+p.completed &&
+p.status !== "AB"
+);
+
+if(!validGroup){
+return;
+}
+
+femaleTotal++;
+
+let ids = group
+.map(p=>p.id)
+.sort();
+
+let tieKey =
+group[0].cat.toUpperCase()
++ "-"
++ ids.join("-");
+
+if(c.tiebreaks[tieKey]){
+femaleResolved++;
+}
+
+});
+
+html += `
+
+<div class="info-line">
+
+<span>
+${(femaleTotal === 0 || femaleResolved === femaleTotal)
+? "🟩"
+: "🟨"}
+</span>
+
+<span class="info-label">
+FEM
+</span>
+
+<span>:</span>
+
+<b>
+${femaleTotal === 0
+? "Aucun"
+: `${femaleResolved}/${femaleTotal}`}
+</b>
+
+</div>
+
+`;
 
 
 // ===== VETERANS =====
@@ -1090,7 +1202,8 @@ veteranGroups[key].push(p);
 
 });
 
-let veteranRemaining = 0;
+let veteranTotal = 0;
+let veteranResolved = 0;
 
 Object.values(veteranGroups).forEach(group=>{
 
@@ -1107,40 +1220,43 @@ if(!validGroup){
 return;
 }
 
+veteranTotal++;
+
 let ids = group
-  .map(p=>p.id)
-  .sort();
+.map(p=>p.id)
+.sort();
 
 let tieKey =
-  group[0].cat.toUpperCase()
-  + "-"
-  + ids.join("-");
+group[0].cat.toUpperCase()
++ "-"
++ ids.join("-");
 
-if(!c.tiebreaks[tieKey]){
-
-  veteranRemaining++;
-
+if(c.tiebreaks[tieKey]){
+veteranResolved++;
 }
 
 });
 
 html += `
 
-<br>
+<div class="info-line">
 
-<div>
+<span>
+${(veteranTotal === 0 || veteranResolved === veteranTotal)
+? "🟩"
+: "🟨"}
+</span>
 
-${veteranRemaining === 0 ? "🟩" : "🟨"}
+<span class="info-label">
+VET
+</span>
 
-VET :
+<span>:</span>
 
 <b>
-
-${veteranRemaining === 0
-? "OK"
-: veteranRemaining
-}
-
+${veteranTotal === 0
+? "Aucun"
+: `${veteranResolved}/${veteranTotal}`}
 </b>
 
 </div>
@@ -1226,11 +1342,17 @@ icon = "🟨";
 
 html += `
 
-<div>
+<div class="info-line">
 
+<span>
 ${icon}
+</span>
 
-${level} :
+<span class="info-label">
+${level}
+</span>
+
+<span>:</span>
 
 <b>${done}/${total}</b>
 
