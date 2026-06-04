@@ -115,10 +115,33 @@ button:not(.delete):not(.score-btn){
 
 .card{
   background:white;
+
   padding:18px;
+
   margin:8px 0;
+
   border-radius:10px;
+
   font-size:20px;
+
+  cursor:default;
+
+  transition:
+  box-shadow .12s,
+  transform .08s;
+}
+
+.card:hover{
+
+box-shadow:
+0 5px 12px rgba(0,0,0,.08);
+
+}
+
+.card button{
+
+cursor:pointer;
+
 }
 
 .competition-card{
@@ -129,11 +152,35 @@ button:not(.delete):not(.score-btn){
   border-left:5px solid #2563eb;
   box-shadow:0 1px 4px rgba(0,0,0,0.08);
   cursor:pointer;
-  transition:0.15s;
+  transition:background .12s;
 }
 
 .competition-card:hover{
-  transform:scale(1.005);
+  background:#eef4ff;
+}
+
+.clickable-row{
+
+cursor:pointer;
+
+border:2px solid transparent;
+
+transition:
+transform .12s,
+box-shadow .12s,
+border .12s;
+
+}
+
+.clickable-row:hover{
+box-shadow:
+0 4px 10px rgba(0,0,0,.08);
+}
+
+.clickable-row:active{
+
+transform:scale(.995);
+
 }
 
 .cat-elite{border-left:60px solid #facc15;} /* jaune */
@@ -506,29 +553,62 @@ box-shadow:
 border:2px solid transparent;
 
 transition:
-transform .10s,
-box-shadow .10s,
-border .10s;
+background .12s,
+border-color .12s;
 
 }
 
 .menu-card:hover{
 
-transform:translateY(-1px);
+background:#eef4ff;
 
 border-color:#2563eb;
-
-box-shadow:
-0 5px 10px rgba(37,99,235,.12);
 
 }
 
 .menu-card:active{
 
-transform:scale(.99);
+opacity:.85;
 
 }
 
 .menu-card::after{
 content:"";
+}
+
+.info-grid{
+
+display:grid;
+
+grid-template-columns:
+repeat(4,1fr);
+
+gap:12px;
+
+
+}
+
+.info-card{
+
+background:white;
+
+padding:18px;
+
+border-radius:12px;
+
+box-shadow:
+0 2px 8px rgba(0,0,0,.08);
+
+}
+
+.info-card h3{
+
+margin-top:0;
+
+margin-bottom:12px;
+
+text-align:center;
+
+font-size:20px;
+
 }

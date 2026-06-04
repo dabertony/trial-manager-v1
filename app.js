@@ -787,10 +787,20 @@ onclick="lockCompetition(${i})">
 `
 }
 
+<div
+class="menu-card"
+
+onclick="showCompetitionInfo(${i})">
+
+ℹ️ INFOS COMPÉTITION
+
+</div>
+
 
 <div style="
+grid-column:1 / -1;
 text-align:center;
-margin-top:20px;
+margin-top:24px;
 ">
 
 <button
@@ -817,6 +827,440 @@ Fermer
 });
 
   app.innerHTML=html;
+}
+
+function showCompetitionInfo(i){
+
+let c = state.competitions[i];
+
+const levels = [
+  "Elite",
+  "N1",
+  "N2",
+  "N3",
+  "N4",
+  "N5"
+];
+
+let stats = buildStats(c);
+
+let html = `
+
+<div class="topbar">
+
+<div class="topbar-title">
+Infos compétition
+</div>
+
+<div class="topbar-actions">
+
+<button onclick="returnCompetitionMenu()">
+Retour
+</button>
+
+</div>
+
+</div>
+
+<div class="info-grid">
+
+`;
+
+
+// ===== PARTICIPANTS =====
+
+html += `
+
+<div class="info-card">
+
+<h3>Participants</h3>
+
+`;
+
+let totalF = 0;
+let totalV = 0;
+
+levels.forEach(level=>{
+
+let count = c.participants.filter(id=>{
+
+let p = getPilotById(id);
+
+return p && p.cat.startsWith(level);
+
+}).length;
+
+html += `
+<div>${level} : <b>${count}</b></div>
+`;
+
+});
+
+totalF = c.participants.filter(id=>{
+
+let p = getPilotById(id);
+
+return p && p.cat.includes(" F");
+
+}).length;
+
+totalV = c.participants.filter(id=>{
+
+let p = getPilotById(id);
+
+return p && p.cat.includes(" V");
+
+}).length;
+
+html += `
+
+<br>
+
+<div>Féminines : <b>${totalF}</b></div>
+
+<div>Vétérans : <b>${totalV}</b></div>
+
+<br>
+
+<div>
+TOTAL : <b>${c.participants.length}</b>
+</div>
+
+</div>
+
+`;
+
+
+// ===== ABANDONS =====
+
+html += `
+
+<div class="info-card">
+
+<h3>Abandons</h3>
+
+`;
+
+let totalAB = 0;
+
+levels.forEach(level=>{
+
+let count = c.participants.filter(id=>{
+
+let p = getPilotById(id);
+
+return p
+&& p.cat.startsWith(level)
+&& c.status[id] === "AB";
+
+}).length;
+
+totalAB += count;
+
+html += `
+<div>${level} : <b>${count}</b></div>
+`;
+
+});
+
+html += `
+
+<br>
+
+<div>
+TOTAL : <b>${totalAB}</b>
+</div>
+
+</div>
+
+`;
+
+
+// ===== DEPARTAGES =====
+
+html += `
+
+<div class="info-card">
+
+<h3>Départages</h3>
+
+`;
+
+levels.forEach(level=>{
+
+let groupCats =
+level === "Elite"
+? ["Elite","Elite F"]
+: [level, level + " F"];
+
+let catStats = stats.filter(p=>
+groupCats.includes(p.cat)
+);
+
+let groups = {};
+
+catStats.forEach(p=>{
+
+let key = equalityKey(p);
+
+if(!groups[key]){
+groups[key] = [];
+}
+
+groups[key].push(p);
+
+});
+
+let remaining = 0;
+
+Object.values(groups).forEach(group=>{
+
+if(group.length <= 1){
+return;
+}
+
+let validGroup = group.every(p=>
+p.completed &&
+p.status !== "AB"
+);
+
+if(!validGroup){
+return;
+}
+
+let ids = group
+.map(p=>p.id)
+.sort();
+
+let tieKey =
+level.toUpperCase()
++ "-"
++ ids.join("-");
+
+if(!c.tiebreaks[tieKey]){
+
+remaining++;
+
+}
+
+});
+
+html += `
+
+<div>
+
+${remaining === 0 ? "🟩" : "🟨"}
+
+${level.padEnd(5," ")}
+
+:
+
+<b>
+
+${remaining === 0
+? "OK"
+: remaining
+}
+
+</b>
+
+</div>
+
+`;
+
+});
+
+
+// ===== VETERANS =====
+
+let veteranGroups = {};
+
+stats
+.filter(p=>p.cat.includes(" V"))
+.forEach(p=>{
+
+let key =
+p.cat + "-" + equalityKey(p);
+
+if(!veteranGroups[key]){
+veteranGroups[key] = [];
+}
+
+veteranGroups[key].push(p);
+
+});
+
+let veteranRemaining = 0;
+
+Object.values(veteranGroups).forEach(group=>{
+
+if(group.length <= 1){
+return;
+}
+
+let validGroup = group.every(p=>
+p.completed &&
+p.status !== "AB"
+);
+
+if(!validGroup){
+return;
+}
+
+let ids = group
+  .map(p=>p.id)
+  .sort();
+
+let tieKey =
+  group[0].cat.toUpperCase()
+  + "-"
+  + ids.join("-");
+
+if(!c.tiebreaks[tieKey]){
+
+  veteranRemaining++;
+
+}
+
+});
+
+html += `
+
+<br>
+
+<div>
+
+${veteranRemaining === 0 ? "🟩" : "🟨"}
+
+VET :
+
+<b>
+
+${veteranRemaining === 0
+? "OK"
+: veteranRemaining
+}
+
+</b>
+
+</div>
+
+</div>
+
+`;
+
+
+// ===== COMPETITION =====
+
+html += `
+
+<div class="info-card">
+
+<h3>Compétition</h3>
+
+<div style="margin:8px 0">
+<b>${c.name}</b>
+</div>
+
+<div style="margin:8px 0">
+📅 ${c.date || "Date inconnue"}
+</div>
+
+<div style="margin:8px 0">
+🏁 ${c.tours} tours
+</div>
+
+<div style="margin:8px 0">
+🎯 ${c.zones} zones
+</div>
+
+</div>
+
+`;
+
+
+// ===== TOURS =====
+
+for(let t=1;t<=c.tours;t++){
+
+html += `
+
+<div class="info-card">
+
+<h3>Tour ${t}</h3>
+
+`;
+
+levels.forEach(level=>{
+
+let pilots = c.participants.filter(id=>{
+
+let p = getPilotById(id);
+
+return p && p.cat.startsWith(level);
+
+});
+
+let total = pilots.length;
+
+let done = pilots.filter(id=>{
+
+if(c.status[id] === "AB"){
+return true;
+}
+
+return !!c.scores[id+"-"+t];
+
+}).length;
+
+let missing = total - done;
+
+let icon = "🟥";
+
+if(done === total){
+icon = "🟩";
+}
+else if(done > 0){
+icon = "🟨";
+}
+
+html += `
+
+<div>
+
+${icon}
+
+${level} :
+
+<b>${done}/${total}</b>
+
+${missing > 0
+? ` (${missing})`
+: ""
+}
+
+</div>
+
+`;
+
+});
+
+html += `
+
+</div>
+
+`;
+
+}
+
+html += `
+
+</div>
+
+`;
+
+app.innerHTML = html;
+
 }
 
 // ===== PILOTES =====
@@ -1014,43 +1458,93 @@ function toggleClub(){
 }
 
 function addPilot(){
-  editingPilotId = null;
-  editingPilotCat = null;
-  let name=format(document.getElementById("name").value);
 
-  let cat=document.getElementById("cat").value;
+editingPilotId = null;
+editingPilotCat = null;
 
-  let clubSel=document.getElementById("club").value;
+let input =
+document.getElementById("name");
 
-  let newClub=format(document.getElementById("newClub").value);
+input.style.border="";
 
-  let lic=document.getElementById("lic").value;
+let name =
+format(input.value);
 
-  let club=clubSel==="NEW" ? newClub : clubSel;
+let cat =
+document.getElementById("cat").value;
 
-  if(!name){
-    return alert("Nom obligatoire");
-  }
+let clubSel =
+document.getElementById("club").value;
 
-  if(clubSel==="NEW" && !newClub){
-    return alert("Club manquant");
-  }
+let newClub =
+format(
+document.getElementById("newClub").value
+);
 
-  if(club && !state.clubs.includes(club)){
-    state.clubs.push(club);
-  }
+let lic =
+document.getElementById("lic").value;
 
-  state.pilots.push({
-    id:generatePilotId(),
-    name,
-    cat,
-    club,
-    lic
-  });
+let club =
+clubSel==="NEW"
+? newClub
+: clubSel;
 
-  save();
 
-  showPilots();
+if(!name){
+
+input.style.border=
+"2px solid #dc2626";
+
+input.focus();
+
+return;
+
+}
+
+
+if(clubSel==="NEW" && !newClub){
+
+let clubInput =
+document.getElementById("newClub");
+
+clubInput.style.border =
+"2px solid #dc2626";
+
+clubInput.focus();
+
+return;
+
+}
+
+
+if(club && !state.clubs.includes(club)){
+
+state.clubs.push(club);
+
+}
+
+document
+.getElementById("newClub")
+.style.border="";
+
+state.pilots.push({
+
+id:generatePilotId(),
+
+name,
+
+cat,
+
+club,
+
+lic
+
+});
+
+save();
+
+showPilots();
+
 }
 
 // ===== COMPETITIONS =====
@@ -1393,11 +1887,13 @@ html += `
       : "";
 
     html+=`
-    <div class="card ${getCatClass(p.cat)} "
-     onclick="toggleP(${i},'${p.id}')">
-      ${sel} ${p.cat} - ${p.name} - ${p.club || "Sans club"} - ${p.lic}
-    </div>
-    `;
+<div class="card clickable-row ${getCatClass(p.cat)}"
+ onclick="toggleP(${i},'${p.id}')">
+
+  ${sel} ${p.cat} - ${p.name} - ${p.club || "Sans club"} - ${p.lic}
+
+</div>
+`;
   });
 
   app.innerHTML=html;
@@ -1522,32 +2018,17 @@ if(c.locked){
     let status=getPilotStatus(c,p.id);
 
     html+=`
-    <div class="card ${getCatClass(p.cat)} ">
+<div
+class="card clickable-row ${getCatClass(p.cat)}"
+onclick="pilotDetail(${i},'${p.id}')">
 
-      <span onclick="pilotDetail(${i},'${p.id}')">
+  ${getStatus(c,p.id)}
+  ${p.cat} - ${p.name} - ${p.club || "Sans club"} - ${p.lic}
 
-      ${getStatus(c,p.id)}
-      ${p.cat} - ${p.name} - ${p.club || "Sans club"} - ${p.lic}
+  }
 
-      </span>
-
-      ${status==="OK"
-        ? `
-        <button class="delete ab-btn"
-          onclick="event.stopPropagation();declareAB(${i},'${p.id}')">
-          AB
-        </button>
-        `
-        : `
-        <button class="ab-btn"
-          onclick="event.stopPropagation();cancelAB(${i},'${p.id}')">
-          ANNULER AB
-        </button>
-        `
-      }
-
-    </div>
-    `;
+</div>
+`;
   });
 
   app.innerHTML=html;
@@ -1623,29 +2104,116 @@ if(c.locked){
     </div>
     `;
   }
+let isAB = c.status[id] === "AB";
 
-  html+=`
-  <button onclick="selectPilot(${ci})">
-    Retour
-  </button>
-  `;
+html+=`
+
+<div style="margin-top:20px;">
+
+<button onclick="selectPilot(${ci})">
+Retour
+</button>
+
+${
+isAB
+? `
+<button
+onclick="cancelAB(${ci},'${id}')">
+
+Annuler abandon
+
+</button>
+`
+: `
+<button
+class="delete"
+onclick="declareAB(${ci},'${id}')">
+
+Déclarer abandon
+
+</button>
+`
+}
+
+</div>
+
+`;
 
   app.innerHTML=html;
 }
 
 function declareAB(ci,id){
 
-  let c=state.competitions[ci];
+let c=state.competitions[ci];
 
-  if(!confirm("Confirmer abandon ?")){
-    return;
-  }
+let pilot =
+state.pilots.find(
+p => p.id === id
+);
 
-  c.status[id]="AB";
+app.innerHTML=`
 
-  save();
+<h3>
+Confirmer abandon
+</h3>
 
-  selectPilot(ci);
+<div class="card">
+
+⚠️ Le pilote :
+
+<br><br>
+
+<b>
+${pilot?.name || ""}
+</b>
+
+<br><br>
+
+sera marqué abandonné.
+
+<br><br>
+
+Ses scores resteront enregistrés
+mais il apparaîtra AB
+dans les classements.
+
+</div>
+
+<div class="score-actions">
+
+<button
+class="delete"
+
+onclick="confirmAB(${ci},'${id}')">
+
+Confirmer abandon
+
+</button>
+
+<button
+
+onclick="selectPilot(${ci})">
+
+Retour
+
+</button>
+
+</div>
+
+`;
+
+}
+
+function confirmAB(ci,id){
+
+let c=state.competitions[ci];
+
+c.status[id]="AB";
+
+save();
+
+selectPilot(ci);
+
 }
 
 function cancelAB(ci,id){
@@ -1758,26 +2326,65 @@ function saveScore(ci,id,t){
 let c=state.competitions[ci];
 
 if(c.locked){
-  return;
+return;
 }
 
-  if(currentScores.includes(null)){
-    return alert("Zones manquantes");
-  }
+if(currentScores.includes(null)){
 
-  state.competitions[ci].scores[id+"-"+t]=currentScores;
+app.innerHTML=`
 
-Object.keys(c.tiebreaks).forEach(key=>{
+<h3>
+Saisie incomplète
+</h3>
 
-  if(key.includes(id)){
+<div class="card">
 
-    delete c.tiebreaks[key];
-  }
+⚠️ Certaines zones
+n'ont pas été renseignées.
+
+<br><br>
+
+Complète toutes les zones
+avant validation.
+
+</div>
+
+<div class="score-actions">
+
+<button
+onclick="enterScore(${ci},'${id}',${t})">
+
+Retour
+
+</button>
+
+</div>
+
+`;
+
+return;
+
+}
+
+c.scores[id+"-"+t]=[
+...currentScores
+];
+
+Object.keys(c.tiebreaks)
+.forEach(key=>{
+
+if(key.includes(id)){
+
+delete c.tiebreaks[key];
+
+}
+
 });
 
-  save();
+save();
 
-  pilotDetail(ci,id);
+selectPilot(ci);
+
 }
 
 // ===== STATS =====
@@ -2090,7 +2697,7 @@ ${p.externalTie
   </div>
     
   <div class="print-note3">
-   Le signe ⚖️ indique pour les pilotes concernés, qu'une égalité parfaite a été départagée sur une zone uniquement pour les prétendants aux podiums concernés.
+   Le signe ⚖️ indique pour les pilotes concernés, qu'une égalité parfaite a été départagée sur une zone.
   </div>
 
   </div>
@@ -2183,13 +2790,37 @@ if (femaleList.length) {
   });
 
   // 🔥 DEPARTAGE FEMININ INDEPENDANT
-  let tieResult = applyTieBreaks(
-    femaleList,
-    c,
-    "FEMININ"
+  let finalFemaleList = [];
+let unresolvedFemale = false;
+
+[
+  "Elite F",
+  "N1 F",
+  "N2 F",
+  "N3 F",
+  "N4 F",
+  "N5 F"
+].forEach(cat=>{
+
+  let subList = femaleList.filter(
+    p => p.cat === cat
   );
 
-  femaleList = tieResult.list;
+  let tie = applyTieBreaks(
+    subList,
+    c,
+    cat
+  );
+
+  if(tie.unresolved){
+    unresolvedFemale = true;
+  }
+
+  finalFemaleList.push(...tie.list);
+
+});
+
+femaleList = finalFemaleList;
 
   // 🔥 IMPORTANT :
   // PAS de rankPreservingOrder ici
@@ -2225,7 +2856,7 @@ ufoOrdered.forEach((p, i) => {
     c,
     html,
     i,
-    tieResult.unresolved ||
+    unresolvedFemale ||
     femaleList.some(
       p => !p.completed && p.status !== "AB"
     )
@@ -2255,13 +2886,37 @@ if(veteranList.length){
   });
 
   // 🔥 DEPARTAGE VETERAN INDEPENDANT
-  let tieResult = applyTieBreaks(
-    veteranList,
-    c,
-    "VETERAN"
+  let finalVeteranList = [];
+let unresolvedVeteran = false;
+
+[
+  "Elite V",
+  "N1 V",
+  "N2 V",
+  "N3 V",
+  "N4 V",
+  "N5 V"
+].forEach(cat=>{
+
+  let subList = veteranList.filter(
+    p => p.cat === cat
   );
 
-  veteranList = tieResult.list;
+  let tie = applyTieBreaks(
+    subList,
+    c,
+    cat
+  );
+
+  if(tie.unresolved){
+    unresolvedVeteran = true;
+  }
+
+  finalVeteranList.push(...tie.list);
+
+});
+
+veteranList = finalVeteranList;
 
   // PAS de rankPreservingOrder
 
@@ -2294,7 +2949,7 @@ ufoOrdered.forEach((p, i) => {
     c,
     html,
     i,
-    tieResult.unresolved ||
+    unresolvedVeteran ||
     veteranList.some(
       p => !p.completed && p.status !== "AB"
     )
@@ -2590,33 +3245,99 @@ async function cancelTieBreak(ci,tieKey){
 
 async function deleteCompetition(i){
 
-  let c = state.competitions[i];
+let c = state.competitions[i];
 
-  if(c.locked){
-    alert("Impossible de supprimer une compétition verrouillée");
-    return;
-  }
+if(c.locked){
 
-  let ok = await askConfirm(
-    "Supprimer définitivement :\n\n" +
-    c.name + "\n" + (c.date || "")
-  );
+app.innerHTML=`
 
-  if(!ok) return;
+<h3>
+Suppression impossible
+</h3>
 
-  state.competitions.splice(i,1);
+<div class="card">
 
-  save();
-  home();
+🔒 Cette compétition est verrouillée.
+
+<br><br>
+
+Une compétition verrouillée est considérée
+comme officiellement validée.
+
+<br><br>
+
+Elle ne peut plus être supprimée.
+
+</div>
+
+<br>
+
+<button onclick="returnCompetitionMenu()">
+
+Retour
+
+</button>
+
+`;
+
+return;
+
+}
+
+let ok = await askConfirm(
+"Supprimer définitivement :\n\n" +
+c.name +
+"\n" +
+(c.date || "")
+);
+
+if(!ok){
+return;
+}
+
+state.competitions.splice(i,1);
+
+save();
+
+home();
+
 }
 async function lockCompetition(i){
 
 let c = state.competitions[i];
 
-  if(c.participants.length === 0){
-    alert("Aucun participant");
-    return;
-  }
+  if(c.participants.length===0){
+
+app.innerHTML=`
+
+<h3>
+Validation impossible
+</h3>
+
+<div class="card">
+
+⚠️ Aucun participant n'a été ajouté.
+
+<br><br>
+
+Une compétition vide
+ne peut pas être verrouillée.
+
+</div>
+
+<br>
+
+<button onclick="returnCompetitionMenu()">
+
+Retour
+
+</button>
+
+`;
+
+return;
+
+}
 
   let stats = buildStats(c);
 
@@ -2625,9 +3346,39 @@ let c = state.competitions[i];
   );
 
   if(incomplete){
-    alert("Des pilotes ont une saisie incomplète");
-    return;
-  }
+
+app.innerHTML=`
+
+<h3>
+Validation impossible
+</h3>
+
+<div class="card">
+
+⚠️ Certains pilotes ont une saisie incomplète.
+
+<br><br>
+
+Tous les scores doivent être renseignés
+avant de verrouiller définitivement
+la compétition.
+
+
+</div>
+
+<br>
+
+<button onclick="returnCompetitionMenu()">
+
+Retour
+
+</button>
+
+`;
+
+return;
+
+}
 
   let groups = MAIN_GROUPS;
 
@@ -2654,11 +3405,36 @@ let tieResult = applyTieBreaks(
 
   if(unresolved){
 
-  await askConfirm(
-    "Verrouillage impossible : départages non finalisés"
-  );
+app.innerHTML=`
 
-  return;
+<h3>
+Validation impossible
+</h3>
+
+<div class="card">
+
+⚖️ Certains départages ne sont pas finalisés.
+
+<br><br>
+
+Les classements doivent être entièrement
+validés avant de verrouiller
+définitivement la compétition.
+
+</div>
+
+<br>
+
+<button onclick="returnCompetitionMenu()">
+
+Retour
+
+</button>
+
+`;
+
+return;
+
 }
 
   let ok = await askConfirm("Verrouiller définitivement cette compétition ?");
@@ -2900,6 +3676,23 @@ function renderChampionshipTable(
     b.totalNet-a.totalNet
   );
 
+  // ===== GESTION DES EX ÆQUO =====
+
+  let currentPlace = 1;
+
+  rows.forEach((r,index)=>{
+
+    if(
+      index > 0 &&
+      r.totalNet !== rows[index-1].totalNet
+    ){
+      currentPlace = index + 1;
+    }
+
+    r.champRank = currentPlace;
+
+  });
+
   html+=`
 
   <div class="print-page">
@@ -2912,8 +3705,6 @@ function renderChampionshipTable(
   <table>
 
   <tr>
-
-    <th class="col-rank">Place</th>
 
     <th class="col-name">Nom</th>
 
@@ -2939,6 +3730,8 @@ function renderChampionshipTable(
 
     <th class="col-points">Nets</th>
 
+    <th class="col-rank">Place</th>
+
   </tr>
   `;
 
@@ -2946,8 +3739,6 @@ function renderChampionshipTable(
 
     html+=`
     <tr>
-
-      <td>${index+1}</td>
 
       <td>${r.pilot.name}</td>
 
@@ -2972,6 +3763,8 @@ function renderChampionshipTable(
       <td>${r.jokerPoints}</td>
 
       <td><b>${r.totalNet}</b></td>
+
+      <td>${r.champRank}</td>
 
     </tr>
     `;
@@ -3052,13 +3845,34 @@ femaleList.sort((a,b)=>{
       return;
     }
 
-    let tieResult = applyTieBreaks(
-      femaleList,
-      comp,
-      "FEMININ"
-    );
+    let finalFemaleList = [];
 
-    femaleList = tieResult.list;
+[
+  "Elite F",
+  "N1 F",
+  "N2 F",
+  "N3 F",
+  "N4 F",
+  "N5 F"
+].forEach(cat=>{
+
+  let subList = femaleList.filter(
+    p => p.cat === cat
+  );
+
+  let tieResult = applyTieBreaks(
+    subList,
+    comp,
+    cat
+  );
+
+  finalFemaleList.push(
+    ...tieResult.list
+  );
+
+});
+
+femaleList = finalFemaleList;
 
     femaleList.forEach((p,index)=> {
 
@@ -3167,13 +3981,34 @@ vetList.sort((a,b)=>{
   return Engine.compare(a,b);
 });
 
-let tieResult = applyTieBreaks(
-  vetList,
-  comp,
-  "VETERAN"
-);
+let finalVetList = [];
 
-vetList = tieResult.list;
+[
+  "Elite V",
+  "N1 V",
+  "N2 V",
+  "N3 V",
+  "N4 V",
+  "N5 V"
+].forEach(cat=>{
+
+  let subList = vetList.filter(
+    p => p.cat === cat
+  );
+
+  let tieResult = applyTieBreaks(
+    subList,
+    comp,
+    cat
+  );
+
+  finalVetList.push(
+    ...tieResult.list
+  );
+
+});
+
+vetList = finalVetList;
 
 vetList.forEach((p,index)=>{
 
