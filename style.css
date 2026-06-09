@@ -474,14 +474,13 @@ th{
   }
   
   table{
-    width:100%;
-    font-size:10px;
-    page-break-inside:avoid;
-  }
+  width:100%;
+  font-size:10px;
+}
 
   tr{
-    page-break-inside:avoid;
-  }
+  break-inside:avoid;
+}
 
   .section-title{
     margin-top:0;
@@ -633,4 +632,121 @@ width:50px;
 
 font-weight:600;
 
+}
+
+/* ===== TABLEAU PILOTES ===== */
+
+.pilot-table{
+  font-size:16px;
+}
+
+.pilot-table th,
+.pilot-table td{
+  padding:7px 9px;
+}
+
+.pilot-table button{
+  padding:2px 6px;
+  margin:0;
+  font-size:14px;
+}
+
+.pilot-table th{
+  cursor:pointer;
+}
+
+.col-plaque{
+  width:55px;
+}
+
+.col-name{
+  width:200px;
+}
+
+.col-club{
+  width:140px;
+}
+
+.col-cat{
+  width:75px;
+}
+
+.col-lic{
+  width:60px;
+}
+
+.col-licnum{
+  width:95px;
+}
+
+.col-birth{
+  width:85px;
+}
+
+.col-actions{
+  width:60px;
+}
+
+.pilot-action-btn{
+  padding:2px 6px !important;
+  margin:0 !important;
+  font-size:12px !important;
+  min-width:auto;
+  min-height:auto;
+}
+
+.pilot-cat{
+  font-weight:bold;
+  text-align:center;
+}
+
+.pilot-cat-elite{
+  background:#facc15;
+}
+
+.pilot-cat-n1{
+  background:#dc2626;
+  color:white;
+}
+
+.pilot-cat-n2{
+  background:#2563eb;
+  color:white;
+}
+
+.pilot-cat-n3{
+  background:#16a34a;
+  color:white;
+}
+
+.pilot-cat-n4{
+  background:#ebedf0;
+}
+
+.pilot-cat-n5{
+  background:#ea580c;
+  color:white;
+}
+
+.pilot-cat-f{
+  background:#ec4899;
+  color:white;
+}
+
+.pilot-cat-v{
+  background:#6b7280;
+  color:white;
+}
+
+.pilot-table tbody tr:hover{
+  background:#e5e7eb;
+  cursor:pointer;
+}
+
+.pilot-selected td:not(:nth-child(4)):not(:last-child){
+  background:#bfdbfe !important;
+}
+
+.pilot-table tr:hover:not(.pilot-selected) td:not(:nth-child(4)):not(:last-child){
+  background:#e5e7eb;
 }

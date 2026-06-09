@@ -283,7 +283,6 @@ localStorage.setItem("sortPilotsMode",state.sortPilotsMode);
 function format(v){
   return v.toUpperCase().trim();
 }
-
 function getCatClass(cat){
 
   // FEMININES PRIORITAIRES
@@ -303,6 +302,26 @@ function getCatClass(cat){
   if(cat==="N3") return "cat-n3";
   if(cat==="N4") return "cat-n4";
   if(cat==="N5") return "cat-n5";
+
+  return "";
+}
+
+function getPilotTableCatClass(cat){
+
+  if(cat.endsWith("F")){
+    return "pilot-cat-f";
+  }
+
+  if(cat.endsWith("V")){
+    return "pilot-cat-v";
+  }
+
+  if(cat==="Elite") return "pilot-cat-elite";
+  if(cat==="N1") return "pilot-cat-n1";
+  if(cat==="N2") return "pilot-cat-n2";
+  if(cat==="N3") return "pilot-cat-n3";
+  if(cat==="N4") return "pilot-cat-n4";
+  if(cat==="N5") return "pilot-cat-n5";
 
   return "";
 }
@@ -1391,12 +1410,9 @@ function showPilots(){
 
   state.ui.currentScreen = "pilots";
 
-  let mode = state.sortPilotsMode || "nameAZ";
-
   let pilots = sortPilots(
-    state.pilots,
-    mode
-  );
+  state.pilots
+);
 
   let html=`
 
@@ -1413,41 +1429,6 @@ function showPilots(){
         Pilotes
       </h3>
 
-      <div>
-
-        Trier :
-
-        <select onchange="changePilotSort(this.value)">
-
-          <option value="nameAZ"
-            ${mode==="nameAZ"?"selected":""}>
-            Nom A → Z
-          </option>
-
-          <option value="nameZA"
-            ${mode==="nameZA"?"selected":""}>
-            Nom Z → A
-          </option>
-
-          <option value="catASC"
-            ${mode==="catASC"?"selected":""}>
-            Catégorie Elite → N5
-          </option>
-
-          <option value="catDESC"
-            ${mode==="catDESC"?"selected":""}>
-            Catégorie N5 → Elite
-          </option>
-
-          <option value="club"
-            ${mode==="club"?"selected":""}>
-            Club
-          </option>
-
-        </select>
-
-      </div>
-
       <div style="
         display:flex;
         flex-wrap:wrap;
@@ -1455,12 +1436,14 @@ function showPilots(){
         align-items:center;
       ">
 
-        <input id="name" placeholder="Nom">
+        <input id="name"
+        placeholder="Nom"
+        style="width:350px">
 
         <select
-  id="cat"
-  ${editingPilotId ? "disabled" : ""}
->
+          id="cat"
+          ${editingPilotId ? "disabled" : ""}
+        >
           ${categories.map(c=>`<option>${c}</option>`).join("")}
         </select>
 
@@ -1480,19 +1463,33 @@ function showPilots(){
           <option value="NL">NON LICENCIÉ</option>
         </select>
 
+        <input
+          id="plaque"
+          placeholder="N° plaque"
+          style="width:120px">
+
+        <input
+          id="licenceNumber"
+          placeholder="N° licence"
+          style="width:110px">
+
+        <input
+          id="birthDate"
+          type="date">
+
         <button onclick="
-  editingPilotId
-    ? savePilotEdit()
-    : addPilot()
-">
+          editingPilotId
+            ? savePilotEdit()
+            : addPilot()
+        ">
 
-  ${
-    editingPilotId
-      ? "Modifier"
-      : "Ajouter"
-  }
+          ${
+            editingPilotId
+              ? "Modifier"
+              : "Ajouter"
+          }
 
-</button>
+        </button>
 
         <button class="delete"
           onclick="toggleDeletePilots()">
@@ -1506,7 +1503,7 @@ function showPilots(){
         </button>
 
         <button onclick="returnCompetitionMenu()">
-        Retour
+          Retour
         </button>
 
       </div>
@@ -1514,39 +1511,121 @@ function showPilots(){
     </div>
 
   </div>
+
+  <table class="pilot-table">
+  <tr> 
+
+      <th class="col-plaque"
+    onclick="changePilotSort('plaque')"
+    style="cursor:pointer">
+  Plaque   ↕
+</th>
+
+<th class="col-name"
+    onclick="changePilotSort('name')"
+    style="cursor:pointer">
+  Nom   ↕
+</th>
+
+<th class="col-club"
+    onclick="changePilotSort('club')"
+    style="cursor:pointer">
+  Club   ↕
+</th>
+
+<th class="col-cat"
+    onclick="changePilotSort('cat')"
+    style="cursor:pointer">
+  Catégorie   ↕
+</th>
+
+<th class="col-lic"
+    onclick="changePilotSort('lic')"
+    style="cursor:pointer">
+  Licence   ↕
+</th>
+
+<th class="col-licnum">
+  N° licence
+</th>
+
+<th class="col-birth"
+    onclick="changePilotSort('birthDate')"
+    style="cursor:pointer">
+  Naissance   ↕
+</th>
+
+<th class="col-actions">
+  Actions
+</th>
+    </tr>
   `;
 
-  pilots.forEach((p,index)=>{
+  pilots.forEach((p)=>{
 
-    html+=`
-    <div class="card ${getCatClass(p.cat)} ">
+    html += `
 
-      ${p.cat} - ${p.name} - ${p.club || "Sans club"} - ${p.lic}
+    <tr
+  class="${
+    state.selectedPilotId === p.id
+      ? 'pilot-selected'
+      : ''
+  }"
+  onclick="selectPilotRow('${p.id}')"
+>
 
-<button
-  style="float:right;margin-left:6px"
-  onclick="editPilot('${p.id}')">
+      <td>${p.plaque || ""}</td>
 
-  ✏️
+      <td>${p.name}</td>
 
-</button>
+      <td>${p.club || ""}</td>
 
-      ${
-        deleteModePilots
-        ? `
-        <button class="delete"
-          style="float:right"
-          onclick="deletePilot('${p.id}')">
-          X
+      <td class="pilot-cat ${getPilotTableCatClass(p.cat)}">
+      ${p.cat}</td>
+
+      <td>${p.lic}</td>
+
+      <td>${p.licenceNumber || ""}</td>
+
+      <td>
+  ${
+    p.birthDate
+      ? p.birthDate.split("-").reverse().join("/")
+      : ""
+  }
+</td>
+
+      <td class="col-actions">
+        
+        <button
+         class="pilot-action-btn"
+         onclick="editPilot('${p.id}')">
+
+          ✏️
+
         </button>
-        `
-        : ""
-      }
 
-    </div>
+        ${
+          deleteModePilots
+          ? `
+          <button
+           class="pilot-action-btn delete"
+           onclick="deletePilot('${p.id}')">
+
+            X
+
+          </button>
+          `
+          : ""
+        }
+
+      </td>
+
+    </tr>
     `;
   });
 
+  
   app.innerHTML=html;
 
   setTimeout(() => {
@@ -1569,6 +1648,13 @@ function showPilots(){
     }
 
   }, 0);
+}
+
+function selectPilotRow(id){
+
+  state.selectedPilotId = id;
+
+  showPilots();
 }
 
 function toggleClub(){
@@ -1649,6 +1735,15 @@ document
 .getElementById("newClub")
 .style.border="";
 
+let plaque =
+document.getElementById("plaque").value.trim();
+
+let licenceNumber =
+document.getElementById("licenceNumber").value.trim();
+
+let birthDate =
+document.getElementById("birthDate").value;
+
 state.pilots.push({
 
 id:generatePilotId(),
@@ -1659,7 +1754,13 @@ cat,
 
 club,
 
-lic
+lic,
+
+plaque,
+
+licenceNumber,
+
+birthDate
 
 });
 
@@ -1667,6 +1768,13 @@ save();
 
 showPilots();
 
+}
+
+function selectPilotRow(id){
+
+  state.selectedPilotId = id;
+
+  showPilots();
 }
 
 // ===== COMPETITIONS =====
@@ -1851,32 +1959,96 @@ home();
 
 // ===== TRI =====
 
-function sortPilots(list,mode){
+function sortPilots(list){
 
   let arr=[...list];
 
-// Compatibilité anciennes sauvegardes
-if(mode==="name") mode="nameAZ";
-if(mode==="cat") mode="catASC";
+  let column =
+    state.sortPilotsColumn || "name";
 
-  // ===== NOM A -> Z =====
-  if(mode==="nameAZ"){
+  let dir =
+    state.sortPilotsDirection === "desc"
+    ? -1
+    : 1;
+
+  // ===== NOM =====
+
+  if(column==="name"){
 
     arr.sort((a,b)=>
-      a.name.localeCompare(b.name)
+      a.name.localeCompare(b.name) * dir
     );
   }
 
-  // ===== NOM Z -> A =====
-  if(mode==="nameZA"){
+  // ===== PLAQUE =====
 
-    arr.sort((a,b)=>
-      b.name.localeCompare(a.name)
-    );
+  if(column==="plaque"){
+
+    arr.sort((a,b)=>{
+
+      let pa = a.plaque || "";
+      let pb = b.plaque || "";
+
+      return pa.localeCompare(
+        pb,
+        undefined,
+        {numeric:true}
+      ) * dir;
+    });
   }
 
-  // ===== CAT ELITE -> N5 =====
-  if(mode==="catASC"){
+  // ===== CLUB =====
+
+  if(column==="club"){
+
+    arr.sort((a,b)=>{
+
+      let diff =
+        (a.club || "")
+        .localeCompare(b.club || "");
+
+      if(diff!==0){
+        return diff * dir;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  // ===== LICENCE =====
+
+  if(column==="lic"){
+
+    arr.sort((a,b)=>{
+
+      let diff =
+        (a.lic || "")
+        .localeCompare(b.lic || "");
+
+      if(diff!==0){
+        return diff * dir;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  // ===== DATE DE NAISSANCE =====
+
+  if(column==="birthDate"){
+
+    arr.sort((a,b)=>{
+
+      let da = a.birthDate || "";
+      let db = b.birthDate || "";
+
+      return da.localeCompare(db) * dir;
+    });
+  }
+
+  // ===== CATEGORIE =====
+
+  if(column==="cat"){
 
     arr.sort((a,b)=>{
 
@@ -1884,36 +2056,9 @@ if(mode==="cat") mode="catASC";
         categories.indexOf(a.cat)
         - categories.indexOf(b.cat);
 
-      if(diff!==0) return diff;
-
-      return a.name.localeCompare(b.name);
-    });
-  }
-
-  // ===== CAT N5 -> ELITE =====
-  if(mode==="catDESC"){
-
-    arr.sort((a,b)=>{
-
-      let diff =
-        categories.indexOf(b.cat)
-        - categories.indexOf(a.cat);
-
-      if(diff!==0) return diff;
-
-      return a.name.localeCompare(b.name);
-    });
-  }
-
-  // ===== CLUB =====
-  if(mode==="club"){
-
-    arr.sort((a,b)=>{
-
-      let diff =
-        (a.club||"").localeCompare(b.club||"");
-
-      if(diff!==0) return diff;
+      if(diff!==0){
+        return diff * dir;
+      }
 
       return a.name.localeCompare(b.name);
     });
@@ -2800,7 +2945,7 @@ ${p.externalTie
     });
 
     htmlRef+=`
-
+showresults
       <td>${p.status==="AB"?"AB":p.bestTour}</td>
       <td>${p.status==="AB"?"AB":p.total}</td>
       <td>${p.rankScratch}</td>
@@ -2835,6 +2980,8 @@ function showResults(i){
   let stats = buildStats(c);
 
   let html = "";
+
+  let exportIntermediaire = false;
 
 html += `
 
@@ -2877,16 +3024,22 @@ list = tieResult.list;
     // 3. RANK FINAL
     list = buildOrderedRanking(list);
 
-    html = renderTable(
-      g.title,
-      list,
-      c,
-      html,
-      i,
-      tieResult.unresolved
-||
-list.some(p => !p.completed && p.status !== "AB")
-    );
+const provisional =
+  tieResult.unresolved ||
+  list.some(p => !p.completed && p.status !== "AB");
+
+if(provisional){
+  exportIntermediaire = true;
+}
+
+html = renderTable(
+  g.title,
+  list,
+  c,
+  html,
+  i,
+  provisional
+);
   });
 
 // ===== FEMININ =====
@@ -2972,17 +3125,24 @@ ufoOrdered.forEach((p, i) => {
       : Engine.getUfolepPoints(i + 1);
 });
 
-  html = renderTable(
-    "FEMININ",
-    femaleList,
-    c,
-    html,
-    i,
-    unresolvedFemale ||
-    femaleList.some(
-      p => !p.completed && p.status !== "AB"
-    )
+const femaleProvisional =
+  unresolvedFemale ||
+  femaleList.some(
+    p => !p.completed && p.status !== "AB"
   );
+
+if(femaleProvisional){
+  exportIntermediaire = true;
+}
+
+  html = renderTable(
+  "FEMININ",
+  femaleList,
+  c,
+  html,
+  i,
+  femaleProvisional
+);
 }
 
   // ===== VETERAN =====
@@ -3065,21 +3225,33 @@ ufoOrdered.forEach((p, i) => {
       : Engine.getUfolepPoints(i + 1);
 });
 
-  html = renderTable(
-    "VETERAN",
-    veteranList,
-    c,
-    html,
-    i,
-    unresolvedVeteran ||
-    veteranList.some(
-      p => !p.completed && p.status !== "AB"
-    )
+const veteranProvisional =
+  unresolvedVeteran ||
+  veteranList.some(
+    p => !p.completed && p.status !== "AB"
   );
+
+if(veteranProvisional){
+  exportIntermediaire = true;
+}
+
+  html = renderTable(
+  "VETERAN",
+  veteranList,
+  c,
+  html,
+  i,
+  veteranProvisional
+);
 }
 
   // ===== ACTIONS =====
-  
+  window.currentExportInfo = {
+  type: "competition",
+  name: c.name,
+  date: c.date,
+  intermediaire: exportIntermediaire
+};
   app.innerHTML = html;
 }
 
@@ -3223,9 +3395,20 @@ function askConfirm(message){
   });
 }
 
-function changePilotSort(mode){
+function changePilotSort(column){
 
-  state.sortPilotsMode=mode;
+  if(state.sortPilotsColumn === column){
+
+    state.sortPilotsDirection =
+      state.sortPilotsDirection === "asc"
+      ? "desc"
+      : "asc";
+
+  }else{
+
+    state.sortPilotsColumn = column;
+    state.sortPilotsDirection = "asc";
+  }
 
   save();
 
@@ -3256,7 +3439,15 @@ function editPilot(id){
 
     document.getElementById("cat").value =
       p.cat;
+    
+      document.getElementById("plaque").value =
+      p.plaque || "";
 
+      document.getElementById("licenceNumber").value =
+      p.licenceNumber || "";
+
+      document.getElementById("birthDate").value =
+      p.birthDate || "";
   },0);
 }
 
@@ -3274,6 +3465,15 @@ function savePilotEdit(){
 
   let lic =
     document.getElementById("lic").value;
+
+  let plaque =
+  document.getElementById("plaque").value.trim();
+
+  let licenceNumber =
+  document.getElementById("licenceNumber").value.trim();
+
+  let birthDate =
+  document.getElementById("birthDate").value;
 
   let club = clubSelect;
 
@@ -3293,6 +3493,9 @@ function savePilotEdit(){
   p.name = format(name);
   p.club = club;
   p.lic = lic;
+  p.plaque = plaque;
+  p.licenceNumber = licenceNumber;
+  p.birthDate = birthDate;
 
   editingPilotId = null;
   editingPilotCat = null;
@@ -4204,8 +4407,8 @@ function showChampionship(jokers){
 
     <div class="topbar-actions">
 
-      <button onclick="window.print()">
-        Export PDF
+      <button onclick="printChampionshipPDF()">
+      Export PDF
       </button>
 
       <button onclick="showChampionshipChoice()">
@@ -4260,12 +4463,61 @@ function showChampionship(jokers){
     html
   );
 
+const years = competitions
+    .map(c => parseInt(c.date.split("/")[2]))
+    .filter(y => !isNaN(y));
+
+  const startYear = Math.min(...years);
+  const endYear = Math.max(...years);
+
+  window.currentExportInfo = {
+    type: "championship",
+    startYear,
+    endYear
+  };
+
   app.innerHTML=html;
 }
 
-function printResults(){
+async function printResults(){
 
-  window.print();
+  const info = window.currentExportInfo;
+
+  if(!info){
+    return;
+  }
+
+  const safeName = info.name
+  .replace(/[\\/:*?"<>|]/g,"_")
+  .replace(/\s+/g,"_");
+
+let safeDate = info.date;
+
+if(info.date.includes("/")){
+
+  const parts = info.date.split("/");
+
+  if(parts.length === 3){
+
+    const day = parts[0].padStart(2,"0");
+    const month = parts[1].padStart(2,"0");
+    const year = parts[2];
+
+    safeDate = `${year}-${month}-${day}`;
+  }
+}
+  const suffix =
+    info.intermediaire
+      ? "_INTERMEDIAIRE"
+      : "";
+
+  await window.api.exportPDF({
+
+    fileName:
+  `Resultats_${safeName}_${safeDate}${suffix}.pdf`
+
+  });
+
 }
 
 // ===== CLASSEMENT CLUBS =====
@@ -4497,6 +4749,23 @@ if(veteranList.length){
   };
 }
 
+async function printChampionshipPDF(){
+
+  const info = window.currentExportInfo;
+
+  if(!info){
+    return;
+  }
+
+  await window.api.exportPDF({
+
+    fileName:
+      `Classement_Championnat_UFOLEP_${info.startYear}-${info.endYear}.pdf`
+
+  });
+
+}
+
 function showClubChampionship(){
 
   let built=buildClubChampionship();
@@ -4507,10 +4776,19 @@ function showClubChampionship(){
 
   rows.sort((a,b)=>b.total-a.total);
 
-  let html=`
+const years = competitions
+  .map(c => parseInt(c.date.split("/")[2]))
+  .filter(y => !isNaN(y));
+
+const startYear = Math.min(...years);
+const endYear = Math.max(...years);
+
+let html=`
 
   <h2>
-  Classement Clubs UFOLEP
+    CLASSEMENT CLUBS — CHAMPIONNAT UFOLEP
+    <br>
+    SAISON ${startYear}-${endYear}
   </h2>
 
   <div class="topbar">
@@ -4520,8 +4798,8 @@ function showClubChampionship(){
 
     <div class="topbar-actions">
 
-      <button onclick="window.print()">
-        Export PDF
+      <button onclick="printClubPDF()">
+      Export PDF
       </button>
 
       <button onclick="goHome()">
@@ -4632,7 +4910,30 @@ html+=`
 
   `;
 
+window.currentExportInfo = {
+  type: "clubs",
+  startYear,
+  endYear
+};
+
   app.innerHTML=html;
+}
+
+async function printClubPDF(){
+
+  const info = window.currentExportInfo;
+
+  if(!info){
+    return;
+  }
+
+  await window.api.exportPDF({
+
+    fileName:
+      `Classement_Clubs_${info.startYear}-${info.endYear}.pdf`
+
+  });
+
 }
 
 // ===== BACKUP =====
