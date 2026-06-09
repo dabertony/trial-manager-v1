@@ -1438,7 +1438,7 @@ function showPilots(){
 
         <input id="name"
         placeholder="Nom"
-        style="width:350px">
+        style="width:340px">
 
         <select
           id="cat"
@@ -1471,11 +1471,13 @@ function showPilots(){
         <input
           id="licenceNumber"
           placeholder="N° licence"
-          style="width:110px">
+          style="width:120px">
+
+        <span>Naissance</span>
 
         <input
-          id="birthDate"
-          type="date">
+        id="birthDate"
+        type="date">
 
         <button onclick="
           editingPilotId
@@ -1598,23 +1600,19 @@ function showPilots(){
       <td class="col-actions">
         
         <button
-         class="pilot-action-btn"
-         onclick="editPilot('${p.id}')">
-
-          ✏️
-
-        </button>
+  class="pilot-action-btn"
+  onclick="event.stopPropagation();editPilot('${p.id}')">
+  ✏️
+</button>
 
         ${
           deleteModePilots
           ? `
           <button
-           class="pilot-action-btn delete"
-           onclick="deletePilot('${p.id}')">
-
-            X
-
-          </button>
+  class="pilot-action-btn delete"
+  onclick="event.stopPropagation();deletePilot('${p.id}')">
+  X
+</button>
           `
           : ""
         }
@@ -3530,10 +3528,38 @@ let pilot = state.pilots.find(p => p.id === id);
   });
 
   if(used){
-    alert("Pilote utilisé dans une compétition");
-    showPilots();
-    return;
-  }
+
+app.innerHTML=`
+
+<h3>
+Suppression impossible
+</h3>
+
+<div class="card">
+
+⚠️ Ce pilote est utilisé dans au moins
+une compétition.
+
+<br><br>
+
+Il ne peut pas être supprimé tant qu'il
+figure dans l'historique des compétitions.
+
+</div>
+
+<br>
+
+<button onclick="showPilots()">
+
+Retour
+
+</button>
+
+`;
+
+return;
+
+}
 
   let ok = await askConfirm(`Supprimer ${pilot.name} ?`);
 
