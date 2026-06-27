@@ -339,8 +339,8 @@ table{
   width:100%;
   margin-top:10px;
   background:white;
-  table-layout:fixed;
-  font-size:15px;
+  table-layout:auto;
+  font-size:16px;
 }
 
 th,td{
@@ -361,14 +361,14 @@ white-space:normal;
 }
 
 .col-name{width:210px;}
-.col-club{width:110px;}
+.col-club{width:90px;}
 .col-cat{width:90px;}
 .col-small{width:30px;}
 .col-tour{width:40px;}
-.col-best{width:90px;}
-.col-total{width:65px;}
-.col-rank{width:70px;}
-.col-points{width:70px;}
+.col-best{width:60px;}
+.col-total{width:50px;}
+.col-rank{width:60px;}
+.col-points{width:60px;}
 
 .tie-icon{
   color:#9333ea;
@@ -429,17 +429,25 @@ white-space:normal;
     border-collapse:collapse !important;
   }
 
-  th,td{
-  border:1.5px solid #000 !important;
+  th{
+  border:1px solid #FFFFFF !important;
+  padding:3px;
+  font-size:11px;
+  font-weight:bold;
 }
 
 td{
+  border:1px solid #000 !important;
+  padding:3px;
+  font-size:13px;
+  font-weight:bold;
   color:#000 !important;
 }
 
 th{
   background:#111827 !important;
   color:#fff !important;
+   font-size:11px !important;
 }
 
   body{
@@ -492,9 +500,8 @@ th{
 }
 
   @page{
-    size:A4 landscape;
-    margin:10mm;
-  }
+  margin:5mm;
+}
   body{
   margin:0;
   padding:0;
@@ -750,3 +757,13 @@ font-weight:600;
 .pilot-table tr:hover:not(.pilot-selected) td:not(:nth-child(4)):not(:last-child){
   background:#e5e7eb;
 }
+
+.col-select{
+  width:50px;
+}
+
+.double-pointage th,
+.double-pointage td{
+  font-weight:bold;
+  border:2px solid black;
+  }

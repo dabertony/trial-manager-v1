@@ -10,6 +10,9 @@ const state = {
   sortPilotsColumn:"name",
   sortPilotsDirection:"asc",
 
+  sortParticipantsColumn:"name",
+  sortParticipantsDirection:"asc",
+
   selectedPilotId:null,
 
   ui: {

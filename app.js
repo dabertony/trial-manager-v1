@@ -167,8 +167,7 @@ const RULES = {
   points: {
     ufolep: [
       30,27,25,23,21,19,17,15,13,11,
-      10,9,8,7,6,5,4,3,2,
-      1,1,1,1,1,1,1,1,1,1
+      10,9,8,7,6,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5
     ],
     abPoints: 1,
     fallbackMinPoints: 1
@@ -274,15 +273,32 @@ function save(){
   localStorage.setItem("pilots",JSON.stringify(state.pilots));
   localStorage.setItem("clubs",JSON.stringify(state.clubs));
   localStorage.setItem("competitions",JSON.stringify(state.competitions));
-  
-localStorage.setItem("sortPilotsMode",state.sortPilotsMode);
+  localStorage.setItem("sortPilotsMode",state.sortPilotsMode);
   localStorage.setItem("sortParticipantsMode",state.sortParticipantsMode);
   localStorage.setItem("sortEntryMode",state.sortEntryMode);
+
+  localStorage.setItem("lastUpdate", Date.now());
 }
 
 function format(v){
   return v.toUpperCase().trim();
 }
+
+function formatBirthDate(date){
+
+  if(!date){
+    return "";
+  }
+
+  let parts = date.split("-");
+
+  if(parts.length !== 3){
+    return date;
+  }
+
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
 function getCatClass(cat){
 
   // FEMININES PRIORITAIRES
@@ -674,7 +690,11 @@ ${c.locked
 
 <div class="comp-date">
 
-📅 ${c.date || "Date inconnue"}
+📅 ${
+  c.date
+    ? c.date.split("-").reverse().join("/")
+    : "Date inconnue"
+}
 
 <br>
 
@@ -770,9 +790,9 @@ onclick="showResults(${i})">
 <div
 class="menu-card"
 
-onclick="exportParticipantsExcel(${i})">
+onclick="showExportParticipantsMenu(${i})">
 
-📄 EXPORT EXCEL PARTICIPANTS
+📄 EXPORTS
 
 
 </div>
@@ -1298,7 +1318,11 @@ html += `
 </div>
 
 <div style="margin:8px 0">
-📅 ${c.date || "Date inconnue"}
+📅 ${
+  c.date
+    ? c.date.split("-").reverse().join("/")
+    : "Date inconnue"
+}
 </div>
 
 <div style="margin:8px 0">
@@ -1435,17 +1459,16 @@ function showPilots(){
         gap:8px;
         align-items:center;
       ">
+        <input
+          id="plaque"
+          placeholder="N° plaque"
+          style="width:120px">
 
         <input id="name"
         placeholder="Nom"
         style="width:340px">
 
-        <select
-          id="cat"
-          ${editingPilotId ? "disabled" : ""}
-        >
-          ${categories.map(c=>`<option>${c}</option>`).join("")}
-        </select>
+        
 
         <select id="club" onchange="toggleClub()">
           <option value="">--Club--</option>
@@ -1457,16 +1480,19 @@ function showPilots(){
           placeholder="Nouveau club"
           style="display:none">
 
+        <select
+          id="cat"
+          ${editingPilotId ? "disabled" : ""}
+        >
+          <option value="">CAT</option>
+          ${categories.map(c=>`<option>${c}</option>`).join("")}
+        </select>
+
         <select id="lic">
           <option value="UFOLEP">UFOLEP</option>
           <option value="FFC">FFC</option>
           <option value="NL">NON LICENCIÉ</option>
-        </select>
-
-        <input
-          id="plaque"
-          placeholder="N° plaque"
-          style="width:120px">
+        </select>       
 
         <input
           id="licenceNumber"
@@ -1502,6 +1528,14 @@ function showPilots(){
             : "Supprimer"
           }
 
+        </button>
+
+        <button onclick="importPilotsExcel()">
+        Import Excel
+        </button>
+
+        <button onclick="exportPilotsExcel()">
+        Export Excel
         </button>
 
         <button onclick="returnCompetitionMenu()">
@@ -1729,6 +1763,11 @@ state.clubs.push(club);
 
 }
 
+if(!cat){
+  document.getElementById("cat").style.border = "2px solid red";
+  return;
+}
+
 document
 .getElementById("newClub")
 .style.border="";
@@ -1783,7 +1822,7 @@ async function newCompetition(){
 
   let data = await askForm("Nouvelle compétition", [
     { key: "name", label: "Nom" },
-    { key: "date", label: "Date (JJ/MM/AAAA)" },
+    { key: "date", label: "Date", type:"date" },
     { key: "zones", label: "Nombre de zones", type:"number" },
     { key: "tours", label: "Nombre de tours", type:"number" }
   ]);
@@ -1852,7 +1891,7 @@ function showNewCompetition(){
 
     <input id="compName" placeholder="Nom">
 
-    <input id="compDate" placeholder="Date">
+    <input id="compDate" type="date">
 
     <input
   id="compZones"
@@ -1893,8 +1932,8 @@ function editCompetition(i){
 
     <input
       id="editCompDate"
-      value="${c.date}"
-      placeholder="Date">
+      type="date"
+      value="${c.date}">
 
     <br><br>
 
@@ -2067,10 +2106,141 @@ function sortPilots(list){
 
 // ===== PARTICIPANTS =====
 
+function sortParticipants(list,c){
+
+  let arr=[...list];
+
+  let column =
+    state.sortParticipantsColumn || "name";
+
+  let dir =
+    state.sortParticipantsDirection === "desc"
+    ? -1
+    : 1;
+
+  // ===== SELECTION =====
+
+  if(column==="selected"){
+
+    arr.sort((a,b)=>{
+
+      let sa =
+        c.participants.includes(a.id)
+        ? 1
+        : 0;
+
+      let sb =
+        c.participants.includes(b.id)
+        ? 1
+        : 0;
+
+      return (sa - sb) * dir;
+    });
+  }
+
+  // ===== NOM =====
+
+  if(column==="name"){
+
+    arr.sort((a,b)=>
+      a.name.localeCompare(b.name) * dir
+    );
+  }
+
+  // ===== PLAQUE =====
+
+  if(column==="plaque"){
+
+    arr.sort((a,b)=>{
+
+      let pa = a.plaque || "";
+      let pb = b.plaque || "";
+
+      return pa.localeCompare(
+        pb,
+        undefined,
+        {numeric:true}
+      ) * dir;
+    });
+  }
+
+  // ===== CLUB =====
+
+  if(column==="club"){
+
+    arr.sort((a,b)=>{
+
+      let diff =
+        (a.club || "")
+        .localeCompare(b.club || "");
+
+      if(diff!==0){
+        return diff * dir;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  // ===== LICENCE =====
+
+  if(column==="lic"){
+
+    arr.sort((a,b)=>{
+
+      let diff =
+        (a.lic || "")
+        .localeCompare(b.lic || "");
+
+      if(diff!==0){
+        return diff * dir;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  // ===== CATEGORIE =====
+
+  if(column==="cat"){
+
+    arr.sort((a,b)=>{
+
+      let diff =
+        categories.indexOf(a.cat)
+        - categories.indexOf(b.cat);
+
+      if(diff!==0){
+        return diff * dir;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  // ===== DATE DE NAISSANCE =====
+
+  if(column==="birthDate"){
+
+    arr.sort((a,b)=>{
+
+      let da = a.birthDate || "";
+      let db = b.birthDate || "";
+
+      return da.localeCompare(db) * dir;
+    });
+  }
+
+  return arr;
+}
+
 function manageParticipants(i){
 
-  let c=state.competitions[i];
-if(c.locked){
+  state.ui.selectedCompetition = i;
+
+  let c = state.competitions[i];
+
+  if(c.locked){
 
   app.innerHTML=`
 
@@ -2088,9 +2258,10 @@ if(c.locked){
   return;
 }
 
-  let list=sortPilots(
+  let list =
+  sortParticipants(
     state.pilots,
-    state.sortParticipantsMode
+    c
   );
 
   let html=`
@@ -2113,64 +2284,120 @@ if(c.locked){
 `;
 html += `
 
-  Trier :
+<table class="pilot-table">
 
-  <select onchange="changeSortParticipants(this.value,${i})">
+<tr>
 
-      <option value="nameAZ"
-    ${state.sortParticipantsMode==="nameAZ"?"selected":""}>
-    Nom A → Z
-  </option>
+  <th
+  class="col-select"
+  onclick="changeParticipantSort('selected')"
+  style="cursor:pointer"
+>
+  ✓ ↕
+</th>
 
-  <option value="nameZA"
-    ${state.sortParticipantsMode==="nameZA"?"selected":""}>
-    Nom Z → A
-  </option>
+  <th class="col-plaque"
+    onclick="changeParticipantSort('plaque')"
+    style="cursor:pointer">
+  Plaque ↕
+  </th>
 
-  <option value="catASC"
-    ${state.sortParticipantsMode==="catASC"?"selected":""}>
-    Catégorie Elite → N5
-  </option>
+  <th class="col-name"
+    onclick="changeParticipantSort('name')"
+    style="cursor:pointer">
+  Nom ↕
+</th>
 
-  <option value="catDESC"
-    ${state.sortParticipantsMode==="catDESC"?"selected":""}>
-    Catégorie N5 → Elite
-  </option>
+  <th class="col-club"
+    onclick="changeParticipantSort('club')"
+    style="cursor:pointer">
+  Club ↕
+</th>
 
-  <option value="club"
-    ${state.sortParticipantsMode==="club"?"selected":""}>
-    Club
-  </option>
+  <th class="col-cat"
+    onclick="changeParticipantSort('cat')"
+    style="cursor:pointer">
+  Catégorie ↕
+</th>
 
-  </select>
-  `;
+  <th class="col-lic"
+    onclick="changeParticipantSort('lic')"
+    style="cursor:pointer">
+  Licence ↕
+</th>
 
-  list.forEach((p,index)=>{
+  <th class="col-licnum">
+    N° licence
+  </th>
 
-    let sel=c.participants.includes(p.id)
-      ? "✅"
-      : "";
+  <th class="col-birth"
+    onclick="changeParticipantSort('birthDate')"
+    style="cursor:pointer">
+  Naissance ↕
+</th>
 
-    html+=`
-<div class="card clickable-row ${getCatClass(p.cat)}"
- onclick="toggleP(${i},'${p.id}')">
-
-  ${sel} ${p.cat} - ${p.name} - ${p.club || "Sans club"} - ${p.lic}
-
-</div>
+</tr>
 `;
-  });
+
+list.forEach((p)=>{
+
+  let sel =
+    c.participants.includes(p.id)
+      ? "✅"
+      : "☐";
+
+  html += `
+
+<tr
+  onclick="toggleP(${i},'${p.id}')"
+  style="cursor:pointer"
+>
+
+  <td>
+    ${sel}
+  </td>
+
+  <td>
+    ${p.plaque || ""}
+  </td>
+
+  <td>
+    ${p.name}
+  </td>
+
+  <td>
+    ${p.club || ""}
+  </td>
+
+  <td class="pilot-cat ${getPilotTableCatClass(p.cat)}">
+    ${p.cat}
+  </td>
+
+  <td>
+    ${p.lic}
+  </td>
+
+  <td>
+    ${p.licenceNumber || ""}
+  </td>
+
+  <td>
+  ${
+    p.birthDate
+      ? p.birthDate.split("-").reverse().join("/")
+      : ""
+  }
+</td>
+
+</tr>
+`;
+});
+
+html += `
+</table>
+`;
 
   app.innerHTML=html;
-}
-
-function changeSortParticipants(mode,i){
-
-  state.sortParticipantsMode=mode;
-
-  save();
-
-  manageParticipants(i);
 }
 
 function toggleP(ci,id){
@@ -2223,7 +2450,10 @@ if(c.locked){
     .map(id=>getPilotById(id))
     .filter(p=>p);
 
-  list=sortPilots(list,state.sortEntryMode);
+  list=sortEntryPilots(
+  list,
+  state.sortEntryMode
+);
 
   let html=`
 
@@ -2270,11 +2500,6 @@ if(c.locked){
       Catégorie N5 → Elite
     </option>
 
-    <option value="club"
-      ${state.sortEntryMode==="club"?"selected":""}>
-      Club
-    </option>
-
   </select>
   `;
 
@@ -2288,9 +2513,9 @@ class="card clickable-row ${getCatClass(p.cat)}"
 onclick="pilotDetail(${i},'${p.id}')">
 
   ${getStatus(c,p.id)}
-  ${p.cat} - ${p.name} - ${p.club || "Sans club"} - ${p.lic}
-
-  }
+${p.cat} - ${p.name}
+${p.plaque ? " [" + p.plaque + "]" : ""}
+- ${p.club || "Sans club"}
 
 </div>
 `;
@@ -2306,6 +2531,55 @@ function changeSortEntry(mode,i){
   save();
 
   selectPilot(i);
+}
+
+function sortEntryPilots(list,mode){
+
+  let arr=[...list];
+
+  if(mode==="nameAZ"){
+
+    arr.sort((a,b)=>
+      a.name.localeCompare(b.name)
+    );
+  }
+
+  if(mode==="nameZA"){
+
+    arr.sort((a,b)=>
+      b.name.localeCompare(a.name)
+    );
+  }
+
+  if(mode==="catASC"){
+
+    arr.sort((a,b)=>{
+
+      let diff =
+        categories.indexOf(a.cat)
+        - categories.indexOf(b.cat);
+
+      if(diff!==0) return diff;
+
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  if(mode==="catDESC"){
+
+    arr.sort((a,b)=>{
+
+      let diff =
+        categories.indexOf(b.cat)
+        - categories.indexOf(a.cat);
+
+      if(diff!==0) return diff;
+
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  return arr;
 }
 
 function getStatus(c,id){
@@ -2571,6 +2845,393 @@ z+=`
   }
 
   document.getElementById("zones").innerHTML=z;
+}
+
+function showDoublePointageMatin(i){
+
+  let c = state.competitions[i];
+
+  let participants = c.participants
+    .map(id => getPilotById(id))
+    .filter(p => p);
+
+  function plaqueNumber(p){
+
+    return parseInt(
+      String(p.plaque || "")
+        .replace(/[^\d]/g,"")
+    ) || 99999;
+
+  }
+
+  function mainCat(cat){
+
+    if(cat.startsWith("N4")) return "N4";
+    if(cat.startsWith("N5")) return "N5";
+
+    return cat;
+  }
+
+  const order = ["N4","N5"];
+
+  let list = participants
+
+    .filter(p=>
+
+      p.cat.startsWith("N4")
+      ||
+      p.cat.startsWith("N5")
+
+    )
+
+    .sort((a,b)=>{
+
+      let diff =
+        order.indexOf(mainCat(a.cat))
+        -
+        order.indexOf(mainCat(b.cat));
+
+      if(diff!==0){
+        return diff;
+      }
+
+      return plaqueNumber(a)
+        -
+        plaqueNumber(b);
+
+    });
+
+  let html = `
+
+<div class="topbar">
+
+<div class="topbar-title">
+Double Pointage Matin
+</div>
+
+<div class="topbar-actions">
+
+<button onclick="printDoublePointageMatinPDF()">
+Export PDF
+</button>
+
+<button onclick="showExportParticipantsMenu(${i})">
+Retour
+</button>
+
+</div>
+
+</div>
+
+<table class="double-pointage">
+
+<tr>
+
+<th style="width:10%">
+Plaque
+</th>
+
+<th style="width:38%">
+Nom
+</th>
+
+<th style="width:16%">
+Catégorie
+</th>
+
+<th style="width:12%">
+Tour 1
+</th>
+
+<th style="width:12%">
+Tour 2
+</th>
+
+<th style="width:12%">
+Tour 3
+</th>
+
+</tr>
+
+`;
+
+let rowCount = 0;
+
+  list.forEach(p=>{
+
+    html += `
+
+<tr>
+
+<td>
+${p.plaque || ""}
+</td>
+
+<td style="
+text-align:left;
+">
+${p.name}
+</td>
+
+<td
+style="
+background:${getCategoryColor(p.cat)};
+">
+${p.cat}
+</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+
+</tr>
+
+`;
+
+rowCount++;
+
+  });
+
+const minRows = 43
+;
+
+while(rowCount < minRows){
+
+  html += `
+
+<tr>
+
+<td>&nbsp;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+
+</tr>
+
+`;
+
+  rowCount++;
+
+}
+
+  html += `
+</table>
+`;
+
+window.currentExportInfo = {
+
+  type:"double-pointage-matin",
+
+  competitionName:c.name,
+
+  competitionDate:c.date
+
+};
+
+  app.innerHTML = html;
+
+}
+
+function showDoublePointageApresMidi(i){
+
+  let c = state.competitions[i];
+
+  let participants = c.participants
+    .map(id => getPilotById(id))
+    .filter(p => p);
+
+  function plaqueNumber(p){
+
+    return parseInt(
+      String(p.plaque || "")
+        .replace(/[^\d]/g,"")
+    ) || 99999;
+
+  }
+
+  function mainCat(cat){
+
+    if(cat.startsWith("Elite")) return "Elite";
+    if(cat.startsWith("N1")) return "N1";
+    if(cat.startsWith("N2")) return "N2";
+    if(cat.startsWith("N3")) return "N3";
+
+    return cat;
+  }
+
+  const order = ["Elite","N1","N2","N3"];
+
+  let list = participants
+
+    .filter(p=>
+
+      p.cat.startsWith("Elite")
+      ||
+      p.cat.startsWith("N1")
+      ||
+      p.cat.startsWith("N2")
+      ||
+      p.cat.startsWith("N3")
+
+    )
+
+    .sort((a,b)=>{
+
+      let diff =
+        order.indexOf(mainCat(a.cat))
+        -
+        order.indexOf(mainCat(b.cat));
+
+      if(diff!==0){
+        return diff;
+      }
+
+      return plaqueNumber(a)
+        -
+        plaqueNumber(b);
+
+    });
+
+  let html = `
+
+<div class="topbar">
+
+<div class="topbar-title">
+Double Pointage Matin
+</div>
+
+<div class="topbar-actions">
+
+<button onclick="printDoublePointageApresMidiPDF()">
+Export PDF
+</button>
+
+<button onclick="showExportParticipantsMenu(${i})">
+Retour
+</button>
+
+</div>
+
+</div>
+
+<table class="double-pointage">
+
+<tr>
+
+<th style="width:10%">
+Plaque
+</th>
+
+<th style="width:38%">
+Nom
+</th>
+
+<th style="width:16%">
+Catégorie
+</th>
+
+<th style="width:12%">
+Tour 1
+</th>
+
+<th style="width:12%">
+Tour 2
+</th>
+
+<th style="width:12%">
+Tour 3
+</th>
+
+</tr>
+
+`;
+
+  let rowCount = 0;
+
+  list.forEach(p=>{
+
+    let group = mainCat(p.cat);
+
+    currentGroup = group;
+
+    html += `
+
+<tr>
+
+<td>
+${p.plaque || ""}
+</td>
+
+<td style="
+text-align:left;
+">
+${p.name}
+</td>
+
+<td
+style="
+background:${getCategoryColor(p.cat)};
+">
+${p.cat}
+</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+
+</tr>
+
+`;
+
+rowCount++;
+
+  });
+
+const minRows = 43;
+
+while(rowCount < minRows){
+
+  html += `
+
+<tr>
+
+<td>&nbsp;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+
+</tr>
+
+`;
+
+  rowCount++;
+
+}
+
+  html += `
+</table>
+`;
+
+window.currentExportInfo = {
+
+  type:"double-pointage-matin",
+
+  competitionName:c.name,
+
+  competitionDate:c.date
+
+};
+
+  app.innerHTML = html;
+
 }
 
 function setScore(i,v,btn){
@@ -2891,9 +3552,9 @@ function renderTable(title,list,c,htmlRef,ci,provisional){
 
       <td>
 
-        ${p.name}
+        <b>${p.name}
 
-        ${p.tiebreak
+        <b>${p.tiebreak
    ? `
 <span class="tie-icon">⚖️</span>
 
@@ -2925,30 +3586,30 @@ ${p.externalTie
 
       </td>
 
-      <td>${p.club}</td>
-      <td>${p.cat}</td>
+      <td><b>${p.club}</td>
+      <td><b>${p.cat}</td>
 
-      <td>${p.status==="AB"?"AB":p.nb0}</td>
-      <td>${p.status==="AB"?"AB":p.nb1}</td>
-      <td>${p.status==="AB"?"AB":p.nb2}</td>
-      <td>${p.status==="AB"?"AB":p.nb3}</td>
-      <td>${p.status==="AB"?"AB":p.nb5}</td>
+      <td><b>${p.status==="AB"?"AB":p.nb0}</td>
+      <td><b>${p.status==="AB"?"AB":p.nb1}</td>
+      <td><b>${p.status==="AB"?"AB":p.nb2}</td>
+      <td><b>${p.status==="AB"?"AB":p.nb3}</td>
+      <td><b>${p.status==="AB"?"AB":p.nb5}</td>
     `;
 
     p.tours.forEach(v=>{
 
       htmlRef+=`
-      <td>${p.status==="AB"?"AB":v}</td>
+      <td><b>${p.status==="AB"?"AB":v}</td>
       `;
     });
 
     htmlRef+=`
-showresults
-      <td>${p.status==="AB"?"AB":p.bestTour}</td>
-      <td>${p.status==="AB"?"AB":p.total}</td>
-      <td>${p.rankScratch}</td>
-      <td>${p.rankUfolep}</td>
-      <td>${p.ufoPoints}</td>
+
+      <td><b>${p.status==="AB"?"AB":p.bestTour}</td>
+      <td><b>${p.status==="AB"?"AB":p.total}</td>
+      <td><b>${p.rankScratch}</td>
+      <td><b>${p.rankUfolep}</td>
+      <td><b>${p.ufoPoints}</td>
 
     </tr>
     `;
@@ -2993,6 +3654,10 @@ html += `
 
     <button onclick="printResults()">
       Export PDF
+    </button>
+
+    <button onclick="showTV(${i})">
+      📺 Affichage TV
     </button>
 
     <button onclick="returnCompetitionMenu()">
@@ -3413,6 +4078,28 @@ function changePilotSort(column){
   showPilots();
 }
 
+function changeParticipantSort(column){
+
+  if(state.sortParticipantsColumn === column){
+
+    state.sortParticipantsDirection =
+      state.sortParticipantsDirection === "asc"
+      ? "desc"
+      : "asc";
+
+  }else{
+
+    state.sortParticipantsColumn = column;
+    state.sortParticipantsDirection = "asc";
+  }
+
+  save();
+
+  manageParticipants(
+    state.ui.selectedCompetition
+  );
+}
+
 function editPilot(id){
 
   let p = getPilotById(id);
@@ -3425,6 +4112,7 @@ function editPilot(id){
   showPilots();
 
   setTimeout(()=>{
+    
 
     document.getElementById("name").value =
       p.name;
@@ -3438,13 +4126,13 @@ function editPilot(id){
     document.getElementById("cat").value =
       p.cat;
     
-      document.getElementById("plaque").value =
+    document.getElementById("plaque").value =
       p.plaque || "";
 
-      document.getElementById("licenceNumber").value =
+    document.getElementById("licenceNumber").value =
       p.licenceNumber || "";
 
-      document.getElementById("birthDate").value =
+    document.getElementById("birthDate").value =
       p.birthDate || "";
   },0);
 }
@@ -3515,9 +4203,13 @@ async function deletePilot(id){
 let pilot = state.pilots.find(p => p.id === id);
 
   if(!pilot){
-    alert("Pilote introuvable");
-    return;
-  }
+  console.warn(
+    "deletePilot : pilote introuvable",
+    id
+  );
+  showPilots();
+  return;
+}
 
   let used = false;
 
@@ -4050,6 +4742,8 @@ function renderChampionshipTable(
 
   <div class="section-title">
   CLASSEMENT ${title} — CHAMPIONNAT UFOLEP
+  <br>
+  SAISON ${window.currentExportInfo.startYear}-${window.currentExportInfo.endYear}
   (${state.currentJokers || 0} joker${(state.currentJokers || 0) > 1 ? "s" : ""})
 </div>
 
@@ -4057,11 +4751,11 @@ function renderChampionshipTable(
 
   <tr>
 
-    <th class="col-name">Nom</th>
+    <th class="col-name">NOM</th>
 
-    <th class="col-club">Club</th>
+    <th class="col-club">CLUB</th>
 
-    <th class="col-cat">Catégorie</th>
+    <th class="col-cat">CATEGORIE</th>
   `;
 
   competitions.forEach(comp=>{
@@ -4075,13 +4769,13 @@ function renderChampionshipTable(
 
   html+=`
 
-    <th class="col-points">Bruts</th>
+    <th class="col-points">BRUTS</th>
 
-    <th class="col-points">Jokers</th>
+    <th class="col-points">JOKERS</th>
 
-    <th class="col-points">Nets</th>
+    <th class="col-points">NETS</th>
 
-    <th class="col-rank">Place</th>
+    <th class="col-rank">PLACE</th>
 
   </tr>
   `;
@@ -4091,11 +4785,11 @@ function renderChampionshipTable(
     html+=`
     <tr>
 
-      <td>${r.pilot.name}</td>
+      <td style="font-weight:bold;"><b>${r.pilot.name}</td>
 
-      <td>${r.pilot.club || ""}</td>
+      <td style="font-weight:bold;">${r.pilot.club || ""}</td>
 
-      <td>${r.pilot.cat}</td>
+      <td style="font-weight:bold;">${r.pilot.cat}</td>
     `;
 
     competitions.forEach(comp=>{
@@ -4109,13 +4803,13 @@ function renderChampionshipTable(
 
     html+=`
 
-      <td>${r.totalBrut}</td>
+      <td style="font-weight:bold;">${r.totalBrut}</td>
 
-      <td>${r.jokerPoints}</td>
+      <td style="font-weight:bold;">${r.jokerPoints}</td>
 
-      <td><b>${r.totalNet}</b></td>
+      <td style="font-weight:bold;"><b>${r.totalNet}</b></td>
 
-      <td>${r.champRank}</td>
+      <td style="font-weight:bold;"><b>${r.champRank}</td>
 
     </tr>
     `;
@@ -4125,14 +4819,10 @@ function renderChampionshipTable(
   </table>
 
   <div class="print-note">
-    Rappel : seuls les pilotes titulaires d'une licence UFOLEP peuvent être classés.
+    Rappel : seuls les pilotes titulaires d'une licence UFOLEP peuvent être classés. 0 point pour une compétition = pilote Absent de cette compétition.
   </div>
     
-  <div class="print-note2">
-  0 point pour une compétition = pilote Absent de cette compétition.
-  </div>
-
-  </div>
+    </div>
 
   `;
 
@@ -4408,7 +5098,7 @@ vetList.forEach((p,index)=>{
 
 function showChampionship(jokers){
 
-  state.currentJokers = jokers;
+    state.currentJokers = jokers;
 
   let builtMain = buildChampionship(jokers);
 
@@ -4417,6 +5107,31 @@ function showChampionship(jokers){
   let builtVeteran = buildVeteranChampionship(jokers);
 
   let competitions = builtMain.competitions;
+
+  const years = competitions
+  .map(c => {
+
+    if(c.date.includes("-")){
+      return parseInt(c.date.split("-")[0]);
+    }
+
+    if(c.date.includes("/")){
+      return parseInt(c.date.split("/")[2]);
+    }
+
+    return NaN;
+
+  })
+  .filter(y => !isNaN(y));
+
+  const startYear = Math.min(...years);
+  const endYear = Math.max(...years);
+
+  window.currentExportInfo = {
+    type: "championship",
+    startYear,
+    endYear
+  };
 
   let dataMain = builtMain.championship;
 
@@ -4489,19 +5204,6 @@ function showChampionship(jokers){
     html
   );
 
-const years = competitions
-    .map(c => parseInt(c.date.split("/")[2]))
-    .filter(y => !isNaN(y));
-
-  const startYear = Math.min(...years);
-  const endYear = Math.max(...years);
-
-  window.currentExportInfo = {
-    type: "championship",
-    startYear,
-    endYear
-  };
-
   app.innerHTML=html;
 }
 
@@ -4519,19 +5221,15 @@ async function printResults(){
 
 let safeDate = info.date;
 
-if(info.date.includes("/")){
+if(info.date.includes("-")){
 
-  const parts = info.date.split("/");
+  const [year, month, day] =
+    info.date.split("-");
 
-  if(parts.length === 3){
-
-    const day = parts[0].padStart(2,"0");
-    const month = parts[1].padStart(2,"0");
-    const year = parts[2];
-
-    safeDate = `${year}-${month}-${day}`;
-  }
+  safeDate =
+    `${day}-${month}-${year}`;
 }
+
   const suffix =
     info.intermediaire
       ? "_INTERMEDIAIRE"
@@ -4540,8 +5238,8 @@ if(info.date.includes("/")){
   await window.api.exportPDF({
 
     fileName:
-  `Resultats_${safeName}_${safeDate}${suffix}.pdf`
-
+  `Resultats_${safeName}_${safeDate}${suffix}.pdf`,
+  landscape:true
   });
 
 }
@@ -4786,7 +5484,8 @@ async function printChampionshipPDF(){
   await window.api.exportPDF({
 
     fileName:
-      `Classement_Championnat_UFOLEP_${info.startYear}-${info.endYear}.pdf`
+      `Classement_Championnat_UFOLEP_${info.startYear}-${info.endYear}.pdf`,
+      landscape:true
 
   });
 
@@ -4803,7 +5502,19 @@ function showClubChampionship(){
   rows.sort((a,b)=>b.total-a.total);
 
 const years = competitions
-  .map(c => parseInt(c.date.split("/")[2]))
+  .map(c => {
+
+    if(c.date.includes("-")){
+      return parseInt(c.date.split("-")[0]);
+    }
+
+    if(c.date.includes("/")){
+      return parseInt(c.date.split("/")[2]);
+    }
+
+    return NaN;
+
+  })
   .filter(y => !isNaN(y));
 
 const startYear = Math.min(...years);
@@ -4894,7 +5605,7 @@ html+=`
 
     <tr>
 
-      <td>${r.club}</td>
+      <td><b>${r.club}</td>
     `;
 
     competitions.forEach(comp=>{
@@ -4914,7 +5625,7 @@ html+=`
       </td>
 
       <td>
-        ${rank}
+        <b>${rank}
       </td>
 
     </tr>
@@ -4956,9 +5667,93 @@ async function printClubPDF(){
   await window.api.exportPDF({
 
     fileName:
-      `Classement_Clubs_${info.startYear}-${info.endYear}.pdf`
+      `Classement_Clubs_${info.startYear}-${info.endYear}.pdf`,
+      landscape:true
 
   });
+
+}
+
+async function printDoublePointageMatinPDF(){
+
+  const info =
+    window.currentExportInfo;
+
+  if(!info){
+    return;
+  }
+
+  let dateFR =
+    info.competitionDate
+      ? info.competitionDate
+          .replaceAll("/","-")
+      : "";
+
+  await window.api.exportPDF({
+
+    fileName:
+`Double_Pointage_Matin_${info.competitionName}_${dateFR}.pdf`,
+landscape:false
+
+  });
+
+}
+
+async function printDoublePointageApresMidiPDF(){
+
+  const info =
+    window.currentExportInfo;
+
+  if(!info){
+    return;
+  }
+
+  let dateFR =
+    info.competitionDate
+      ? info.competitionDate
+          .replaceAll("/","-")
+      : "";
+
+  await window.api.exportPDF({
+
+    fileName:
+`Double_Pointage_Apres_Midi_${info.competitionName}_${dateFR}.pdf`,
+    landscape:false
+
+  });
+
+}
+
+async function exportPilotsExcel(){
+
+  let ok =
+    await window.api.exportExcel(
+      state.pilots
+    );
+
+  if(ok){
+
+    app.innerHTML = `
+
+<h3>
+Export terminé
+</h3>
+
+<div class="card">
+
+✅ Le fichier Excel Pilotes a été créé.
+
+</div>
+
+<br>
+
+<button onclick="showPilots()">
+Retour
+</button>
+
+`;
+
+  }
 
 }
 
@@ -5014,92 +5809,400 @@ function importBackup(){
 
 function handleBackupImport(event){
 
-  let file=event.target.files[0];
+  let file = event.target.files[0];
 
   if(!file){
     return;
   }
 
-  let reader=new FileReader();
+  let reader = new FileReader();
 
-  reader.onload=function(e){
+  reader.onload = async function(e){
 
     try{
 
-      let data=JSON.parse(e.target.result);
+      let data = JSON.parse(e.target.result);
 
       if(
-        !data.pilots
-        ||
+        !data.pilots ||
         !data.competitions
       ){
         throw new Error();
       }
 
-      if(!confirm(
+      const ok = await askConfirm(
         "Charger cette sauvegarde remplacera toutes les données actuelles. Continuer ?"
-      )){
+      );
+
+      if(!ok){
         return;
       }
 
-      state.pilots=data.pilots || [];
+      state.pilots = data.pilots || [];
 
-      state.clubs=data.clubs || [...defaultClubs];
+      state.clubs =
+        data.clubs || [...defaultClubs];
 
-      state.competitions=data.competitions || [];
+      state.competitions =
+        data.competitions || [];
 
-      state.sortPilotsMode=
+      state.sortPilotsMode =
         data.sortPilotsMode || "name";
 
-      state.sortParticipantsMode=
+      state.sortParticipantsMode =
         data.sortParticipantsMode || "name";
 
-      state.sortEntryMode=
+      state.sortEntryMode =
         data.sortEntryMode || "name";
 
       save();
 
-      alert("Sauvegarde chargée avec succès");
+      app.innerHTML = `
 
-      home();
+        <h3>Sauvegarde restaurée</h3>
+
+        <div class="card">
+
+          ✔ Sauvegarde chargée avec succès
+
+        </div>
+
+        <button onclick="home()">
+
+          Continuer
+
+        </button>
+
+      `;
 
     }catch(err){
 
-      alert("Erreur lors du chargement du fichier");
+      app.innerHTML = `
+
+        <h3>Erreur</h3>
+
+        <div class="card">
+
+          ❌ Erreur lors du chargement du fichier
+
+        </div>
+
+        <button onclick="home()">
+
+          Retour
+
+        </button>
+
+      `;
+
     }
+
   };
 
   reader.readAsText(file);
 
-  event.target.value="";
+  event.target.value = "";
+
 }
 
-function exportParticipantsExcel(i){
+function showExportParticipantsMenu(i){
 
   app.innerHTML = `
 
-    <h2>Export Excel</h2>
+    <h2>Exports</h2>
 
     <div class="card">
 
-      Choisir le tri :
+      <button onclick="exportParticipantsExcel(${i})">
+        Participants Excel
+      </button>
 
       <br><br>
 
-      <button onclick="doExportParticipantsExcel(${i}, 'CAT')">
-        Par catégorie
+      <button onclick="showDoublePointageMatin(${i})">
+      Double Pointage Matin PDF
       </button>
 
-      <button onclick="doExportParticipantsExcel(${i}, 'ALPHA')">
-        Ordre alphabétique
+      <br><br>
+
+      <button onclick="showDoublePointageApresMidi(${i})">
+      Double Pointage Après-midi PDF
       </button>
 
     </div>
 
     <button onclick="returnCompetitionMenu()">
-    Retour
+      Retour
     </button>
+
   `;
+}
+
+async function exportDoublePointageMatin(i){
+
+  let c = state.competitions[i];
+
+  let participants = c.participants
+    .map(id => getPilotById(id))
+    .filter(p => p);
+
+  let ok =
+    await window.api.exportDoublePointageMatin({
+
+      participants,
+
+      competitionName:c.name,
+
+      competitionDate:c.date
+
+    });
+
+  if(ok){
+
+    app.innerHTML = `
+
+<h3>
+Export terminé
+</h3>
+
+<div class="card">
+
+✅ PDF Double Pointage Matin créé.
+
+</div>
+
+<br>
+
+<button onclick="showExportParticipantsMenu(${i})">
+Retour
+</button>
+
+`;
+
+  }
+
+}
+
+
+async function exportDoublePointageApresMidi(i){
+
+  let c = state.competitions[i];
+
+  let participants = c.participants
+    .map(id => getPilotById(id))
+    .filter(p => p);
+
+  let ok =
+    await window.api.exportDoublePointageApresMidi({
+
+      participants,
+
+      competitionName:c.name,
+
+      competitionDate:c.date
+
+    });
+
+  if(ok){
+
+    app.innerHTML = `
+
+<h3>
+Export terminé
+</h3>
+
+<div class="card">
+
+✅ PDF Double Pointage Après-midi créé.
+
+</div>
+
+<br>
+
+<button onclick="showExportParticipantsMenu(${i})">
+Retour
+</button>
+
+`;
+
+  }
+
+}
+
+async function importPilotsExcel(){
+
+  if(state.competitions.length > 0){
+
+    app.innerHTML = `
+
+<h3>
+Import impossible
+</h3>
+
+<div class="card">
+
+❌ Des compétitions existent déjà.
+
+<br><br>
+
+L'import pilotes est réservé au démarrage
+d'une nouvelle saison.
+
+</div>
+
+<br>
+
+<button onclick="showPilots()">
+Retour
+</button>
+
+`;
+
+    return;
+  }
+
+  const result =
+    await window.api.importPilotsExcel();
+
+  if(!result.success){
+
+    if(result.error==="FORMAT"){
+
+      app.innerHTML = `
+
+<h3>
+Import impossible
+</h3>
+
+<div class="card">
+
+❌ Format Excel invalide.
+
+<br><br>
+
+Le fichier doit provenir de l'export
+Pilotes Trial Manager.
+
+</div>
+
+<br>
+
+<button onclick="showPilots()">
+Retour
+</button>
+
+`;
+
+      return;
+    }
+
+    showPilots();
+
+    return;
+  }
+
+  state.pilots = [];
+  state.clubs = [];
+
+  result.pilots.forEach(p=>{
+
+    state.pilots.push({
+
+      id:generatePilotId(),
+
+      plaque:p.plaque,
+
+      name:p.name,
+
+      club:p.club,
+
+      cat:p.cat,
+
+      lic:p.lic,
+
+      licenceNumber:
+        p.licenceNumber,
+
+      birthDate:
+        p.birthDate
+
+    });
+
+    if(
+      p.club &&
+      !state.clubs.includes(p.club)
+    ){
+
+      state.clubs.push(p.club);
+
+    }
+
+  });
+
+  save();
+
+  app.innerHTML = `
+
+<h3>
+Import terminé
+</h3>
+
+<div class="card">
+
+✅ ${state.pilots.length}
+pilotes importés.
+
+</div>
+
+<br>
+
+<button onclick="showPilots()">
+Continuer
+</button>
+
+`;
+
+}
+
+async function exportParticipantsExcel(i){
+
+  let c = state.competitions[i];
+
+  let participants = c.participants
+    .map(id => getPilotById(id))
+    .filter(p => p);
+
+  let ok =
+    await window.api.exportParticipantsExcel({
+      participants,
+      competitionName:c.name,
+      competitionDate:c.date
+    });
+
+  if(ok){
+
+    app.innerHTML = `
+
+<h3>
+Export terminé
+</h3>
+
+<div class="card">
+
+✅ Le fichier Excel Participants a été créé.
+
+</div>
+
+<br>
+
+<button onclick="showExportParticipantsMenu(${i})">
+Retour
+</button>
+
+`;
+
+  }
+
 }
 
 function doExportParticipantsExcel(i, mode){ 
@@ -5255,6 +6358,36 @@ function doExportParticipantsExcel(i, mode){
     c.name.replaceAll(" ","_")+"_participants.xlsx"
   );
 }
+
+function getCategoryColor(cat){
+
+  if(cat.startsWith("Elite F")) return "#EC4899";
+  if(cat.startsWith("Elite V")) return "#6B7280";
+  if(cat.startsWith("Elite")) return "#FACC15";
+
+  if(cat.startsWith("N1 F")) return "#EC4899";
+  if(cat.startsWith("N1 V")) return "#6B7280";
+  if(cat.startsWith("N1")) return "#DC2626";
+
+  if(cat.startsWith("N2 F")) return "#EC4899";
+  if(cat.startsWith("N2 V")) return "#6B7280";
+  if(cat.startsWith("N2")) return "#2563EB";
+
+  if(cat.startsWith("N3 F")) return "#EC4899";
+  if(cat.startsWith("N3 V")) return "#6B7280";
+  if(cat.startsWith("N3")) return "#16A34A";
+
+  if(cat.startsWith("N4 F")) return "#EC4899";
+  if(cat.startsWith("N4 V")) return "#6B7280";
+  if(cat.startsWith("N4")) return "#d1d5db";
+
+  if(cat.startsWith("N5 F")) return "#EC4899";
+  if(cat.startsWith("N5 V")) return "#6B7280";
+  if(cat.startsWith("N5")) return "#EA580C";
+
+  return "#FFFFFF";
+}
+
 // ===== RESET FIN DE SAISON =====
 
 async function seasonReset() {
