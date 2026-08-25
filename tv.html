@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <title>Trial Manager TV</title>
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1">
+
+  <link rel="stylesheet" href="style.css?v=1">
+
+  <style>
+
+    html,
+    body {
+
+      margin: 0;
+      padding: 0;
+
+      width: 100%;
+      height: 100%;
+
+      overflow: hidden;
+
+      background: #111827;
+
+    }
+
+
+    #tv {
+
+      width: 100%;
+      height: 100%;
+
+      overflow: hidden;
+
+      position: relative;
+
+    }
+
+
+    .tv-page {
+
+      position: absolute;
+
+      inset: 0;
+
+      width: 100%;
+      height: 100%;
+
+      box-sizing: border-box;
+
+      background: white;
+
+      overflow: hidden;
+
+      padding: 15px;
+
+      display: none;
+
+    }
+
+
+    .tv-page.active {
+
+      display: block;
+
+    }
+
+
+    /*
+     * Pas d'interface Trial Manager
+     * sur l'écran public.
+     */
+
+    .topbar,
+    .topbar * {
+
+      display: none !important;
+
+    }
+
+
+    /*
+     * Pas de boutons sur la TV.
+     */
+
+    button {
+
+      display: none !important;
+
+    }
+
+
+    /*
+     * Écran d'attente.
+     */
+
+    .tv-waiting {
+
+      width: 100%;
+      height: 100%;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      color: white;
+
+      font-size: 32px;
+
+      font-weight: bold;
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+<div id="tv">
+
+  <div class="tv-waiting">
+
+    📺 En attente du classement...
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   ÉTAT TV
+   ===================================================== */
+
+
+/*
+ * Version actuellement diffusée.
+ */
+
+let tvPages = [];
+
+
+/*
+ * Page actuellement affichée.
+ */
+
+let tvCurrentPage = 0;
+
+
+/*
+ * Nouvelle version reçue pendant
+ * qu'un cycle est en cours.
+ *
+ * Elle remplace toujours la précédente.
+ */
+
+let pendingPages = null;
+
+
+/*
+ * Timer de changement de page.
+ */
+
+let tvTimer = null;
+
+
+/*
+ * Durée d'une page :
+ * 7 secondes.
+ */
+
+const TV_PAGE_DURATION = 7000;
+
+
+/*
+ * Indique si un cycle est actuellement
+ * en cours.
+ */
+
+let tvCycleRunning = false;
+
+
+/* =====================================================
+   EXTRACTION DES PAGES
+   ===================================================== */
+
+function extractTVPages(html){
+
+  const temp =
+    document.createElement("div");
+
+  temp.innerHTML = html;
+
+
+  return Array.from(
+    temp.querySelectorAll(".print-page")
+  );
+
+}
+
+
+/* =====================================================
+   AFFICHAGE D'UNE PAGE
+   ===================================================== */
+
+function showTVPage(index){
+
+  if(!tvPages.length){
+
+    return;
+
+  }
+
+
+  tvPages.forEach((page, i) => {
+
+    page.classList.toggle(
+      "active",
+      i === index
+    );
+
+  });
+
+
+  tvCurrentPage = index;
+
+}
+
+
+/* =====================================================
+   CHARGEMENT D'UNE VERSION
+   ===================================================== */
+
+function loadTVVersion(pages){
+
+  const tv =
+    document.getElementById("tv");
+
+
+  tv.innerHTML = "";
+
+
+  tvPages = [];
+
+
+  pages.forEach(page => {
+
+    page.classList.add("tv-page");
+
+    tv.appendChild(page);
+
+    tvPages.push(page);
+
+  });
+
+
+  tvCurrentPage = 0;
+
+
+  showTVPage(0);
+
+}
+
+
+/* =====================================================
+   FIN DE CYCLE
+   ===================================================== */
+
+function finishTVCycle(){
+
+  /*
+   * Le cycle actuel est terminé.
+   */
+
+  tvCycleRunning = false;
+
+
+  /*
+   * Une nouvelle version attend ?
+   */
+
+  if(pendingPages){
+
+    const newPages =
+      pendingPages;
+
+
+    /*
+     * On vide la file d'attente.
+     */
+
+    pendingPages = null;
+
+
+    /*
+     * On charge uniquement maintenant
+     * la nouvelle version.
+     */
+
+    loadTVVersion(newPages);
+
+  }
+
+
+  /*
+   * Nouveau cycle.
+   */
+
+  tvCurrentPage = 0;
+
+  tvCycleRunning = true;
+
+
+  scheduleNextTVPage();
+
+}
+
+
+/* =====================================================
+   PAGE SUIVANTE
+   ===================================================== */
+
+function scheduleNextTVPage(){
+
+  if(tvTimer){
+
+    clearTimeout(tvTimer);
+
+  }
+
+
+  tvTimer = setTimeout(() => {
+
+    /*
+     * S'il n'y a qu'une seule page,
+     * on boucle simplement dessus.
+     */
+
+    if(tvPages.length <= 1){
+
+      finishTVCycle();
+
+      return;
+
+    }
+
+
+    /*
+     * On passe à la page suivante.
+     */
+
+    tvCurrentPage++;
+
+
+    /*
+     * Sommes-nous arrivés à la fin
+     * de la version actuellement diffusée ?
+     */
+
+    if(tvCurrentPage >= tvPages.length){
+
+      finishTVCycle();
+
+      return;
+
+    }
+
+
+    showTVPage(tvCurrentPage);
+
+
+    /*
+     * On programme la page suivante.
+     */
+
+    scheduleNextTVPage();
+
+  }, TV_PAGE_DURATION);
+
+}
+
+
+/* =====================================================
+   DÉMARRAGE
+   ===================================================== */
+
+function startTVCycle(){
+
+  if(!tvPages.length){
+
+    return;
+
+  }
+
+
+  if(tvTimer){
+
+    clearTimeout(tvTimer);
+
+  }
+
+
+  tvCurrentPage = 0;
+
+  tvCycleRunning = true;
+
+  showTVPage(0);
+
+  scheduleNextTVPage();
+
+}
+
+
+/* =====================================================
+   RÉCEPTION D'UN CLASSEMENT
+   ===================================================== */
+
+window.api.onTVContent((html) => {
+
+  const pages =
+    extractTVPages(html);
+
+
+  if(!pages.length){
+
+    return;
+
+  }
+
+
+  /*
+   * PREMIÈRE VERSION
+   *
+   * La TV n'a encore rien à afficher.
+   */
+
+  if(!tvPages.length){
+
+    loadTVVersion(pages);
+
+    startTVCycle();
+
+    return;
+
+  }
+
+
+  /*
+   * Une version est déjà diffusée.
+   *
+   * On NE TOUCHE PAS à l'affichage actuel.
+   *
+   * On remplace simplement la version
+   * en attente par la dernière reçue.
+   */
+
+  pendingPages = pages;
+
+});
+
+</script>
+
+</body>
+
+</html>

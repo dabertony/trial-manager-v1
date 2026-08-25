@@ -1,6 +1,9 @@
 console.log("APP JS LOAD", new Date().toISOString());
 const app = document.getElementById("app");
 
+let tvDisplayActive = false;
+let currentCompetitionIndex = null;
+
 function render() {
 
   switch(state.ui.currentScreen) {
@@ -199,7 +202,7 @@ const CATEGORY_COLORS={
   "N3 F":"F8BBD0",
   "N3 V":"D1D5DB",
 
-  "N4":"EEEEEE",
+  "N4":"FFFFFF",
   "N4 F":"F8BBD0",
   "N4 V":"D1D5DB",
 
@@ -297,6 +300,28 @@ function formatBirthDate(date){
   }
 
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function formatDateForFile(date){
+
+  if(!date){
+    return "";
+  }
+
+  // Ancien format
+  if(date.includes("/")){
+    return date.replaceAll("/", "-");
+  }
+
+  // Nouveau format ISO
+  if(date.includes("-")){
+
+    const [year, month, day] = date.split("-");
+
+    return `${day}-${month}-${year}`;
+  }
+
+  return date;
 }
 
 function getCatClass(cat){
@@ -1833,6 +1858,7 @@ async function newCompetition(){
     zones: parseInt(data.zones),
     tours: parseInt(data.tours),
     participants: [],
+    participantPlates: {},
     scores: {},
     status: {},
     tiebreaks: {},
@@ -2151,18 +2177,58 @@ function sortParticipants(list,c){
 
   if(column==="plaque"){
 
-    arr.sort((a,b)=>{
+  arr.sort((a,b)=>{
 
-      let pa = a.plaque || "";
-      let pb = b.plaque || "";
+    const aSelected = c.participants.includes(a.id);
+    const bSelected = c.participants.includes(b.id);
 
-      return pa.localeCompare(
-        pb,
-        undefined,
-        {numeric:true}
-      ) * dir;
-    });
-  }
+    // Plaques utilisées dans cette compétition
+    const pa =
+      c.participantPlates?.[a.id]
+      ??
+      a.plaque
+      ??
+      "";
+
+    const pb =
+      c.participantPlates?.[b.id]
+      ??
+      b.plaque
+      ??
+      "";
+
+    // Groupe :
+    // 0 = participant
+    // 1 = non participant avec plaque
+    // 2 = non participant sans plaque
+
+    const ga =
+      aSelected
+        ? 0
+        : pa
+          ? 1
+          : 2;
+
+    const gb =
+      bSelected
+        ? 0
+        : pb
+          ? 1
+          : 2;
+
+    if(ga !== gb){
+      return (ga - gb) * dir;
+    }
+
+    return pa.localeCompare(
+      pb,
+      undefined,
+      {numeric:true}
+    ) * dir;
+
+  });
+
+}
 
   // ===== CLUB =====
 
@@ -2239,6 +2305,7 @@ function manageParticipants(i){
   state.ui.selectedCompetition = i;
 
   let c = state.competitions[i];
+  c.participantPlates ??= {};
 
   if(c.locked){
 
@@ -2273,6 +2340,16 @@ function manageParticipants(i){
   </div>
 
   <div class="topbar-actions">
+
+    <button onclick="toggleParticipantPlateEdit()">
+
+    ${
+      editParticipantPlates
+        ? "Fermer modification"
+        : "Modifier les plaques"
+    }
+
+  </button>
 
     <button onclick="returnCompetitionMenu()">
     Retour
@@ -2358,7 +2435,63 @@ list.forEach((p)=>{
   </td>
 
   <td>
-    ${p.plaque || ""}
+    ${
+editParticipantPlates && c.participants.includes(p.id)
+
+?
+
+`<input
+value="${
+c.participantPlates[p.id]
+??
+p.plaque
+??
+""
+}"
+
+style="
+width:100%;
+border:none;
+outline:none;
+background:#FFF9C4;
+text-align:center;
+font-weight:bold;
+font-size:inherit;
+padding:0;
+margin:0;
+box-sizing:border-box;
+"
+
+onclick="event.stopPropagation()"
+
+onfocus="this.select()"
+
+onkeydown="
+if(event.key==='Enter'){
+changeParticipantPlate(
+${i},
+'${p.id}',
+this.value
+);
+this.blur();
+}
+"
+
+onchange="
+changeParticipantPlate(
+${i},
+'${p.id}',
+this.value
+);
+"
+
+>`
+
+:
+
+(c.participantPlates[p.id] ?? p.plaque ?? "")
+
+}
   </td>
 
   <td>
@@ -2398,6 +2531,29 @@ html += `
 `;
 
   app.innerHTML=html;
+}
+
+function toggleParticipantPlateEdit(){
+
+  editParticipantPlates =
+    !editParticipantPlates;
+
+  manageParticipants(
+    state.ui.selectedCompetition
+  );
+
+}
+
+function changeParticipantPlate(ci,id,value){
+
+  let c = state.competitions[ci];
+
+  c.participantPlates ??= {};
+
+  c.participantPlates[id] = value.trim();
+
+  save();
+
 }
 
 function toggleP(ci,id){
@@ -2507,21 +2663,123 @@ if(c.locked){
 
     let status=getPilotStatus(c,p.id);
 
-    html+=`
-<div
-class="card clickable-row ${getCatClass(p.cat)}"
+let tours = "";
+
+for(let t = 1; t <= c.tours; t++){
+
+  let icon = "🟡";
+
+  if(c.status[p.id] === "AB"){
+
+    icon = "🟥";
+
+  }else if(c.scores[p.id + "-" + t]){
+
+    icon = "🟢";
+
+  }
+
+  tours += `
+    <span
+      class="tour-chip"
+      onclick="event.stopPropagation();clickTour(${i},'${p.id}',${t})">
+
+      T${t} ${icon}
+
+    </span>
+`;
+}
+
+html += `
+<div class="card ${getCatClass(p.cat)}">
+
+  <div class="tour-line">
+
+    ${tours}
+
+    <span
+class="status-chip"
 onclick="pilotDetail(${i},'${p.id}')">
 
-  ${getStatus(c,p.id)}
-${p.cat} - ${p.name}
-${p.plaque ? " [" + p.plaque + "]" : ""}
-- ${p.club || "Sans club"}
+${getStatusLabel(c,p.id)}
+
+</span>
+
+    <span class="pilot-line">
+
+      ${p.cat} - ${p.name} - ${p.club || "Sans club"}
+
+    </span>
+
+  </div>
 
 </div>
 `;
   });
 
   app.innerHTML=html;
+}
+
+function getStatusLabel(c,id){
+
+    if(getPilotStatus(c,id)==="AB"){
+
+        return "🟥 Abandon";
+
+    }
+
+    let complete = 0;
+
+    for(let t=1;t<=c.tours;t++){
+
+        if(c.scores[id+"-"+t]){
+
+            complete++;
+
+        }
+
+    }
+
+    if(complete===0){
+
+        return "❌ Aucun tour";
+
+    }
+
+    if(complete<c.tours){
+
+        return "🟡 En cours";
+
+    }
+
+    return "✅ Terminée";
+
+}
+
+function clickTour(ci,id,t){
+
+  let c = state.competitions[ci];
+
+  if(c.locked){
+    return;
+  }
+
+  if(c.status[id] === "AB"){
+
+    pilotDetail(ci,id);
+
+    return;
+  }
+
+  if(c.scores[id + "-" + t]){
+
+    pilotDetail(ci,id);
+
+    return;
+  }
+
+  enterScore(ci,id,t);
+
 }
 
 function changeSortEntry(mode,i){
@@ -2751,6 +3009,8 @@ c.status[id]="AB";
 
 save();
 
+updateTVResults(ci);
+
 selectPilot(ci);
 
 }
@@ -2766,30 +3026,36 @@ if(c.locked){
 
   save();
 
+  updateTVResults(ci);
+
   selectPilot(ci);
 }
 
 function enterScore(ci,id,t){
 
-  let c=state.competitions[ci];
-if(c.locked){
-  return;
-}
+  let c = state.competitions[ci];
 
-  currentScores=new Array(c.zones).fill(null);
-
-  let old=c.scores[id+"-"+t];
-
-  if(old){
-    currentScores=[...old];
+  if(c.locked){
+    return;
   }
 
-let pilot =
-state.pilots.find(
-p=>p.id===id
-);
+  currentScores = new Array(c.zones).fill(null);
 
-let html=`
+  let old = c.scores[id + "-" + t];
+
+  if(old){
+    currentScores = [...old];
+  }
+
+  let pilot =
+  state.pilots.find(
+    p => p.id === id
+  );
+
+  let isAB =
+  c.status[id] === "AB";
+
+  let html = `
 
 <h3 class="score-tour">
 Tour ${t}
@@ -2802,20 +3068,44 @@ ${pilot?.name || ""}
 </div>
 
 <div id="zones"></div>
-  <div class="score-actions">
+
+<div class="score-actions">
 
   <button onclick="saveScore(${ci},'${id}',${t})">
     Valider
   </button>
 
+  ${
+    isAB
+    ? `
+      <button
+      onclick="cancelAB(${ci},'${id}')">
+
+      Annuler abandon
+
+      </button>
+    `
+    : `
+      <button
+      class="delete"
+      onclick="declareAB(${ci},'${id}')">
+
+      Déclarer abandon
+
+      </button>
+    `
+  }
+
   <button
-    class="delete"
-    onclick="pilotDetail(${ci},'${id}')">
+    onclick="selectPilot(${ci})">
+
     Retour
+
   </button>
 
 </div>
-  `;
+
+`;
 
   app.innerHTML=html;
 
@@ -2853,7 +3143,17 @@ function showDoublePointageMatin(i){
 
   let participants = c.participants
     .map(id => getPilotById(id))
-    .filter(p => p);
+  .filter(p => p)
+  .map(p => ({
+
+    ...p,
+
+    plaque:
+      c.participantPlates?.[p.id]
+      ??
+      p.plaque
+
+  }));
 
   function plaqueNumber(p){
 
@@ -3042,7 +3342,17 @@ function showDoublePointageApresMidi(i){
 
   let participants = c.participants
     .map(id => getPilotById(id))
-    .filter(p => p);
+  .filter(p => p)
+  .map(p => ({
+
+    ...p,
+
+    plaque:
+      c.participantPlates?.[p.id]
+      ??
+      p.plaque
+
+  }));
 
   function plaqueNumber(p){
 
@@ -3309,6 +3619,8 @@ delete c.tiebreaks[key];
 
 save();
 
+updateTVResults(ci);
+
 selectPilot(ci);
 
 }
@@ -3548,7 +3860,11 @@ function renderTable(title,list,c,htmlRef,ci,provisional){
   list.forEach((p,index)=>{
 
     htmlRef+=`
-    <tr>
+    <tr class="${
+      p.lic === "FFC" || p.lic === "NL"
+        ? "ranking-non-ufolep"
+        : ""
+    }">
 
       <td>
 
@@ -3633,7 +3949,7 @@ ${p.externalTie
   return htmlRef;
 }
 
-function showResults(i){
+function buildResultsHTML(i){
 
   let c = state.competitions[i];
   let stats = buildStats(c);
@@ -3656,9 +3972,16 @@ html += `
       Export PDF
     </button>
 
-    <button onclick="showTV(${i})">
-      📺 Affichage TV
-    </button>
+    <button
+  id="tvDisplayButton"
+  onclick="toggleTVDisplay()"
+>
+  ${
+    tvDisplayActive
+      ? "🛑 Arrêter affichage TV"
+      : "📺 Affichage TV"
+  }
+</button>
 
     <button onclick="returnCompetitionMenu()">
     Retour
@@ -3909,13 +4232,153 @@ if(veteranProvisional){
 }
 
   // ===== ACTIONS =====
-  window.currentExportInfo = {
-  type: "competition",
-  name: c.name,
-  date: c.date,
+  return {
+  html: html,
   intermediaire: exportIntermediaire
 };
-  app.innerHTML = html;
+
+}
+
+function showResults(i){
+
+  currentCompetitionIndex = i;
+
+  const result =
+    buildResultsHTML(i);
+
+  window.currentExportInfo = {
+
+    type: "competition",
+
+    name: state.competitions[i].name,
+
+    date: state.competitions[i].date,
+
+    intermediaire:
+      result.intermediaire
+
+  };
+
+  window.currentResultsHTML =
+    result.html;
+
+  app.innerHTML =
+    result.html;
+
+}
+
+function updateTVResults(ci){
+
+  /*
+   * Si la fenêtre TV n'est pas ouverte,
+   * updateTV ne fera simplement rien.
+   */
+
+  if(!tvDisplayActive){
+
+    return;
+
+  }
+
+  const result =
+    buildResultsHTML(ci);
+
+  if(!result || !result.html){
+
+    return;
+
+  }
+
+  window.api.updateTV(
+    result.html
+  );
+
+}
+
+function updateTVButton(){
+
+  const button =
+    document.getElementById("tvDisplayButton");
+
+  if(!button){
+    return;
+  }
+
+  button.textContent =
+    tvDisplayActive
+      ? "🛑 Arrêter affichage TV"
+      : "📺 Affichage TV";
+
+}
+
+window.api.onTVClosed(() => {
+
+  tvDisplayActive = false;
+
+  updateTVButton();
+
+});
+
+async function toggleTVDisplay(){
+
+  /*
+   * Si la TV est déjà ouverte :
+   * on la ferme.
+   */
+
+  if(tvDisplayActive){
+
+    await window.api.closeTV();
+
+    tvDisplayActive = false;
+
+    updateTVButton();
+
+    return;
+
+  }
+
+
+  /*
+   * Sinon on ouvre la TV avec
+   * le classement actuellement affiché.
+   */
+
+  const ci = currentCompetitionIndex;
+
+  if(ci === undefined || ci === null){
+
+    return;
+
+  }
+
+
+  const result =
+    buildResultsHTML(ci);
+
+  if(!result || !result.html){
+
+    return;
+
+  }
+
+
+  const opened =
+    await window.api.openTV(
+      result.html
+    );
+
+
+  /*
+   * Si openTV ne retourne rien dans
+   * ton code actuel, on considère
+   * l'ouverture réussie.
+   */
+
+  tvDisplayActive = true;
+
+  updateTVButton();
+
 }
 
 // ===== DEPARTAGE =====
@@ -4015,11 +4478,15 @@ if(c.locked){
 
   save();
 
+  updateTVResults(ci);
+
   showResults(ci);
 }
 let deleteModePilots=false;
 let editingPilotId = null;
 let editingPilotCat = null;
+
+let editParticipantPlates = false;
 
 function askConfirm(message){
 
@@ -5216,19 +5683,11 @@ async function printResults(){
   }
 
   const safeName = info.name
-  .replace(/[\\/:*?"<>|]/g,"_")
-  .replace(/\s+/g,"_");
+    .replace(/[\\/:*?"<>|]/g,"_")
+    .replace(/\s+/g,"_");
 
-let safeDate = info.date;
-
-if(info.date.includes("-")){
-
-  const [year, month, day] =
-    info.date.split("-");
-
-  safeDate =
-    `${day}-${month}-${year}`;
-}
+  const safeDate =
+    formatDateForFile(info.date);
 
   const suffix =
     info.intermediaire
@@ -5238,8 +5697,9 @@ if(info.date.includes("-")){
   await window.api.exportPDF({
 
     fileName:
-  `Resultats_${safeName}_${safeDate}${suffix}.pdf`,
-  landscape:true
+      `Resultats_${safeName}_${safeDate}${suffix}.pdf`,
+    landscape:true
+
   });
 
 }
@@ -5684,10 +6144,7 @@ async function printDoublePointageMatinPDF(){
   }
 
   let dateFR =
-    info.competitionDate
-      ? info.competitionDate
-          .replaceAll("/","-")
-      : "";
+    formatDateForFile(info.competitionDate);
 
   await window.api.exportPDF({
 
@@ -5709,10 +6166,7 @@ async function printDoublePointageApresMidiPDF(){
   }
 
   let dateFR =
-    info.competitionDate
-      ? info.competitionDate
-          .replaceAll("/","-")
-      : "";
+    formatDateForFile(info.competitionDate);
 
   await window.api.exportPDF({
 
@@ -6170,7 +6624,17 @@ async function exportParticipantsExcel(i){
 
   let participants = c.participants
     .map(id => getPilotById(id))
-    .filter(p => p);
+  .filter(p => p)
+  .map(p => ({
+
+    ...p,
+
+    plaque:
+      c.participantPlates?.[p.id]
+      ??
+      p.plaque
+
+  }));
 
   let ok =
     await window.api.exportParticipantsExcel({
@@ -6379,7 +6843,7 @@ function getCategoryColor(cat){
 
   if(cat.startsWith("N4 F")) return "#EC4899";
   if(cat.startsWith("N4 V")) return "#6B7280";
-  if(cat.startsWith("N4")) return "#d1d5db";
+  if(cat.startsWith("N4")) return "#ffffff";
 
   if(cat.startsWith("N5 F")) return "#EC4899";
   if(cat.startsWith("N5 V")) return "#6B7280";

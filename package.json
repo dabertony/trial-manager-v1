@@ -1,0 +1,38 @@
+{
+  "name": "trial_manager_v12",
+  "version": "1.0.0",
+  "description": "Trial Manager UFOLEP",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "keywords": [],
+  "author": "Anthony Dabernat",
+  "license": "ISC",
+  "type": "commonjs",
+  "build": {
+    "appId": "com.trialmanager.app",
+    "productName": "Trial Manager",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^42.3.0",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  }
+}
