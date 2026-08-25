@@ -4311,13 +4311,20 @@ function updateTVButton(){
 
 }
 
-window.api.onTVClosed(() => {
+if (
+  window.api &&
+  typeof window.api.onTVClosed === "function"
+) {
 
-  tvDisplayActive = false;
+  window.api.onTVClosed(() => {
 
-  updateTVButton();
+    tvDisplayActive = false;
 
-});
+    updateTVButton();
+
+  });
+
+}
 
 async function toggleTVDisplay(){
 
