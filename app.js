@@ -6187,6 +6187,8 @@ async function printDoublePointageApresMidiPDF(){
 
 async function exportPilotsExcel(){
 
+  alert("TEST EXPORT PWA");
+  
   /*
    * ================================
    * VERSION ELECTRON / PC
