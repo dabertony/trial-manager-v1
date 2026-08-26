@@ -1559,7 +1559,7 @@ function showPilots(){
         Import Excel
         </button>
 
-        <button onclick="exportPilotsExcel()">
+        <button onclick="alert('BOUTON EXPORT OK')">
         Export Excel
         </button>
 
