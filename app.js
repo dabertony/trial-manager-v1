@@ -6187,14 +6187,25 @@ async function printDoublePointageApresMidiPDF(){
 
 async function exportPilotsExcel(){
 
-  let ok =
-    await window.api.exportExcel(
-      state.pilots
-    );
+  /*
+   * ================================
+   * VERSION ELECTRON / PC
+   * ================================
+   */
 
-  if(ok){
+  if(
+    window.api &&
+    typeof window.api.exportExcel === "function"
+  ){
 
-    app.innerHTML = `
+    let ok =
+      await window.api.exportExcel(
+        state.pilots
+      );
+
+    if(ok){
+
+      app.innerHTML = `
 
 <h3>
 Export terminé
@@ -6213,6 +6224,141 @@ Retour
 </button>
 
 `;
+
+    }
+
+    return;
+  }
+
+
+  /*
+   * ================================
+   * VERSION PWA / IPAD
+   * ================================
+   */
+
+  if(
+    typeof XLSX === "undefined"
+  ){
+
+    alert(
+      "Impossible de charger le module Excel."
+    );
+
+    return;
+  }
+
+
+  try{
+
+    /*
+     * Création du classeur
+     */
+
+    const wb =
+      XLSX.utils.book_new();
+
+
+    /*
+     * Préparation des données
+     */
+
+    const data = [
+
+      [
+        "Nom",
+        "Licence",
+        "Catégorie",
+        "Club"
+      ]
+
+    ];
+
+
+    state.pilots.forEach(p => {
+
+      data.push([
+
+        p.name || "",
+        p.lic || "",
+        p.cat || "",
+        p.club || ""
+
+      ]);
+
+    });
+
+
+    /*
+     * Création de la feuille
+     */
+
+    const ws =
+      XLSX.utils.aoa_to_sheet(data);
+
+
+    XLSX.utils.book_append_sheet(
+      wb,
+      ws,
+      "Pilotes"
+    );
+
+
+    /*
+     * Génération du fichier
+     */
+
+    const fileName =
+      "Pilotes_Trial_Manager.xlsx";
+
+
+    XLSX.writeFile(
+      wb,
+      fileName
+    );
+
+
+    /*
+     * Message de confirmation
+     */
+
+    app.innerHTML = `
+
+<h3>
+Export terminé
+</h3>
+
+<div class="card">
+
+✅ Le fichier Excel Pilotes a été généré.
+
+<br><br>
+
+Sur iPad, le fichier peut être retrouvé
+dans l'application Téléchargements
+ou proposé via le menu de partage.
+
+</div>
+
+<br>
+
+<button onclick="showPilots()">
+Retour
+</button>
+
+`;
+
+  }
+  catch(error){
+
+    console.error(
+      "Erreur export Excel PWA :",
+      error
+    );
+
+    alert(
+      "Erreur lors de la création du fichier Excel."
+    );
 
   }
 
