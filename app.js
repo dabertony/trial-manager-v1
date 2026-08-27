@@ -1,3 +1,8 @@
+console.log(
+  "TEST EXCELJS :",
+  typeof ExcelJS
+);
+
 console.log("APP JS LOAD", new Date().toISOString());
 const app = document.getElementById("app");
 
