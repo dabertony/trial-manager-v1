@@ -1682,27 +1682,7 @@ function showPilots(){
     `;
   });
 
-  console.log("SHOW PILOTS - VERSION TEST IOS");
   app.innerHTML=html;
-
-setTimeout(() => {
-
-  const test = document.createElement("div");
-
-  test.innerText = "TEST VERSION IOS";
-
-  test.style.position = "fixed";
-  test.style.bottom = "10px";
-  test.style.left = "10px";
-  test.style.zIndex = "99999";
-  test.style.background = "red";
-  test.style.color = "white";
-  test.style.padding = "10px";
-  test.style.fontWeight = "bold";
-
-  document.body.appendChild(test);
-
-}, 100);
 
   setTimeout(() => {
 
@@ -6204,16 +6184,673 @@ async function printDoublePointageApresMidiPDF(){
 
 }
 
-async function exportPilotsExcel(){
+async function exportPilotsExcelPWA(){
 
-  let ok =
-    await window.api.exportExcel(
-      state.pilots
+  try{
+
+    if(typeof XLSX === "undefined"){
+
+      alert(
+        "Impossible de charger le module Excel."
+      );
+
+      return;
+
+    }
+
+    /*
+     * ================================
+     * ORDRES DE TRI
+     * ================================
+     */
+
+    const categoryOrder = [
+
+      "Elite",
+      "Elite F",
+      "Elite V",
+
+      "N1",
+      "N1 F",
+      "N1 V",
+
+      "N2",
+      "N2 F",
+      "N2 V",
+
+      "N3",
+      "N3 F",
+      "N3 V",
+
+      "N4",
+      "N4 F",
+      "N4 V",
+
+      "N5",
+      "N5 F",
+      "N5 V"
+
+    ];
+
+
+    /*
+     * ================================
+     * TRI ALPHA
+     * ================================
+     */
+
+    const alpha = [...state.pilots].sort((a,b)=>
+      (a.name || "").localeCompare(
+        b.name || ""
+      )
     );
 
-  if(ok){
+
+    /*
+     * ================================
+     * TRI PLAQUE
+     * ================================
+     */
+
+    const plaque = [...state.pilots].sort((a,b)=>{
+
+      const catDiff =
+        mainCategoryOrder.indexOf(
+          getMainCategory(a.cat)
+        )
+        -
+        mainCategoryOrder.indexOf(
+          getMainCategory(b.cat)
+        );
+
+      if(catDiff !== 0){
+        return catDiff;
+      }
+
+      const plaqueA =
+        parseInt(
+          String(a.plaque || "")
+            .replace(/[^\d]/g,"")
+        ) || 99999;
+
+      const plaqueB =
+        parseInt(
+          String(b.plaque || "")
+            .replace(/[^\d]/g,"")
+        ) || 99999;
+
+      if(plaqueA !== plaqueB){
+        return plaqueA - plaqueB;
+      }
+
+      return (a.name || "").localeCompare(
+        b.name || ""
+      );
+
+    });
+
+
+    /*
+     * ================================
+     * TRI CLUB
+     * ================================
+     */
+
+    const club = [...state.pilots].sort((a,b)=>
+
+      (a.club || "").localeCompare(
+        b.club || ""
+      )
+
+    );
+
+
+    /*
+     * ================================
+     * TRI CATÉGORIE
+     * ================================
+     */
+
+    const categorie = [...state.pilots].sort((a,b)=>{
+
+      const diff =
+        categoryOrder.indexOf(a.cat)
+        -
+        categoryOrder.indexOf(b.cat);
+
+      if(diff !== 0){
+        return diff;
+      }
+
+      return (a.name || "").localeCompare(
+        b.name || ""
+      );
+
+    });
+
+
+    /*
+     * ================================
+     * CRÉATION DU CLASSEUR
+     * ================================
+     */
+
+    const workbook =
+      XLSX.utils.book_new();
+
+
+    /*
+     * ================================
+     * COULEURS
+     * ================================
+     */
+
+    const colorMap = {
+
+      "Elite":"FACC15",
+
+      "Elite F":"EC4899",
+      "Elite V":"6B7280",
+
+      "N1":"DC2626",
+      "N1 F":"EC4899",
+      "N1 V":"6B7280",
+
+      "N2":"2563EB",
+      "N2 F":"EC4899",
+      "N2 V":"6B7280",
+
+      "N3":"16A34A",
+      "N3 F":"EC4899",
+      "N3 V":"6B7280",
+
+      "N4":"FFFFFF",
+      "N4 F":"EC4899",
+      "N4 V":"6B7280",
+
+      "N5":"EA580C",
+      "N5 F":"EC4899",
+      "N5 V":"6B7280"
+
+    };
+
+
+    /*
+     * ================================
+     * CRÉATION D'UNE FEUILLE
+     * ================================
+     */
+
+    function buildSheet(
+      name,
+      pilots
+    ){
+
+      const rows = [
+
+        [
+          "Plaque",
+          "Nom",
+          "Club",
+          "Catégorie",
+          "Licence",
+          "N° licence",
+          "Date naissance"
+        ]
+
+      ];
+
+
+      pilots.forEach(p=>{
+
+        rows.push([
+
+          p.plaque || "",
+
+          p.name || "",
+
+          p.club || "",
+
+          p.cat || "",
+
+          p.lic || "",
+
+          p.licenceNumber || "",
+
+          p.birthDate
+            ? p.birthDate
+                .split("-")
+                .reverse()
+                .join("/")
+            : ""
+
+        ]);
+
+      });
+
+
+      const sheet =
+        XLSX.utils.aoa_to_sheet(rows);
+
+
+      /*
+       * Largeurs
+       */
+
+      sheet["!cols"] = [
+
+        { wch:10 },
+        { wch:40 },
+        { wch:35 },
+        { wch:20 },
+        { wch:20 },
+        { wch:20 },
+        { wch:28 }
+
+      ];
+
+
+      /*
+       * Ligne d'en-tête
+       */
+
+      for(
+        let c = 0;
+        c < 7;
+        c++
+      ){
+
+        const cell =
+          sheet[
+            XLSX.utils.encode_cell({
+              r:0,
+              c:c
+            })
+          ];
+
+        if(cell){
+
+          cell.s = {
+
+            font:{
+              bold:true,
+              sz:16
+            },
+
+            fill:{
+              patternType:"solid",
+              fgColor:{
+                rgb:"E5E7EB"
+              }
+            },
+
+            alignment:{
+              horizontal:"center",
+              vertical:"center"
+            },
+
+            border:{
+              top:{
+                style:"medium",
+                color:{
+                  rgb:"000000"
+                }
+              },
+              bottom:{
+                style:"medium",
+                color:{
+                  rgb:"000000"
+                }
+              },
+              left:{
+                style:"medium",
+                color:{
+                  rgb:"000000"
+                }
+              },
+              right:{
+                style:"medium",
+                color:{
+                  rgb:"000000"
+                }
+              }
+            }
+
+          };
+
+        }
+
+      }
+
+
+      /*
+       * Mise en forme des lignes
+       */
+
+      for(
+        let r = 1;
+        r < rows.length;
+        r++
+      ){
+
+        for(
+          let c = 0;
+          c < 7;
+          c++
+        ){
+
+          const cell =
+            sheet[
+              XLSX.utils.encode_cell({
+                r:r,
+                c:c
+              })
+            ];
+
+          if(!cell){
+            continue;
+          }
+
+
+          cell.s = {
+
+            font:{
+              bold:true,
+              sz:14
+            },
+
+            alignment:{
+              horizontal:
+                c === 1
+                  ? "left"
+                  : "center",
+
+              vertical:"center"
+            },
+
+            border:{
+              top:{
+                style:"thin",
+                color:{
+                  rgb:"000000"
+                }
+              },
+              bottom:{
+                style:"thin",
+                color:{
+                  rgb:"000000"
+                }
+              },
+              left:{
+                style:"thin",
+                color:{
+                  rgb:"000000"
+                }
+              },
+              right:{
+                style:"thin",
+                color:{
+                  rgb:"000000"
+                }
+              }
+            }
+
+          };
+
+        }
+
+
+        /*
+         * Couleur catégorie
+         */
+
+        const category =
+          rows[r][3];
+
+        const color =
+          colorMap[category];
+
+
+        if(color){
+
+          const catCell =
+            sheet[
+              XLSX.utils.encode_cell({
+                r:r,
+                c:3
+              })
+            ];
+
+          if(catCell){
+
+            catCell.s = {
+
+              ...catCell.s,
+
+              fill:{
+                patternType:"solid",
+                fgColor:{
+                  rgb:color
+                }
+              }
+
+            };
+
+          }
+
+        }
+
+      }
+
+
+      /*
+       * Hauteur de l'en-tête
+       */
+
+      sheet["!rows"] = [
+        { hpt:30 }
+      ];
+
+
+      /*
+       * Gel de la première ligne
+       */
+
+      sheet["!freeze"] = {
+        xSplit:0,
+        ySplit:1
+      };
+
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        sheet,
+        name
+      );
+
+    }
+
+
+    /*
+     * ================================
+     * 4 FEUILLES
+     * ================================
+     */
+
+    buildSheet(
+      "Tri Alpha",
+      alpha
+    );
+
+    buildSheet(
+      "Tri Plaque",
+      plaque
+    );
+
+    buildSheet(
+      "Tri Club",
+      club
+    );
+
+    buildSheet(
+      "Tri Catégorie",
+      categorie
+    );
+
+
+    /*
+     * ================================
+     * GÉNÉRATION DU FICHIER
+     * ================================
+     */
+
+    const fileName =
+      "Pilotes.xlsx";
+
+
+    const wbout =
+      XLSX.write(
+        workbook,
+        {
+          bookType:"xlsx",
+          type:"array"
+        }
+      );
+
+
+    const blob =
+      new Blob(
+        [wbout],
+        {
+          type:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+      );
+
+
+    /*
+     * ================================
+     * PARTAGE / TÉLÉCHARGEMENT IOS
+     * ================================
+     */
+
+    const file =
+      new File(
+        [blob],
+        fileName,
+        {
+          type:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+      );
+
+
+    if(
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({
+        files:[file]
+      })
+    ){
+
+      await navigator.share({
+
+        files:[file],
+
+        title:"Pilotes.xlsx"
+
+      });
+
+    }
+    else{
+
+      const url =
+        URL.createObjectURL(blob);
+
+      const link =
+        document.createElement("a");
+
+      link.href = url;
+
+      link.download = fileName;
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      setTimeout(
+        () => URL.revokeObjectURL(url),
+        1000
+      );
+
+    }
+
 
     app.innerHTML = `
+
+<h3>
+Export terminé
+</h3>
+
+<div class="card">
+
+✅ Le fichier Excel Pilotes a été généré.
+
+<br><br>
+
+Sur iPhone / iPad, utilise le menu de partage
+pour enregistrer le fichier dans Fichiers.
+
+</div>
+
+<br>
+
+<button onclick="showPilots()">
+Retour
+</button>
+
+`;
+
+  }
+  catch(error){
+
+    console.error(
+      "Erreur export Excel PWA :",
+      error
+    );
+
+    alert(
+      "Erreur lors de la création du fichier Excel : "
+      + error.message
+    );
+
+  }
+
+}
+
+async function exportPilotsExcel(){
+
+  /*
+   * ================================
+   * ELECTRON / PC
+   * ================================
+   */
+
+  if(
+    window.api &&
+    typeof window.api.exportExcel === "function"
+  ){
+
+    let ok =
+      await window.api.exportExcel(
+        state.pilots
+      );
+
+    if(ok){
+
+      app.innerHTML = `
 
 <h3>
 Export terminé
@@ -6233,7 +6870,20 @@ Retour
 
 `;
 
+    }
+
+    return;
+
   }
+
+
+  /*
+   * ================================
+   * PWA / IPHONE / IPAD
+   * ================================
+   */
+
+  await exportPilotsExcelPWA();
 
 }
 
