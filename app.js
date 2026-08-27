@@ -6737,9 +6737,14 @@ async function exportPilotsExcelPWA(){
     const fileName =
       "Pilotes.xlsx";
 
-
+console.log("EXCELJS : génération du fichier...");
     const buffer =
       await workbook.xlsx.writeBuffer();
+
+console.log(
+  "EXCELJS : fichier généré, taille =",
+  buffer.byteLength
+);
 
 
     const blob =
@@ -6778,7 +6783,12 @@ async function exportPilotsExcelPWA(){
         }
 
       );
-
+console.log(
+  "EXCELJS : File créé =",
+  file.name,
+  file.size,
+  file.type
+);
 
     if(
 
@@ -6791,6 +6801,9 @@ async function exportPilotsExcelPWA(){
       })
 
     ){
+      console.log(
+  "EXCELJS : lancement du partage..."
+);
 
       await navigator.share({
 
