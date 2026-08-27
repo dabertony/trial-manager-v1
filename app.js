@@ -1,8 +1,3 @@
-console.log(
-  "TEST EXCELJS :",
-  typeof ExcelJS
-);
-
 console.log("APP JS LOAD", new Date().toISOString());
 const app = document.getElementById("app");
 
@@ -6193,10 +6188,10 @@ async function exportPilotsExcelPWA(){
 
   try{
 
-    if(typeof XLSX === "undefined"){
+    if(typeof ExcelJS === "undefined"){
 
       alert(
-        "Impossible de charger le module Excel."
+        "Impossible de charger le module ExcelJS."
       );
 
       return;
@@ -6245,9 +6240,11 @@ async function exportPilotsExcelPWA(){
      */
 
     const alpha = [...state.pilots].sort((a,b)=>
+
       (a.name || "").localeCompare(
         b.name || ""
       )
+
     );
 
 
@@ -6260,13 +6257,9 @@ async function exportPilotsExcelPWA(){
     const plaque = [...state.pilots].sort((a,b)=>{
 
       const catDiff =
-  categoryOrder.indexOf(
-    a.cat
-  )
-  -
-  categoryOrder.indexOf(
-    b.cat
-  );
+        categoryOrder.indexOf(a.cat)
+        -
+        categoryOrder.indexOf(b.cat);
 
       if(catDiff !== 0){
         return catDiff;
@@ -6336,12 +6329,12 @@ async function exportPilotsExcelPWA(){
 
     /*
      * ================================
-     * CRÉATION DU CLASSEUR
+     * CRÉATION DU CLASSEUR EXCELJS
      * ================================
      */
 
     const workbook =
-      XLSX.utils.book_new();
+      new ExcelJS.Workbook();
 
 
     /*
@@ -6382,324 +6375,350 @@ async function exportPilotsExcelPWA(){
 
     /*
      * ================================
-     * CRÉATION D'UNE FEUILLE
+     * CONSTRUCTION D'UNE FEUILLE
      * ================================
      */
 
-    function buildSheet(
+    function buildPilotSheetPWA(
+      workbook,
       name,
-      pilots
+      pilots,
+      colorMap
     ){
 
-      const rows = [
+      const sheet =
+        workbook.addWorksheet(name);
 
-        [
-          "Plaque",
-          "Nom",
-          "Club",
-          "Catégorie",
-          "Licence",
-          "N° licence",
-          "Date naissance"
-        ]
+
+      /*
+       * Colonnes
+       */
+
+      sheet.columns = [
+
+        {
+          header:"Plaque",
+          key:"plaque",
+          width:10
+        },
+
+        {
+          header:"Nom",
+          key:"name",
+          width:40
+        },
+
+        {
+          header:"Club",
+          key:"club",
+          width:35
+        },
+
+        {
+          header:"Catégorie",
+          key:"cat",
+          width:20
+        },
+
+        {
+          header:"Licence",
+          key:"lic",
+          width:20
+        },
+
+        {
+          header:"N° licence",
+          key:"licenceNumber",
+          width:20
+        },
+
+        {
+          header:"Date naissance",
+          key:"birthDate",
+          width:28
+        }
 
       ];
 
 
-      pilots.forEach(p=>{
+      /*
+       * Première ligne figée
+       */
 
-        rows.push([
+      sheet.views = [
+        {
+          state:"frozen",
+          ySplit:1
+        }
+      ];
 
-          p.plaque || "",
 
-          p.name || "",
+      /*
+       * Mise en page
+       */
 
-          p.club || "",
+      sheet.pageSetup = {
 
-          p.cat || "",
+        paperSize:9,
 
-          p.lic || "",
+        orientation:"portrait"
 
-          p.licenceNumber || "",
+      };
 
-          p.birthDate
-            ? p.birthDate
-                .split("-")
-                .reverse()
-                .join("/")
-            : ""
 
-        ]);
+      /*
+       * En-tête
+       */
+
+      const headerRow =
+        sheet.getRow(1);
+
+
+      headerRow.font = {
+
+        bold:true,
+
+        size:16
+
+      };
+
+
+      headerRow.alignment = {
+
+        horizontal:"center",
+
+        vertical:"middle"
+
+      };
+
+
+      headerRow.height = 30;
+
+
+      headerRow.eachCell(cell => {
+
+        cell.fill = {
+
+          type:"pattern",
+
+          pattern:"solid",
+
+          fgColor:{
+
+            argb:"E5E7EB"
+
+          }
+
+        };
+
+
+        cell.border = {
+
+          top:{
+            style:"medium"
+          },
+
+          left:{
+            style:"medium"
+          },
+
+          bottom:{
+            style:"medium"
+          },
+
+          right:{
+            style:"medium"
+          }
+
+        };
 
       });
 
 
-      const sheet =
-        XLSX.utils.aoa_to_sheet(rows);
-
-
       /*
-       * Largeurs
+       * Pilotes
        */
 
-      sheet["!cols"] = [
+      pilots.forEach(p=>{
 
-        { wch:10 },
-        { wch:40 },
-        { wch:35 },
-        { wch:20 },
-        { wch:20 },
-        { wch:20 },
-        { wch:28 }
+        const row =
+          sheet.addRow({
 
-      ];
+            plaque:
+              p.plaque || "",
+
+            name:
+              p.name || "",
+
+            club:
+              p.club || "",
+
+            cat:
+              p.cat || "",
+
+            lic:
+              p.lic || "",
+
+            licenceNumber:
+              p.licenceNumber || "",
+
+            birthDate:
+              p.birthDate
+                ? p.birthDate
+                    .split("-")
+                    .reverse()
+                    .join("/")
+                : ""
+
+          });
 
 
-      /*
-       * Ligne d'en-tête
-       */
+        /*
+         * Format monétaire existant
+         *
+         * ON LE CONSERVE VOLONTAIREMENT
+         */
 
-      for(
-        let c = 0;
-        c < 7;
-        c++
-      ){
+        row.getCell(7).numFmt =
+          '# ##0.00 €';
 
-        const cell =
-          sheet[
-            XLSX.utils.encode_cell({
-              r:0,
-              c:c
-            })
-          ];
 
-        if(cell){
+        /*
+         * Police
+         */
 
-          cell.s = {
+        row.font = {
 
-            font:{
-              bold:true,
-              sz:16
+          bold:true,
+
+          size:14
+
+        };
+
+
+        /*
+         * Alignement
+         *
+         * Nom = gauche
+         * Tout le reste = centré
+         */
+
+        row.alignment = {
+
+          horizontal:"center",
+
+          vertical:"middle"
+
+        };
+
+
+        row.getCell(2).alignment = {
+
+          horizontal:"left",
+
+          vertical:"middle"
+
+        };
+
+
+        /*
+         * Bordures
+         */
+
+        row.eachCell(cell => {
+
+          cell.border = {
+
+            top:{
+              style:"thin"
             },
 
-            fill:{
-              patternType:"solid",
-              fgColor:{
-                rgb:"E5E7EB"
-              }
+            left:{
+              style:"thin"
             },
 
-            alignment:{
-              horizontal:"center",
-              vertical:"center"
+            bottom:{
+              style:"thin"
             },
 
-            border:{
-              top:{
-                style:"medium",
-                color:{
-                  rgb:"000000"
-                }
-              },
-              bottom:{
-                style:"medium",
-                color:{
-                  rgb:"000000"
-                }
-              },
-              left:{
-                style:"medium",
-                color:{
-                  rgb:"000000"
-                }
-              },
-              right:{
-                style:"medium",
-                color:{
-                  rgb:"000000"
-                }
-              }
+            right:{
+              style:"thin"
             }
 
           };
 
-        }
-
-      }
-
-
-      /*
-       * Mise en forme des lignes
-       */
-
-      for(
-        let r = 1;
-        r < rows.length;
-        r++
-      ){
-
-        for(
-          let c = 0;
-          c < 7;
-          c++
-        ){
-
-          const cell =
-            sheet[
-              XLSX.utils.encode_cell({
-                r:r,
-                c:c
-              })
-            ];
-
-          if(!cell){
-            continue;
-          }
-
-
-          cell.s = {
-
-            font:{
-              bold:true,
-              sz:14
-            },
-
-            alignment:{
-              horizontal:
-                c === 1
-                  ? "left"
-                  : "center",
-
-              vertical:"center"
-            },
-
-            border:{
-              top:{
-                style:"thin",
-                color:{
-                  rgb:"000000"
-                }
-              },
-              bottom:{
-                style:"thin",
-                color:{
-                  rgb:"000000"
-                }
-              },
-              left:{
-                style:"thin",
-                color:{
-                  rgb:"000000"
-                }
-              },
-              right:{
-                style:"thin",
-                color:{
-                  rgb:"000000"
-                }
-              }
-            }
-
-          };
-
-        }
+        });
 
 
         /*
          * Couleur catégorie
          */
 
-        const category =
-          rows[r][3];
-
         const color =
-          colorMap[category];
+          colorMap[p.cat];
 
 
         if(color){
 
-          const catCell =
-            sheet[
-              XLSX.utils.encode_cell({
-                r:r,
-                c:3
-              })
-            ];
+          row.getCell(4).fill = {
 
-          if(catCell){
+            type:"pattern",
 
-            catCell.s = {
+            pattern:"solid",
 
-              ...catCell.s,
+            fgColor:{
 
-              fill:{
-                patternType:"solid",
-                fgColor:{
-                  rgb:color
-                }
-              }
+              argb:color
 
-            };
+            }
 
-          }
+          };
 
         }
 
-      }
+      });
 
 
-      /*
-       * Hauteur de l'en-tête
-       */
-
-      sheet["!rows"] = [
-        { hpt:30 }
-      ];
-
-
-      /*
-       * Gel de la première ligne
-       */
-
-      sheet["!freeze"] = {
-        xSplit:0,
-        ySplit:1
-      };
-
-
-      XLSX.utils.book_append_sheet(
-        workbook,
-        sheet,
-        name
-      );
+      return sheet;
 
     }
 
 
     /*
      * ================================
-     * 4 FEUILLES
+     * CRÉATION DES 4 FEUILLES
      * ================================
      */
 
-    buildSheet(
+    buildPilotSheetPWA(
+      workbook,
       "Tri Alpha",
-      alpha
+      alpha,
+      colorMap
     );
 
-    buildSheet(
+
+    buildPilotSheetPWA(
+      workbook,
       "Tri Plaque",
-      plaque
+      plaque,
+      colorMap
     );
 
-    buildSheet(
+
+    buildPilotSheetPWA(
+      workbook,
       "Tri Club",
-      club
+      club,
+      colorMap
     );
 
-    buildSheet(
+
+    buildPilotSheetPWA(
+      workbook,
       "Tri Catégorie",
-      categorie
+      categorie,
+      colorMap
     );
 
 
@@ -6713,49 +6732,58 @@ async function exportPilotsExcelPWA(){
       "Pilotes.xlsx";
 
 
-    const wbout =
-      XLSX.write(
-        workbook,
-        {
-          bookType:"xlsx",
-          type:"array"
-        }
-      );
+    const buffer =
+      await workbook.xlsx.writeBuffer();
 
 
     const blob =
       new Blob(
-        [wbout],
+
+        [buffer],
+
         {
+
           type:
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
         }
+
       );
 
 
     /*
      * ================================
-     * PARTAGE / TÉLÉCHARGEMENT IOS
+     * PARTAGE IOS / IPAD / SAFARI
      * ================================
      */
 
     const file =
       new File(
+
         [blob],
+
         fileName,
+
         {
+
           type:
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
         }
+
       );
 
 
     if(
+
       navigator.share &&
+
       navigator.canShare &&
+
       navigator.canShare({
         files:[file]
       })
+
     ){
 
       await navigator.share({
@@ -6767,17 +6795,21 @@ async function exportPilotsExcelPWA(){
       });
 
     }
+
     else{
 
       const url =
         URL.createObjectURL(blob);
 
+
       const link =
         document.createElement("a");
+
 
       link.href = url;
 
       link.download = fileName;
+
 
       document.body.appendChild(link);
 
@@ -6785,13 +6817,23 @@ async function exportPilotsExcelPWA(){
 
       link.remove();
 
+
       setTimeout(
+
         () => URL.revokeObjectURL(url),
+
         1000
+
       );
 
     }
 
+
+    /*
+     * ================================
+     * MESSAGE DE SUCCÈS
+     * ================================
+     */
 
     app.innerHTML = `
 
@@ -6814,25 +6856,39 @@ Retour
 `;
 
   }
-catch(error){
 
-  if(error.name === "AbortError"){
+  catch(error){
 
-    return;
+    /*
+     * Annulation du partage :
+     * ce n'est PAS une erreur.
+     */
+
+    if(error.name === "AbortError"){
+
+      return;
+
+    }
+
+
+    console.error(
+
+      "Erreur export Excel PWA :",
+
+      error
+
+    );
+
+
+    alert(
+
+      "Erreur lors de la création du fichier Excel : "
+      + error.message
+
+    );
 
   }
 
-  console.error(
-    "Erreur export Excel PWA :",
-    error
-  );
-
-  alert(
-    "Erreur lors de la création du fichier Excel : "
-    + error.message
-  );
-
-}
 }
 
 async function exportPilotsExcel(){
