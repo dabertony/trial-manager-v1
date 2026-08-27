@@ -6189,11 +6189,6 @@ async function exportPilotsExcelPWA(){
   try{
 
 
-  console.log(
-  "EXPORT PWA EXCELJS =",
-  typeof ExcelJS
-);
-
     if(typeof ExcelJS === "undefined"){
 
       alert(
@@ -6737,14 +6732,9 @@ async function exportPilotsExcelPWA(){
     const fileName =
       "Pilotes.xlsx";
 
-console.log("EXCELJS : génération du fichier...");
     const buffer =
       await workbook.xlsx.writeBuffer();
 
-console.log(
-  "EXCELJS : fichier généré, taille =",
-  buffer.byteLength
-);
 
 
     const blob =
@@ -6763,89 +6753,33 @@ console.log(
 
 
     /*
-     * ================================
-     * PARTAGE IOS / IPAD / SAFARI
-     * ================================
-     */
+ * ================================
+ * TÉLÉCHARGEMENT DU FICHIER
+ * ================================
+ */
 
-    const file =
-      new File(
+const url =
+  URL.createObjectURL(blob);
 
-        [blob],
+const link =
+  document.createElement("a");
 
-        fileName,
+link.href = url;
 
-        {
+link.download = fileName;
 
-          type:
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+link.style.display = "none";
 
-        }
+document.body.appendChild(link);
 
-      );
-console.log(
-  "EXCELJS : File créé =",
-  file.name,
-  file.size,
-  file.type
+link.click();
+
+link.remove();
+
+setTimeout(
+  () => URL.revokeObjectURL(url),
+  5000
 );
-
-    if(
-
-      navigator.share &&
-
-      navigator.canShare &&
-
-      navigator.canShare({
-        files:[file]
-      })
-
-    ){
-      console.log(
-  "EXCELJS : lancement du partage..."
-);
-
-      await navigator.share({
-
-        files:[file],
-
-        title:"Pilotes.xlsx"
-
-      });
-
-    }
-
-    else{
-
-      const url =
-        URL.createObjectURL(blob);
-
-
-      const link =
-        document.createElement("a");
-
-
-      link.href = url;
-
-      link.download = fileName;
-
-
-      document.body.appendChild(link);
-
-      link.click();
-
-      link.remove();
-
-
-      setTimeout(
-
-        () => URL.revokeObjectURL(url),
-
-        1000
-
-      );
-
-    }
 
 
     /*
@@ -6854,7 +6788,14 @@ console.log(
      * ================================
      */
 
-    app.innerHTML = `
+    const isIOS =
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (
+    navigator.platform === "MacIntel" &&
+    navigator.maxTouchPoints > 1
+  );
+
+app.innerHTML = `
 
 <h3>
 Export terminé
@@ -6863,6 +6804,17 @@ Export terminé
 <div class="card">
 
 ✅ Le fichier Excel Pilotes a été généré.
+
+${
+  isIOS
+    ? `
+    <br><br>
+    📱 Sur iPhone/iPad, si le fichier s'ouvre dans Safari,
+    utilisez le menu de partage puis
+    <strong>Enregistrer dans Fichiers</strong>.
+    `
+    : ""
+}
 
 </div>
 
