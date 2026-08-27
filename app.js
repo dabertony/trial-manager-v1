@@ -6798,11 +6798,6 @@ Export terminé
 
 ✅ Le fichier Excel Pilotes a été généré.
 
-<br><br>
-
-Sur iPhone / iPad, utilise le menu de partage
-pour enregistrer le fichier dans Fichiers.
-
 </div>
 
 <br>
@@ -6814,20 +6809,25 @@ Retour
 `;
 
   }
-  catch(error){
+catch(error){
 
-    console.error(
-      "Erreur export Excel PWA :",
-      error
-    );
+  if(error.name === "AbortError"){
 
-    alert(
-      "Erreur lors de la création du fichier Excel : "
-      + error.message
-    );
+    return;
 
   }
 
+  console.error(
+    "Erreur export Excel PWA :",
+    error
+  );
+
+  alert(
+    "Erreur lors de la création du fichier Excel : "
+    + error.message
+  );
+
+}
 }
 
 async function exportPilotsExcel(){
