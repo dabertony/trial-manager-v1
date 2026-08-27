@@ -6188,6 +6188,12 @@ async function exportPilotsExcelPWA(){
 
   try{
 
+
+  console.log(
+  "EXPORT PWA EXCELJS =",
+  typeof ExcelJS
+);
+
     if(typeof ExcelJS === "undefined"){
 
       alert(
