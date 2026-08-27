@@ -1,4 +1,4 @@
-const CACHE_NAME = "trial-manager-cache-v14";
+const CACHE_NAME = "trial-manager-cache-v19";
 
 const urlsToCache = [
 
@@ -15,6 +15,8 @@ const urlsToCache = [
   "./manifest.json",
 
   "./xlsx.full.min.js",
+
+  "./exceljs.min.js",
 
   "./icon-192.png",
 
@@ -86,10 +88,46 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
 
-    caches.match(event.request)
+    fetch(event.request)
+
       .then((response) => {
 
-        return response || fetch(event.request);
+        /*
+         * Si la réponse est correcte,
+         * on met à jour le cache.
+         */
+
+        if(response && response.status === 200){
+
+          const responseClone =
+            response.clone();
+
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+
+              cache.put(
+                event.request,
+                responseClone
+              );
+
+            });
+
+        }
+
+        return response;
+
+      })
+
+      .catch(() => {
+
+        /*
+         * Si Internet est indisponible,
+         * utilisation du cache.
+         */
+
+        return caches.match(
+          event.request
+        );
 
       })
 
