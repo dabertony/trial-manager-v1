@@ -6255,13 +6255,13 @@ async function exportPilotsExcelPWA(){
     const plaque = [...state.pilots].sort((a,b)=>{
 
       const catDiff =
-        mainCategoryOrder.indexOf(
-          getMainCategory(a.cat)
-        )
-        -
-        mainCategoryOrder.indexOf(
-          getMainCategory(b.cat)
-        );
+  categoryOrder.indexOf(
+    a.cat
+  )
+  -
+  categoryOrder.indexOf(
+    b.cat
+  );
 
       if(catDiff !== 0){
         return catDiff;
