@@ -7326,34 +7326,1816 @@ Continuer
 
 }
 
-async function exportParticipantsExcel(i){
+async function exportParticipantsExcelPWA(i){
 
-  let c = state.competitions[i];
+  try{
 
-  let participants = c.participants
-    .map(id => getPilotById(id))
-  .filter(p => p)
-  .map(p => ({
+    if(typeof ExcelJS === "undefined"){
 
-    ...p,
+      alert(
+        "Impossible de charger le module ExcelJS."
+      );
 
-    plaque:
-      c.participantPlates?.[p.id]
-      ??
-      p.plaque
+      return;
 
-  }));
+    }
 
-  let ok =
-    await window.api.exportParticipantsExcel({
-      participants,
-      competitionName:c.name,
-      competitionDate:c.date
-    });
 
-  if(ok){
+    const c =
+      state.competitions[i];
+
+
+    /*
+     * ================================
+     * PARTICIPANTS
+     * ================================
+     */
+
+    const participants =
+      c.participants
+        .map(id => getPilotById(id))
+        .filter(p => p)
+        .map(p => ({
+
+          ...p,
+
+          plaque:
+            c.participantPlates?.[p.id]
+            ??
+            p.plaque
+
+        }));
+
+
+    /*
+     * ================================
+     * COULEURS
+     * ================================
+     */
+
+    const colorMap = {
+
+      "Elite":"FACC15",
+
+      "Elite F":"EC4899",
+      "Elite V":"6B7280",
+
+      "N1":"DC2626",
+      "N1 F":"EC4899",
+      "N1 V":"6B7280",
+
+      "N2":"2563EB",
+      "N2 F":"EC4899",
+      "N2 V":"6B7280",
+
+      "N3":"16A34A",
+      "N3 F":"EC4899",
+      "N3 V":"6B7280",
+
+      "N4":"FFFFFF",
+      "N4 F":"EC4899",
+      "N4 V":"6B7280",
+
+      "N5":"EA580C",
+      "N5 F":"EC4899",
+      "N5 V":"6B7280"
+
+    };
+
+
+    /*
+     * ================================
+     * ORDRE CATÉGORIES
+     * ================================
+     */
+
+    const categoryOrder = [
+
+      "Elite",
+      "Elite F",
+      "Elite V",
+
+      "N1",
+      "N1 F",
+      "N1 V",
+
+      "N2",
+      "N2 F",
+      "N2 V",
+
+      "N3",
+      "N3 F",
+      "N3 V",
+
+      "N4",
+      "N4 F",
+      "N4 V",
+
+      "N5",
+      "N5 F",
+      "N5 V"
+
+    ];
+
+
+    /*
+     * ================================
+     * CLASSEUR
+     * ================================
+     */
+
+    const workbook =
+      new ExcelJS.Workbook();
+
+
+    /*
+     * ================================
+     * OUTIL : STYLE EN-TÊTE
+     * ================================
+     */
+
+    function styleHeader(sheet){
+
+      const headerRow =
+        sheet.getRow(1);
+
+
+      headerRow.font = {
+
+        bold:true,
+
+        size:16
+
+      };
+
+
+      headerRow.height = 30;
+
+
+      headerRow.alignment = {
+
+        horizontal:"center",
+
+        vertical:"middle"
+
+      };
+
+
+      headerRow.eachCell(cell => {
+
+        cell.fill = {
+
+          type:"pattern",
+
+          pattern:"solid",
+
+          fgColor:{
+            argb:"E5E7EB"
+          }
+
+        };
+
+
+        cell.border = {
+
+          top:{
+            style:"medium"
+          },
+
+          left:{
+            style:"medium"
+          },
+
+          bottom:{
+            style:"medium"
+          },
+
+          right:{
+            style:"medium"
+          }
+
+        };
+
+      });
+
+    }
+
+
+    /*
+     * ================================
+     * OUTIL : STYLE LIGNE
+     * ================================
+     */
+
+    function styleParticipantRow(
+      row,
+      categoryColumn
+    ){
+
+      row.font = {
+
+        bold:true,
+
+        size:14
+
+      };
+
+
+      row.alignment = {
+
+        horizontal:"center",
+
+        vertical:"middle"
+
+      };
+
+
+      row.getCell(2).alignment = {
+
+        horizontal:"left",
+
+        vertical:"middle"
+
+      };
+
+
+      row.eachCell(cell => {
+
+        cell.border = {
+
+          top:{
+            style:"thin"
+          },
+
+          left:{
+            style:"thin"
+          },
+
+          bottom:{
+            style:"thin"
+          },
+
+          right:{
+            style:"thin"
+          }
+
+        };
+
+      });
+
+
+      const cat =
+        row.getCell(categoryColumn).value;
+
+
+      const color =
+        colorMap[cat];
+
+
+      if(color){
+
+        row.getCell(categoryColumn).fill = {
+
+          type:"pattern",
+
+          pattern:"solid",
+
+          fgColor:{
+            argb:color
+          }
+
+        };
+
+      }
+
+    }
+
+
+    /*
+     * ================================
+     * ONGLET CLUB + ALPHA
+     * ================================
+     */
+
+    {
+
+      const sheet =
+        workbook.addWorksheet(
+          "Club + Alpha"
+        );
+
+
+      sheet.columns = [
+
+        {
+          header:"Plaque",
+          key:"plaque",
+          width:10
+        },
+
+        {
+          header:"Nom",
+          key:"name",
+          width:40
+        },
+
+        {
+          header:"Club",
+          key:"club",
+          width:35
+        },
+
+        {
+          header:"Catégorie",
+          key:"cat",
+          width:20
+        },
+
+        {
+          header:"Licence",
+          key:"lic",
+          width:20
+        },
+
+        {
+          header:"Date naissance",
+          key:"birthDate",
+          width:28
+        },
+
+        {
+          header:"Montant",
+          key:"amount",
+          width:18
+        }
+
+      ];
+
+
+      sheet.views = [
+
+        {
+          state:"frozen",
+          ySplit:1
+        }
+
+      ];
+
+
+      styleHeader(sheet);
+
+
+      const clubAlpha =
+        [...participants]
+        .sort((a,b)=>{
+
+          const clubDiff =
+            (a.club || "")
+            .localeCompare(
+              b.club || ""
+            );
+
+          if(clubDiff !== 0){
+
+            return clubDiff;
+
+          }
+
+          return (a.name || "")
+            .localeCompare(
+              b.name || ""
+            );
+
+        });
+
+
+      let currentClub = null;
+
+      let firstRowClub = null;
+
+      const totalRows = [];
+
+
+      clubAlpha.forEach(p=>{
+
+        if(
+          currentClub !== null &&
+          currentClub !== p.club
+        ){
+
+          const totalRow =
+            sheet.addRow([
+
+              "",
+              "",
+              "",
+              "",
+              "",
+              "TOTAL",
+
+              {
+
+                formula:
+                  `SUM(G${firstRowClub}:G${sheet.rowCount})`
+
+              }
+
+            ]);
+
+
+          totalRow.font = {
+
+            bold:true,
+
+            size:14,
+
+            color:{
+              argb:"FF0000"
+            }
+
+          };
+
+
+          totalRow.getCell(7).numFmt =
+            '# ##0.00 €';
+
+
+          totalRow.eachCell(cell => {
+
+            cell.border = {
+
+              top:{
+                style:"thin"
+              },
+
+              left:{
+                style:"thin"
+              },
+
+              bottom:{
+                style:"thin"
+              },
+
+              right:{
+                style:"thin"
+              }
+
+            };
+
+          });
+
+
+          totalRows.push(
+            totalRow.number
+          );
+
+
+          sheet.addRow([]);
+
+
+          firstRowClub = null;
+
+        }
+
+
+        currentClub =
+          p.club;
+
+
+        const row =
+          sheet.addRow({
+
+            plaque:
+              p.plaque || "",
+
+            name:
+              p.name || "",
+
+            club:
+              p.club || "",
+
+            cat:
+              p.cat || "",
+
+            lic:
+              p.lic || "",
+
+            birthDate:
+              p.birthDate
+                ? p.birthDate
+                    .split("-")
+                    .reverse()
+                    .join("/")
+                : "",
+
+            amount:""
+
+          });
+
+
+        if(firstRowClub === null){
+
+          firstRowClub =
+            row.number;
+
+        }
+
+
+        styleParticipantRow(
+          row,
+          4
+        );
+
+
+        row.getCell(7).numFmt =
+          '# ##0.00 €';
+
+      });
+
+
+      /*
+       * DERNIER CLUB
+       */
+
+      if(firstRowClub !== null){
+
+        const lastClubTotal =
+          sheet.addRow([
+
+            "",
+            "",
+            "",
+            "",
+            "",
+            "TOTAL",
+
+            {
+
+              formula:
+                `SUM(G${firstRowClub}:G${sheet.rowCount})`
+
+            }
+
+          ]);
+
+
+        lastClubTotal.font = {
+
+          bold:true,
+
+          size:14,
+
+          color:{
+            argb:"FF0000"
+          }
+
+        };
+
+
+        lastClubTotal.getCell(7).numFmt =
+          '# ##0.00 €';
+
+
+        lastClubTotal.eachCell(cell => {
+
+          cell.border = {
+
+            top:{
+              style:"thin"
+            },
+
+            left:{
+              style:"thin"
+            },
+
+            bottom:{
+              style:"thin"
+            },
+
+            right:{
+              style:"thin"
+            }
+
+          };
+
+        });
+
+
+        totalRows.push(
+          lastClubTotal.number
+        );
+
+
+        sheet.addRow([]);
+
+
+        /*
+         * TOTAL GÉNÉRAL
+         */
+
+        const grandTotal =
+          sheet.addRow([
+
+            "",
+            "",
+            "",
+            "",
+            "",
+            "TOTAL GÉNÉRAL",
+
+            {
+
+              formula:
+                `SUM(${
+                  totalRows
+                    .map(r => `G${r}`)
+                    .join(",")
+                })`
+
+            }
+
+          ]);
+
+
+        grandTotal.font = {
+
+          bold:true,
+
+          size:16,
+
+          color:{
+            argb:"FF0000"
+          }
+
+        };
+
+
+        grandTotal.getCell(7).numFmt =
+          '# ##0.00 €';
+
+
+        grandTotal.eachCell(cell => {
+
+          cell.border = {
+
+            top:{
+              style:"medium"
+            },
+
+            left:{
+              style:"medium"
+            },
+
+            bottom:{
+              style:"medium"
+            },
+
+            right:{
+              style:"medium"
+            }
+
+          };
+
+        });
+
+      }
+
+    }
+
+
+    /*
+     * ================================
+     * FONCTION ONGLET SIMPLE
+     * ================================
+     */
+
+    function buildSimpleSheet(
+      sheetName,
+      list
+    ){
+
+      const sheet =
+        workbook.addWorksheet(
+          sheetName
+        );
+
+
+      sheet.columns = [
+
+        {
+          header:"Plaque",
+          key:"plaque",
+          width:10
+        },
+
+        {
+          header:"Nom",
+          key:"name",
+          width:40
+        },
+
+        {
+          header:"Club",
+          key:"club",
+          width:35
+        },
+
+        {
+          header:"Catégorie",
+          key:"cat",
+          width:20
+        },
+
+        {
+          header:"Licence",
+          key:"lic",
+          width:20
+        },
+
+        {
+          header:"Date naissance",
+          key:"birthDate",
+          width:28
+        }
+
+      ];
+
+
+      sheet.views = [
+
+        {
+          state:"frozen",
+          ySplit:1
+        }
+
+      ];
+
+
+      styleHeader(sheet);
+
+
+      list.forEach(p=>{
+
+        const row =
+          sheet.addRow({
+
+            plaque:
+              p.plaque || "",
+
+            name:
+              p.name || "",
+
+            club:
+              p.club || "",
+
+            cat:
+              p.cat || "",
+
+            lic:
+              p.lic || "",
+
+            birthDate:
+              p.birthDate
+                ? p.birthDate
+                    .split("-")
+                    .reverse()
+                    .join("/")
+                : ""
+
+          });
+
+
+        styleParticipantRow(
+          row,
+          4
+        );
+
+      });
+
+    }
+
+
+    /*
+     * ================================
+     * CATÉGORIE + ALPHA
+     * ================================
+     */
+
+    const categorieAlpha =
+      [...participants]
+      .sort((a,b)=>{
+
+        const diff =
+          categoryOrder.indexOf(a.cat)
+          -
+          categoryOrder.indexOf(b.cat);
+
+
+        if(diff !== 0){
+
+          return diff;
+
+        }
+
+
+        return (a.name || "")
+          .localeCompare(
+            b.name || ""
+          );
+
+      });
+
+
+    buildSimpleSheet(
+      "Catégorie + Alpha",
+      categorieAlpha
+    );
+
+
+    /*
+     * ================================
+     * MATIN
+     * ================================
+     */
+
+    const matin =
+      participants
+      .filter(p =>
+
+        p.cat.startsWith("N4")
+        ||
+        p.cat.startsWith("N5")
+
+      )
+      .sort((a,b)=>
+
+        (a.name || "")
+          .localeCompare(
+            b.name || ""
+          )
+
+      );
+
+
+    buildSimpleSheet(
+      "Matin",
+      matin
+    );
+
+
+    /*
+     * ================================
+     * APRÈS-MIDI
+     * ================================
+     */
+
+    const apresMidi =
+      participants
+      .filter(p =>
+
+        p.cat.startsWith("Elite")
+        ||
+        p.cat.startsWith("N1")
+        ||
+        p.cat.startsWith("N2")
+        ||
+        p.cat.startsWith("N3")
+
+      )
+      .sort((a,b)=>
+
+        (a.name || "")
+          .localeCompare(
+            b.name || ""
+          )
+
+      );
+
+
+    buildSimpleSheet(
+      "Après-midi",
+      apresMidi
+    );
+
+
+    /*
+     * ================================
+     * CARTONS
+     * ================================
+     */
+
+    function buildPilotCartonsPWA(
+      sheet,
+      pilot,
+      startRow,
+      startCol
+    ){
+
+      const tours = [
+
+        {
+          nom:"TOUR 1",
+          color:"95B3D7"
+        },
+
+        {
+          nom:"TOUR 2",
+          color:"FDE9D9"
+        },
+
+        {
+          nom:"TOUR 3",
+          color:"BFBFBF"
+        }
+
+      ];
+
+
+      const catColor =
+        colorMap[pilot.cat]
+        ||
+        "FFFFFF";
+
+
+      tours.forEach(
+        (tour,index)=>{
+
+          const r =
+            startRow +
+            (index * 11);
+
+
+          sheet.getRow(r).height =
+            25;
+
+          sheet.getRow(r+1).height =
+            30;
+
+          sheet.getRow(r+2).height =
+            25;
+
+
+          for(
+            let rr=r+3;
+            rr<=r+10;
+            rr++
+          ){
+
+            sheet.getRow(rr).height =
+              25;
+
+          }
+
+
+          /*
+           * L1
+           */
+
+          sheet.mergeCells(
+            r,
+            startCol,
+            r,
+            startCol+2
+          );
+
+
+          sheet.mergeCells(
+            r,
+            startCol+3,
+            r,
+            startCol+5
+          );
+
+
+          sheet.getCell(
+            r,
+            startCol
+          ).value =
+            pilot.cat;
+
+
+          sheet.getCell(
+            r,
+            startCol+3
+          ).value =
+            tour.nom;
+
+
+          /*
+           * L2 NOM
+           */
+
+          sheet.mergeCells(
+            r+1,
+            startCol,
+            r+1,
+            startCol+5
+          );
+
+
+          sheet.getCell(
+            r+1,
+            startCol
+          ).value =
+            pilot.name;
+
+
+          sheet.getCell(
+            r+1,
+            startCol
+          ).alignment = {
+
+            horizontal:"center",
+
+            vertical:"middle",
+
+            wrapText:true
+
+          };
+
+
+          /*
+           * L3 CLUB + PLAQUE
+           */
+
+          sheet.mergeCells(
+            r+2,
+            startCol,
+            r+2,
+            startCol+3
+          );
+
+
+          sheet.mergeCells(
+            r+2,
+            startCol+4,
+            r+2,
+            startCol+5
+          );
+
+
+          sheet.getCell(
+            r+2,
+            startCol
+          ).value =
+            pilot.club || "";
+
+
+          sheet.getCell(
+            r+2,
+            startCol+4
+          ).value =
+            pilot.plaque || "";
+
+
+          /*
+           * L4 BARÈME
+           */
+
+          const headers =
+            ["0","1","2","N","3","5"];
+
+
+          for(
+            let i=0;
+            i<6;
+            i++
+          ){
+
+            sheet.getCell(
+              r+3,
+              startCol+i
+            ).value =
+              headers[i];
+
+          }
+
+
+          /*
+           * L5 → L10
+           */
+
+          for(
+            let zone=1;
+            zone<=6;
+            zone++
+          ){
+
+            sheet.getCell(
+              r+3+zone,
+              startCol+3
+            ).value =
+              String(zone);
+
+          }
+
+
+          /*
+           * TOTAL PÉNALITÉ
+           */
+
+          sheet.mergeCells(
+            r+10,
+            startCol,
+            r+10,
+            startCol+3
+          );
+
+
+          sheet.mergeCells(
+            r+10,
+            startCol+4,
+            r+10,
+            startCol+5
+          );
+
+
+          sheet.getCell(
+            r+10,
+            startCol
+          ).value =
+            "TOTAL Pénalité";
+
+
+          /*
+           * STYLE
+           */
+
+          for(
+            let rr=r;
+            rr<=r+10;
+            rr++
+          ){
+
+            for(
+              let cc=startCol;
+              cc<=startCol+5;
+              cc++
+            ){
+
+              const cell =
+                sheet.getCell(
+                  rr,
+                  cc
+                );
+
+
+              cell.font = {
+
+                bold:true,
+
+                size:11
+
+              };
+
+
+              cell.alignment = {
+
+                horizontal:"center",
+
+                vertical:"middle",
+
+                wrapText:
+                  rr === r+1
+
+              };
+
+
+              cell.border = {
+
+                top:{
+                  style:"thin"
+                },
+
+                left:{
+                  style:"thin"
+                },
+
+                right:{
+                  style:"thin"
+                },
+
+                bottom:{
+                  style:"thin"
+                }
+
+              };
+
+            }
+
+          }
+
+
+          /*
+           * COULEUR CATÉGORIE
+           */
+
+          for(
+            let cc=startCol;
+            cc<=startCol+2;
+            cc++
+          ){
+
+            sheet.getCell(
+              r,
+              cc
+            ).fill = {
+
+              type:"pattern",
+
+              pattern:"solid",
+
+              fgColor:{
+                argb:catColor
+              }
+
+            };
+
+          }
+
+
+          /*
+           * COULEUR DU TOUR
+           */
+
+          for(
+            let rr=r;
+            rr<=r+10;
+            rr++
+          ){
+
+            for(
+              let cc=startCol;
+              cc<=startCol+5;
+              cc++
+            ){
+
+              const isNom =
+                rr === r+1;
+
+
+              const isClubPlaque =
+                rr === r+2;
+
+
+              const isCategorie =
+                rr === r &&
+                cc <= startCol+2;
+
+
+              if(
+                isNom ||
+                isClubPlaque ||
+                isCategorie
+              ){
+
+                continue;
+
+              }
+
+
+              sheet.getCell(
+                rr,
+                cc
+              ).fill = {
+
+                type:"pattern",
+
+                pattern:"solid",
+
+                fgColor:{
+                  argb:tour.color
+                }
+
+              };
+
+            }
+
+          }
+
+
+          /*
+           * BORDURE EXTÉRIEURE
+           */
+
+          const firstRow = r;
+
+          const lastRow =
+            r + 10;
+
+          const firstCol =
+            startCol;
+
+          const lastCol =
+            startCol + 5;
+
+
+          for(
+            let cc=firstCol;
+            cc<=lastCol;
+            cc++
+          ){
+
+            sheet.getCell(
+              firstRow,
+              cc
+            ).border = {
+
+              ...sheet.getCell(
+                firstRow,
+                cc
+              ).border,
+
+              top:{
+                style:"medium"
+              }
+
+            };
+
+
+            sheet.getCell(
+              lastRow,
+              cc
+            ).border = {
+
+              ...sheet.getCell(
+                lastRow,
+                cc
+              ).border,
+
+              bottom:{
+                style:"medium"
+              }
+
+            };
+
+          }
+
+
+          for(
+            let rr=firstRow;
+            rr<=lastRow;
+            rr++
+          ){
+
+            sheet.getCell(
+              rr,
+              firstCol
+            ).border = {
+
+              ...sheet.getCell(
+                rr,
+                firstCol
+              ).border,
+
+              left:{
+                style:"medium"
+              }
+
+            };
+
+
+            sheet.getCell(
+              rr,
+              lastCol
+            ).border = {
+
+              ...sheet.getCell(
+                rr,
+                lastCol
+              ).border,
+
+              right:{
+                style:"medium"
+              }
+
+            };
+
+          }
+
+        }
+
+      );
+
+    }
+
+
+    function buildBlankCartonsPWA(
+      sheet,
+      startRow,
+      startCol
+    ){
+
+      buildPilotCartonsPWA(
+
+        sheet,
+
+        {
+          name:"",
+          club:"",
+          plaque:"",
+          cat:""
+        },
+
+        startRow,
+
+        startCol
+
+      );
+
+    }
+
+
+    function buildCartonsSheetPWA(
+      sheetName,
+      pilots
+    ){
+
+      const sheet =
+        workbook.addWorksheet(
+          sheetName
+        );
+
+
+      sheet.pageSetup = {
+
+        paperSize:9,
+
+        orientation:"portrait",
+
+        verticalCentered:true,
+
+        horizontalCentered:true,
+
+        margins:{
+
+          left:0,
+          right:0,
+          top:0,
+          bottom:0,
+          header:0,
+          footer:0
+
+        }
+
+      };
+
+
+      /*
+       * 27 colonnes
+       */
+
+      for(
+        let c=1;
+        c<=27;
+        c++
+      ){
+
+        sheet.getColumn(c).width =
+          (
+            c===7 ||
+            c===14 ||
+            c===21
+          )
+            ? 0.75
+            : 4.1;
+
+      }
+
+
+      let pilotIndex = 0;
+
+      let startRow = 1;
+
+
+      while(
+        pilotIndex <
+        pilots.length
+      ){
+
+        for(
+          let slot=0;
+          slot<4;
+          slot++
+        ){
+
+          if(
+            pilotIndex >=
+            pilots.length
+          ){
+
+            break;
+
+          }
+
+
+          const pilot =
+            pilots[pilotIndex];
+
+
+          let startCol;
+
+
+          if(slot===0)
+            startCol=1;
+
+          if(slot===1)
+            startCol=8;
+
+          if(slot===2)
+            startCol=15;
+
+          if(slot===3)
+            startCol=22;
+
+
+          buildPilotCartonsPWA(
+
+            sheet,
+
+            pilot,
+
+            startRow,
+
+            startCol
+
+          );
+
+
+          pilotIndex++;
+
+        }
+
+
+        startRow += 33;
+
+      }
+
+
+      /*
+       * PAGE VIERGE DE SECOURS
+       */
+
+      for(
+        let slot=0;
+        slot<4;
+        slot++
+      ){
+
+        let startCol;
+
+
+        if(slot===0)
+          startCol=1;
+
+        if(slot===1)
+          startCol=8;
+
+        if(slot===2)
+          startCol=15;
+
+        if(slot===3)
+          startCol=22;
+
+
+        buildBlankCartonsPWA(
+
+          sheet,
+
+          startRow,
+
+          startCol
+
+        );
+
+      }
+
+    }
+
+
+    buildCartonsSheetPWA(
+      "Cartons Matin",
+      matin
+    );
+
+
+    buildCartonsSheetPWA(
+      "Cartons Après-midi",
+      apresMidi
+    );
+
+
+    /*
+     * ================================
+     * GÉNÉRATION DU FICHIER
+     * ================================
+     */
+
+    const dateFR =
+      c.date
+        ? c.date
+            .split("-")
+            .reverse()
+            .join("-")
+        : "";
+
+
+    const fileName =
+      `Participants_${c.name}_${dateFR}.xlsx`
+        .replaceAll(" ","_");
+
+
+    const buffer =
+      await workbook.xlsx.writeBuffer();
+
+
+    const blob =
+      new Blob(
+
+        [buffer],
+
+        {
+
+          type:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+        }
+
+      );
+
+
+    /*
+     * ================================
+     * TÉLÉCHARGEMENT
+     * ================================
+     */
+
+    const url =
+      URL.createObjectURL(blob);
+
+
+    const link =
+      document.createElement("a");
+
+
+    link.href =
+      url;
+
+
+    link.download =
+      fileName;
+
+
+    link.style.display =
+      "none";
+
+
+    document.body.appendChild(link);
+
+
+    link.click();
+
+
+    link.remove();
+
+
+    setTimeout(
+
+      () => URL.revokeObjectURL(url),
+
+      5000
+
+    );
+
+
+    /*
+     * ================================
+     * SUCCÈS
+     * ================================
+     */
+
+    const isIOS =
+      /iPad|iPhone|iPod/.test(
+        navigator.userAgent
+      )
+      ||
+      (
+        navigator.platform === "MacIntel"
+        &&
+        navigator.maxTouchPoints > 1
+      );
+
 
     app.innerHTML = `
+
+<h3>
+Export terminé
+</h3>
+
+<div class="card">
+
+✅ Le fichier Excel Participants
+a été généré.
+
+${
+  isIOS
+    ? `
+    <br><br>
+    📱 Sur iPhone/iPad, si le fichier
+    s'ouvre dans Safari, utilisez le
+    menu de partage puis
+    <strong>Enregistrer dans Fichiers</strong>.
+    `
+    : ""
+}
+
+</div>
+
+<br>
+
+<button onclick="showExportParticipantsMenu(${i})">
+Retour
+</button>
+
+`;
+
+  }
+
+  catch(error){
+
+    if(error.name === "AbortError"){
+
+      return;
+
+    }
+
+
+    console.error(
+      "Erreur export Participants Excel PWA :",
+      error
+    );
+
+
+    alert(
+      "Erreur lors de la création du fichier Excel : "
+      +
+      error.message
+    );
+
+  }
+
+}
+
+async function exportParticipantsExcel(i){
+
+  /*
+   * ================================
+   * ELECTRON / PC
+   * ================================
+   */
+
+  if(
+    window.api &&
+    typeof window.api.exportParticipantsExcel === "function"
+  ){
+
+    let c =
+      state.competitions[i];
+
+
+    let participants =
+      c.participants
+        .map(id => getPilotById(id))
+        .filter(p => p)
+        .map(p => ({
+
+          ...p,
+
+          plaque:
+            c.participantPlates?.[p.id]
+            ??
+            p.plaque
+
+        }));
+
+
+    let ok =
+      await window.api.exportParticipantsExcel({
+
+        participants,
+
+        competitionName:
+          c.name,
+
+        competitionDate:
+          c.date
+
+      });
+
+
+    if(ok){
+
+      app.innerHTML = `
 
 <h3>
 Export terminé
@@ -7373,7 +9155,20 @@ Retour
 
 `;
 
+    }
+
+    return;
+
   }
+
+
+  /*
+   * ================================
+   * PWA
+   * ================================
+   */
+
+  await exportParticipantsExcelPWA(i);
 
 }
 
