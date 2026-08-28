@@ -5741,11 +5741,9 @@ async function printResults(){
     `Resultats_${safeName}_${safeDate}${suffix}.pdf`;
 
 
-  /*
-   * ================================
-   * ELECTRON
-   * ================================
-   */
+  // ================================
+  // ELECTRON
+  // ================================
 
   if(
     window.api &&
@@ -5755,7 +5753,6 @@ async function printResults(){
     await window.api.exportPDF({
 
       fileName,
-
       landscape:true
 
     });
@@ -5765,13 +5762,24 @@ async function printResults(){
   }
 
 
-  /*
-   * ================================
-   * PWA
-   * ================================
-   */
+  // ================================
+  // PWA / NAVIGATEUR
+  // ================================
 
-  printPDFPWA(fileName);
+  if(
+    typeof window.print === "function"
+  ){
+
+    printPDFPWA(fileName);
+
+    return;
+
+  }
+
+
+  alert(
+    "L'export PDF n'est pas disponible sur cet appareil."
+  );
 
 }
 
