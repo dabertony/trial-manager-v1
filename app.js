@@ -5680,33 +5680,98 @@ function showChampionship(jokers){
   app.innerHTML=html;
 }
 
+function printPDFPWA(fileName){
+
+  const oldTitle =
+    document.title;
+
+  document.title =
+    fileName.replace(/\.pdf$/i,"");
+
+  const restoreTitle = () => {
+
+    document.title =
+      oldTitle;
+
+    window.removeEventListener(
+      "afterprint",
+      restoreTitle
+    );
+
+  };
+
+  window.addEventListener(
+    "afterprint",
+    restoreTitle
+  );
+
+  window.print();
+
+}
+
 async function printResults(){
 
-  const info = window.currentExportInfo;
+  const info =
+    window.currentExportInfo;
 
   if(!info){
+
     return;
+
   }
 
-  const safeName = info.name
-    .replace(/[\\/:*?"<>|]/g,"_")
-    .replace(/\s+/g,"_");
+
+  const safeName =
+    info.name
+      .replace(/[\\/:*?"<>|]/g,"_")
+      .replace(/\s+/g,"_");
+
 
   const safeDate =
     formatDateForFile(info.date);
+
 
   const suffix =
     info.intermediaire
       ? "_INTERMEDIAIRE"
       : "";
 
-  await window.api.exportPDF({
 
-    fileName:
-      `Resultats_${safeName}_${safeDate}${suffix}.pdf`,
-    landscape:true
+  const fileName =
+    `Resultats_${safeName}_${safeDate}${suffix}.pdf`;
 
-  });
+
+  /*
+   * ================================
+   * ELECTRON
+   * ================================
+   */
+
+  if(
+    window.api &&
+    typeof window.api.exportPDF === "function"
+  ){
+
+    await window.api.exportPDF({
+
+      fileName,
+
+      landscape:true
+
+    });
+
+    return;
+
+  }
+
+
+  /*
+   * ================================
+   * PWA
+   * ================================
+   */
+
+  printPDFPWA(fileName);
 
 }
 
