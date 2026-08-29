@@ -504,8 +504,7 @@ th{
 }
 
   @page{
-  size: A4 landscape;
-  margin:5mm;
+    margin:5mm;
 }
   body{
   margin:0;
