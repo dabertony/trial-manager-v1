@@ -6296,16 +6296,52 @@ async function printDoublePointageMatinPDF(){
     return;
   }
 
-  let dateFR =
+  const dateFR =
     formatDateForFile(info.competitionDate);
 
-  await window.api.exportPDF({
+  const fileName =
+    `Double_Pointage_Matin_${info.competitionName}_${dateFR}.pdf`;
 
-    fileName:
-`Double_Pointage_Matin_${info.competitionName}_${dateFR}.pdf`,
-landscape:false
 
-  });
+  // ================================
+  // ELECTRON
+  // ================================
+
+  if(
+    window.api &&
+    typeof window.api.exportPDF === "function"
+  ){
+
+    await window.api.exportPDF({
+
+      fileName,
+      landscape:false
+
+    });
+
+    return;
+
+  }
+
+
+  // ================================
+  // PWA / NAVIGATEUR
+  // ================================
+
+  if(
+    typeof window.print === "function"
+  ){
+
+    printPDFPWA(fileName);
+
+    return;
+
+  }
+
+
+  alert(
+    "L'export PDF n'est pas disponible sur cet appareil."
+  );
 
 }
 
@@ -6318,16 +6354,52 @@ async function printDoublePointageApresMidiPDF(){
     return;
   }
 
-  let dateFR =
+  const dateFR =
     formatDateForFile(info.competitionDate);
 
-  await window.api.exportPDF({
+  const fileName =
+    `Double_Pointage_Apres_Midi_${info.competitionName}_${dateFR}.pdf`;
 
-    fileName:
-`Double_Pointage_Apres_Midi_${info.competitionName}_${dateFR}.pdf`,
-    landscape:false
 
-  });
+  // ================================
+  // ELECTRON
+  // ================================
+
+  if(
+    window.api &&
+    typeof window.api.exportPDF === "function"
+  ){
+
+    await window.api.exportPDF({
+
+      fileName,
+      landscape:false
+
+    });
+
+    return;
+
+  }
+
+
+  // ================================
+  // PWA / NAVIGATEUR
+  // ================================
+
+  if(
+    typeof window.print === "function"
+  ){
+
+    printPDFPWA(fileName);
+
+    return;
+
+  }
+
+
+  alert(
+    "L'export PDF n'est pas disponible sur cet appareil."
+  );
 
 }
 
