@@ -6014,19 +6014,56 @@ if(veteranList.length){
 
 async function printChampionshipPDF(){
 
-  const info = window.currentExportInfo;
+  const info =
+    window.currentExportInfo;
 
   if(!info){
     return;
   }
 
-  await window.api.exportPDF({
+  const fileName =
+    `Classement_Championnat_UFOLEP_${info.startYear}-${info.endYear}.pdf`;
 
-    fileName:
-      `Classement_Championnat_UFOLEP_${info.startYear}-${info.endYear}.pdf`,
+
+  // ================================
+  // ELECTRON
+  // ================================
+
+  if(
+    window.api &&
+    typeof window.api.exportPDF === "function"
+  ){
+
+    await window.api.exportPDF({
+
+      fileName,
       landscape:true
 
-  });
+    });
+
+    return;
+
+  }
+
+
+  // ================================
+  // PWA / NAVIGATEUR
+  // ================================
+
+  if(
+    typeof window.print === "function"
+  ){
+
+    printPDFPWA(fileName);
+
+    return;
+
+  }
+
+
+  alert(
+    "L'export PDF n'est pas disponible sur cet appareil."
+  );
 
 }
 
