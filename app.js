@@ -6234,19 +6234,56 @@ window.currentExportInfo = {
 
 async function printClubPDF(){
 
-  const info = window.currentExportInfo;
+  const info =
+    window.currentExportInfo;
 
   if(!info){
     return;
   }
 
-  await window.api.exportPDF({
+  const fileName =
+    `Classement_Clubs_${info.startYear}-${info.endYear}.pdf`;
 
-    fileName:
-      `Classement_Clubs_${info.startYear}-${info.endYear}.pdf`,
+
+  // ================================
+  // ELECTRON
+  // ================================
+
+  if(
+    window.api &&
+    typeof window.api.exportPDF === "function"
+  ){
+
+    await window.api.exportPDF({
+
+      fileName,
       landscape:true
 
-  });
+    });
+
+    return;
+
+  }
+
+
+  // ================================
+  // PWA / NAVIGATEUR
+  // ================================
+
+  if(
+    typeof window.print === "function"
+  ){
+
+    printPDFPWA(fileName);
+
+    return;
+
+  }
+
+
+  alert(
+    "L'export PDF n'est pas disponible sur cet appareil."
+  );
 
 }
 
