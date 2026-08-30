@@ -82,8 +82,13 @@ function askForm(title, fields){
         `).join("")}
       </div>
 
-      <button id="submitFormBtn">Valider</button>
-      <button class="delete" id="cancelFormBtn">Annuler</button>
+      <button class="pilots-save" id="submitFormBtn">
+        Valider
+      </button>
+
+      <button class="comp-close" id="cancelFormBtn">
+        Annuler
+      </button>
     `;
 
     setTimeout(() => {
@@ -739,7 +744,7 @@ function home(){
 
     <div
       class="home-action"
-      onclick="showChampionshipChoice()"
+      onclick="showChampionship(0)"
     >
 
       <div class="home-action-icon">
@@ -943,10 +948,22 @@ function home(){
       </div>
 
       <div class="home-empty-text">
+
+  ${
+    finishedCompetitions.length === 0
+      ? `
         La saison est prête à démarrer.
         <br>
         Créez une nouvelle compétition pour commencer.
-      </div>
+      `
+      : `
+        La saison est déjà commencée.
+        <br>
+        Créez une nouvelle compétition pour poursuivre la saison.
+      `
+  }
+
+</div>
 
     </div>
 
@@ -1008,29 +1025,30 @@ function home(){
           "
         >
 
-          <button
-            onclick="
-              event.stopPropagation();
-              editCompetition(${i});
-            "
-          >
+<button
+  class="comp-edit"
+  onclick="
+    event.stopPropagation();
+    editCompetition(${i});
+  "
+>
 
-            ⚙ Modifier infos
+  ⚙ Modifier infos
 
-          </button>
+</button>
 
 
-          <button
-            class="comp-delete"
-            onclick="
-              event.stopPropagation();
-              deleteCompetition(${i});
-            "
-          >
+<button
+  class="comp-delete"
+  onclick="
+    event.stopPropagation();
+    deleteCompetition(${i});
+  "
+>
 
-            X
+  ✕
 
-          </button>
+</button>
 
         </div>
 
@@ -1085,11 +1103,11 @@ function home(){
 
 
         <div
-          class="menu-card"
-          onclick="lockCompetition(${i})"
-        >
-          ✔ VALIDER LA COMPÉTITION
-        </div>
+  class="menu-card menu-card-validation"
+  onclick="lockCompetition(${i})"
+>
+  ✔ VALIDER LA COMPÉTITION
+</div>
 
 
         <div
@@ -1108,17 +1126,18 @@ function home(){
           "
         >
 
-          <button
-            onclick="
-              event.stopPropagation();
+<button
+  class="comp-close"
+  onclick="
+    event.stopPropagation();
 
-              state.ui.openCompetition=null;
+    state.ui.openCompetition=null;
 
-              home();
-            "
-          >
-            Fermer
-          </button>
+    home();
+  "
+>
+  Fermer
+</button>
 
         </div>
 
@@ -1233,9 +1252,9 @@ function home(){
 
             ${c.name}
 
-            <span class="locked-badge">
-              🔒 TERMINÉE
-            </span>
+            <span class="competition-finished-badge">
+  🔒 Terminée
+</span>
 
           </div>
 
@@ -1258,37 +1277,38 @@ function home(){
         </div>
 
 
-        <div>
+<div>
 
-          <button
-            onclick="
-              event.stopPropagation();
+  <button
+    class="competition-view-btn"
+    onclick="
+      event.stopPropagation();
 
-              state.ui.openCompetition = ${i};
+      state.ui.openCompetition = ${i};
 
-              home();
+      home();
 
-              setTimeout(() => {
+      setTimeout(() => {
 
-                const card =
-                  document.getElementById('finished-${i}');
+        const card =
+          document.getElementById('finished-${i}');
 
-                if(card){
+        if(card){
 
-                  card.scrollIntoView({
-                    behavior:'smooth',
-                    block:'center'
-                  });
+          card.scrollIntoView({
+            behavior:'smooth',
+            block:'center'
+          });
 
-                }
+        }
 
-              }, 50);
-            "
-          >
-            Voir
-          </button>
+      }, 50);
+    "
+  >
+    👁 Voir
+  </button>
 
-        </div>
+</div>
 
       </div>
 
@@ -1341,11 +1361,11 @@ function home(){
 
 
         <div
-          class="menu-card"
-          onclick="unlockCompetition(${i})"
-        >
-          🔓 DÉVERROUILLER
-        </div>
+  class="menu-card menu-card-unlock"
+  onclick="unlockCompetition(${i})"
+>
+  🔓 DÉVERROUILLER
+</div>
 
 
         <div
@@ -1365,16 +1385,17 @@ function home(){
         >
 
           <button
-            onclick="
-              event.stopPropagation();
+  class="comp-close"
+  onclick="
+    event.stopPropagation();
 
-              state.ui.openCompetition=null;
+    state.ui.openCompetition=null;
 
-              home();
-            "
-          >
-            Fermer
-          </button>
+    home();
+  "
+>
+  Fermer
+</button>
 
         </div>
 
@@ -1429,562 +1450,642 @@ function home(){
 
 function showCompetitionInfo(i){
 
-let c = state.competitions[i];
+  let c = state.competitions[i];
 
-const levels = [
-  "Elite",
-  "N1",
-  "N2",
-  "N3",
-  "N4",
-  "N5"
-];
+  const levels = [
+    "Elite",
+    "N1",
+    "N2",
+    "N3",
+    "N4",
+    "N5"
+  ];
 
-let stats = buildStats(c);
+  let stats = buildStats(c);
 
-let html = `
+  let html = `
 
-<div class="topbar">
+  <div class="info-page">
 
-<div class="topbar-title">
-Infos compétition
-</div>
+    <div class="info-header">
 
-<div class="topbar-actions">
+      <div class="info-header-title">
 
-<button onclick="returnCompetitionMenu()">
-Retour
-</button>
+        <h2>Infos compétition</h2>
 
-</div>
+        <span>
+          Informations et état de l'épreuve
+        </span>
 
-</div>
+      </div>
 
-<div class="info-grid">
+      <button
+        class="info-back"
+        onclick="returnCompetitionMenu()">
+        ← Retour
+      </button>
 
-`;
+    </div>
 
 
-// ===== PARTICIPANTS =====
+    <!-- ============================= -->
+    <!-- IDENTITÉ COMPÉTITION -->
+    <!-- ============================= -->
 
-html += `
+    <div class="info-competition-card">
 
-<div class="info-card">
+      <div class="info-competition-icon">
+        🏁
+      </div>
 
-<h3>Participants</h3>
+      <div>
 
-`;
+        <div class="info-competition-name">
+          ${c.name}
+        </div>
 
-let totalF = 0;
-let totalV = 0;
+        <div class="info-competition-meta">
 
-levels.forEach(level=>{
+          📅
+          ${
+            c.date
+              ? c.date.split("-").reverse().join("/")
+              : "Date inconnue"
+          }
 
-let count = c.participants.filter(id=>{
+          &nbsp;&nbsp;•&nbsp;&nbsp;
 
-let p = getPilotById(id);
+          🏁 ${c.tours} tours
 
-return p && p.cat.startsWith(level);
+          &nbsp;&nbsp;•&nbsp;&nbsp;
 
-}).length;
+          🎯 ${c.zones} zones
 
-html += `
+        </div>
 
-<div class="info-line">
+      </div>
 
-<span class="info-label">${level}</span>
+    </div>
 
-<span>:</span>
 
-<b>${count}</b>
+    <div class="info-grid">
 
-</div>
+  `;
 
-`;
 
-});
+  // =====================================================
+  // PARTICIPANTS
+  // =====================================================
 
-totalF = c.participants.filter(id=>{
+  html += `
 
-let p = getPilotById(id);
+    <div class="info-card">
 
-return p && p.cat.includes(" F");
+      <div class="info-card-title">
+        👥 Participants
+      </div>
 
-}).length;
+      <div class="info-card-subtitle">
+        Répartition des pilotes engagés
+      </div>
 
-totalV = c.participants.filter(id=>{
+  `;
 
-let p = getPilotById(id);
+  let totalF = 0;
+  let totalV = 0;
 
-return p && p.cat.includes(" V");
+  levels.forEach(level=>{
 
-}).length;
+    let count = c.participants.filter(id=>{
 
-html += `
+      let p = getPilotById(id);
 
-<br>
+      return p && p.cat.startsWith(level);
 
-<div>Féminines : <b>${totalF}</b></div>
+    }).length;
 
-<div>Vétérans : <b>${totalV}</b></div>
+    html += `
 
-<br>
+      <div class="info-line">
 
-<div>
-TOTAL : <b>${c.participants.length}</b>
-</div>
+        <span class="info-label">
+          ${level}
+        </span>
 
-</div>
+        <b>${count}</b>
 
-`;
+      </div>
 
+    `;
 
-// ===== ABANDONS =====
+  });
 
-html += `
+  totalF = c.participants.filter(id=>{
 
-<div class="info-card">
+    let p = getPilotById(id);
 
-<h3>Abandons</h3>
+    return p && p.cat.includes(" F");
 
-`;
+  }).length;
 
-let totalAB = 0;
+  totalV = c.participants.filter(id=>{
 
-levels.forEach(level=>{
+    let p = getPilotById(id);
 
-let count = c.participants.filter(id=>{
+    return p && p.cat.includes(" V");
 
-let p = getPilotById(id);
+  }).length;
 
-return p
-&& p.cat.startsWith(level)
-&& c.status[id] === "AB";
+  html += `
 
-}).length;
+      <div class="info-divider"></div>
 
-totalAB += count;
+      <div class="info-line">
 
-html += `
+        <span class="info-label">
+          Féminines
+        </span>
 
-<div class="info-line">
+        <b>${totalF}</b>
 
-<span class="info-label">${level}</span>
+      </div>
 
-<span>:</span>
+      <div class="info-line">
 
-<b>${count}</b>
+        <span class="info-label">
+          Vétérans
+        </span>
 
-</div>
+        <b>${totalV}</b>
 
-`;
+      </div>
 
-});
+      <div class="info-total">
 
-html += `
+        <span>TOTAL</span>
 
-<br>
+        <b>${c.participants.length}</b>
 
-<div>
-TOTAL : <b>${totalAB}</b>
-</div>
+      </div>
 
-</div>
+    </div>
 
-`;
+  `;
 
 
-// ===== DEPARTAGES =====
+  // =====================================================
+  // ABANDONS
+  // =====================================================
 
-html += `
+  html += `
 
-<div class="info-card">
+    <div class="info-card">
 
-<h3>Départages</h3>
+      <div class="info-card-title">
+        🟥 Abandons
+      </div>
 
-`;
+      <div class="info-card-subtitle">
+        Pilotes ayant abandonné l'épreuve
+      </div>
 
-// ===== TABLEAUX PRINCIPAUX =====
+  `;
 
-levels.forEach(level=>{
+  let totalAB = 0;
 
-let groupCats =
-level === "Elite"
-? ["Elite","Elite F"]
-: [level, level + " F"];
+  levels.forEach(level=>{
 
-let catStats = stats.filter(p=>
-groupCats.includes(p.cat)
-);
+    let count = c.participants.filter(id=>{
 
-let groups = {};
+      let p = getPilotById(id);
 
-catStats.forEach(p=>{
+      return p
+        && p.cat.startsWith(level)
+        && c.status[id] === "AB";
 
-let key = equalityKey(p);
+    }).length;
 
-if(!groups[key]){
-groups[key] = [];
-}
+    totalAB += count;
 
-groups[key].push(p);
+    html += `
 
-});
+      <div class="info-line">
 
-let totalTieGroups = 0;
-let resolvedTieGroups = 0;
+        <span class="info-label">
+          ${level}
+        </span>
 
-Object.values(groups).forEach(group=>{
+        <b>${count}</b>
 
-if(group.length <= 1){
-return;
-}
+      </div>
 
-let validGroup = group.every(p=>
-p.completed &&
-p.status !== "AB"
-);
+    `;
 
-if(!validGroup){
-return;
-}
+  });
 
-totalTieGroups++;
+  html += `
 
-let ids = group
-.map(p=>p.id)
-.sort();
+      <div class="info-total">
 
-let tieKey =
-level.toUpperCase()
-+ "-"
-+ ids.join("-");
+        <span>TOTAL</span>
 
-if(c.tiebreaks[tieKey]){
-resolvedTieGroups++;
-}
+        <b>${totalAB}</b>
 
-});
+      </div>
 
-let icon =
-(totalTieGroups === 0 ||
-resolvedTieGroups === totalTieGroups)
-? "🟩"
-: "🟨";
+    </div>
 
-let value =
-totalTieGroups === 0
-? "Aucun"
-: `${resolvedTieGroups}/${totalTieGroups}`;
+  `;
 
-html += `
 
-<div class="info-line">
+  // =====================================================
+  // DEPARTAGES
+  // =====================================================
 
-<span>${icon}</span>
+  html += `
 
-<span class="info-label">
-${level}
-</span>
+    <div class="info-card">
 
-<span>:</span>
+      <div class="info-card-title">
+        ⚖️ Départages
+      </div>
 
-<b>${value}</b>
+      <div class="info-card-subtitle">
+        Égalités nécessitant un départage manuel
+      </div>
 
-</div>
+  `;
 
-`;
 
-});
+  levels.forEach(level=>{
 
+    let groupCats =
+      level === "Elite"
+        ? ["Elite","Elite F"]
+        : [level, level + " F"];
 
-// ===== FEMININ =====
+    let catStats = stats.filter(p=>
+      groupCats.includes(p.cat)
+    );
 
-let femaleGroups = {};
+    let groups = {};
 
-stats
-.filter(p=>
-categoryOrderFemale[p.cat] !== undefined
-)
-.forEach(p=>{
+    catStats.forEach(p=>{
 
-let key =
-p.cat + "-" + equalityKey(p);
+      let key = equalityKey(p);
 
-if(!femaleGroups[key]){
-femaleGroups[key] = [];
-}
+      if(!groups[key]){
+        groups[key] = [];
+      }
 
-femaleGroups[key].push(p);
+      groups[key].push(p);
 
-});
+    });
 
-let femaleTotal = 0;
-let femaleResolved = 0;
+    let totalTieGroups = 0;
+    let resolvedTieGroups = 0;
 
-Object.values(femaleGroups).forEach(group=>{
+    Object.values(groups).forEach(group=>{
 
-if(group.length <= 1){
-return;
-}
+      if(group.length <= 1){
+        return;
+      }
 
-let validGroup = group.every(p=>
-p.completed &&
-p.status !== "AB"
-);
+      let validGroup = group.every(p=>
+        p.completed &&
+        p.status !== "AB"
+      );
 
-if(!validGroup){
-return;
-}
+      if(!validGroup){
+        return;
+      }
 
-femaleTotal++;
+      totalTieGroups++;
 
-let ids = group
-.map(p=>p.id)
-.sort();
+      let ids = group
+        .map(p=>p.id)
+        .sort();
 
-let tieKey =
-group[0].cat.toUpperCase()
-+ "-"
-+ ids.join("-");
+      let tieKey =
+        level.toUpperCase()
+        + "-"
+        + ids.join("-");
 
-if(c.tiebreaks[tieKey]){
-femaleResolved++;
-}
+      if(c.tiebreaks[tieKey]){
+        resolvedTieGroups++;
+      }
 
-});
+    });
 
-html += `
+    let icon =
+      (
+        totalTieGroups === 0 ||
+        resolvedTieGroups === totalTieGroups
+      )
+        ? "🟩"
+        : "🟨";
 
-<div class="info-line">
+    let value =
+      totalTieGroups === 0
+        ? "Aucun"
+        : `${resolvedTieGroups}/${totalTieGroups}`;
 
-<span>
-${(femaleTotal === 0 || femaleResolved === femaleTotal)
-? "🟩"
-: "🟨"}
-</span>
+    html += `
 
-<span class="info-label">
-FEM
-</span>
+      <div class="info-line">
 
-<span>:</span>
+        <span class="info-status">
+          ${icon}
+        </span>
 
-<b>
-${femaleTotal === 0
-? "Aucun"
-: `${femaleResolved}/${femaleTotal}`}
-</b>
+        <span class="info-label">
+          ${level}
+        </span>
 
-</div>
+        <b>${value}</b>
 
-`;
+      </div>
 
+    `;
 
-// ===== VETERANS =====
+  });
 
-let veteranGroups = {};
 
-stats
-.filter(p=>p.cat.includes(" V"))
-.forEach(p=>{
+  // ===== FEMININ =====
 
-let key =
-p.cat + "-" + equalityKey(p);
+  let femaleGroups = {};
 
-if(!veteranGroups[key]){
-veteranGroups[key] = [];
-}
+  stats
+    .filter(p=>
+      categoryOrderFemale[p.cat] !== undefined
+    )
+    .forEach(p=>{
 
-veteranGroups[key].push(p);
+      let key =
+        p.cat + "-" + equalityKey(p);
 
-});
+      if(!femaleGroups[key]){
+        femaleGroups[key] = [];
+      }
 
-let veteranTotal = 0;
-let veteranResolved = 0;
+      femaleGroups[key].push(p);
 
-Object.values(veteranGroups).forEach(group=>{
+    });
 
-if(group.length <= 1){
-return;
-}
+  let femaleTotal = 0;
+  let femaleResolved = 0;
 
-let validGroup = group.every(p=>
-p.completed &&
-p.status !== "AB"
-);
+  Object.values(femaleGroups).forEach(group=>{
 
-if(!validGroup){
-return;
-}
+    if(group.length <= 1){
+      return;
+    }
 
-veteranTotal++;
+    let validGroup = group.every(p=>
+      p.completed &&
+      p.status !== "AB"
+    );
 
-let ids = group
-.map(p=>p.id)
-.sort();
+    if(!validGroup){
+      return;
+    }
 
-let tieKey =
-group[0].cat.toUpperCase()
-+ "-"
-+ ids.join("-");
+    femaleTotal++;
 
-if(c.tiebreaks[tieKey]){
-veteranResolved++;
-}
+    let ids = group
+      .map(p=>p.id)
+      .sort();
 
-});
+    let tieKey =
+      group[0].cat.toUpperCase()
+      + "-"
+      + ids.join("-");
 
-html += `
+    if(c.tiebreaks[tieKey]){
+      femaleResolved++;
+    }
 
-<div class="info-line">
+  });
 
-<span>
-${(veteranTotal === 0 || veteranResolved === veteranTotal)
-? "🟩"
-: "🟨"}
-</span>
+  html += `
 
-<span class="info-label">
-VET
-</span>
+      <div class="info-line">
 
-<span>:</span>
+        <span class="info-status">
+          ${
+            (
+              femaleTotal === 0 ||
+              femaleResolved === femaleTotal
+            )
+              ? "🟩"
+              : "🟨"
+          }
+        </span>
 
-<b>
-${veteranTotal === 0
-? "Aucun"
-: `${veteranResolved}/${veteranTotal}`}
-</b>
+        <span class="info-label">
+          FEM
+        </span>
 
-</div>
+        <b>
+          ${
+            femaleTotal === 0
+              ? "Aucun"
+              : `${femaleResolved}/${femaleTotal}`
+          }
+        </b>
 
-</div>
+      </div>
 
-`;
+  `;
 
 
-// ===== COMPETITION =====
+  // ===== VETERANS =====
 
-html += `
+  let veteranGroups = {};
 
-<div class="info-card">
+  stats
+    .filter(p=>p.cat.includes(" V"))
+    .forEach(p=>{
 
-<h3>Compétition</h3>
+      let key =
+        p.cat + "-" + equalityKey(p);
 
-<div style="margin:8px 0">
-<b>${c.name}</b>
-</div>
+      if(!veteranGroups[key]){
+        veteranGroups[key] = [];
+      }
 
-<div style="margin:8px 0">
-📅 ${
-  c.date
-    ? c.date.split("-").reverse().join("/")
-    : "Date inconnue"
-}
-</div>
+      veteranGroups[key].push(p);
 
-<div style="margin:8px 0">
-🏁 ${c.tours} tours
-</div>
+    });
 
-<div style="margin:8px 0">
-🎯 ${c.zones} zones
-</div>
+  let veteranTotal = 0;
+  let veteranResolved = 0;
 
-</div>
+  Object.values(veteranGroups).forEach(group=>{
 
-`;
+    if(group.length <= 1){
+      return;
+    }
 
+    let validGroup = group.every(p=>
+      p.completed &&
+      p.status !== "AB"
+    );
 
-// ===== TOURS =====
+    if(!validGroup){
+      return;
+    }
 
-for(let t=1;t<=c.tours;t++){
+    veteranTotal++;
 
-html += `
+    let ids = group
+      .map(p=>p.id)
+      .sort();
 
-<div class="info-card">
+    let tieKey =
+      group[0].cat.toUpperCase()
+      + "-"
+      + ids.join("-");
 
-<h3>Tour ${t}</h3>
+    if(c.tiebreaks[tieKey]){
+      veteranResolved++;
+    }
 
-`;
+  });
 
-levels.forEach(level=>{
+  html += `
 
-let pilots = c.participants.filter(id=>{
+      <div class="info-line">
 
-let p = getPilotById(id);
+        <span class="info-status">
+          ${
+            (
+              veteranTotal === 0 ||
+              veteranResolved === veteranTotal
+            )
+              ? "🟩"
+              : "🟨"
+          }
+        </span>
 
-return p && p.cat.startsWith(level);
+        <span class="info-label">
+          VET
+        </span>
 
-});
+        <b>
+          ${
+            veteranTotal === 0
+              ? "Aucun"
+              : `${veteranResolved}/${veteranTotal}`
+          }
+        </b>
 
-let total = pilots.length;
+      </div>
 
-let done = pilots.filter(id=>{
+    </div>
 
-if(c.status[id] === "AB"){
-return true;
-}
+  `;
 
-return !!c.scores[id+"-"+t];
 
-}).length;
+  // =====================================================
+  // TOURS
+  // =====================================================
 
-let missing = total - done;
+  for(let t=1;t<=c.tours;t++){
 
-let icon = "🟥";
+    html += `
 
-if(done === total){
-icon = "🟩";
-}
-else if(done > 0){
-icon = "🟨";
-}
+      <div class="info-card info-tour-card">
 
-html += `
+        <div class="info-card-title">
+          🏁 Tour ${t}
+        </div>
 
-<div class="info-line">
+        <div class="info-card-subtitle">
+          État de la saisie
+        </div>
 
-<span>
-${icon}
-</span>
+    `;
 
-<span class="info-label">
-${level}
-</span>
+    levels.forEach(level=>{
 
-<span>:</span>
+      let pilots = c.participants.filter(id=>{
 
-<b>${done}/${total}</b>
+        let p = getPilotById(id);
 
-${missing > 0
-? ` (${missing})`
-: ""
-}
+        return p && p.cat.startsWith(level);
 
-</div>
+      });
 
-`;
+      let total = pilots.length;
 
-});
+      let done = pilots.filter(id=>{
 
-html += `
+        if(c.status[id] === "AB"){
+          return true;
+        }
 
-</div>
+        return !!c.scores[id+"-"+t];
 
-`;
+      }).length;
 
-}
+      let missing = total - done;
 
-html += `
+      let icon = "🟥";
 
-</div>
+      if(done === total){
+        icon = "🟩";
+      }
+      else if(done > 0){
+        icon = "🟨";
+      }
 
-`;
+      html += `
 
-app.innerHTML = html;
+        <div class="info-line">
 
+          <span class="info-status">
+            ${icon}
+          </span>
+
+          <span class="info-label">
+            ${level}
+          </span>
+
+          <b>
+            ${done}/${total}
+          </b>
+
+          ${
+            missing > 0
+              ? `<span class="info-missing">(${missing})</span>`
+              : ""
+          }
+
+        </div>
+
+      `;
+
+    });
+
+    html += `
+
+      </div>
+
+    `;
+
+  }
+
+
+  html += `
+
+    </div>
+
+  </div>
+
+  `;
+
+  app.innerHTML = html;
 }
 
 // ===== PILOTES =====
@@ -2905,33 +3006,85 @@ function showNewCompetition(){
 
   app.innerHTML = `
 
-    <h2>Nouvelle compétition</h2>
+    <div class="pilots-page">
 
-    <input id="compName" placeholder="Nom">
+      <div class="pilots-header">
 
-    <input id="compDate" type="date">
+        <div class="pilots-header-title">
+          <h2>Nouvelle compétition</h2>
+          <span>Créer une nouvelle compétition UFOLEP</span>
+        </div>
 
-    <input
-  id="compZones"
-  type="number"
-  min="1"
-  placeholder="Zones">
+        <button
+          class="pilots-back"
+          onclick="goHome()">
+          ← Retour
+        </button>
 
-    <input
-  id="compTours"
-  type="number"
-  min="1"
-  placeholder="Tours">
+      </div>
 
-    <br><br>
 
-    <button onclick="saveNewCompetition()">
-      Valider
-    </button>
+      <div class="pilots-form-card">
 
-    <button onclick="goHome()">
-Retour
-</button>
+        <div class="pilots-form-title">
+          🏁 Informations de la compétition
+        </div>
+
+        <div class="pilots-form-grid competition-form-grid">
+
+          <div class="pilot-field">
+            <label>Nom</label>
+            <input
+              id="compName"
+              placeholder="Nom de la compétition">
+          </div>
+
+          <div class="pilot-field">
+            <label>Date</label>
+            <input
+              id="compDate"
+              type="date">
+          </div>
+
+          <div class="pilot-field">
+            <label>Zones</label>
+            <input
+              id="compZones"
+              type="number"
+              min="1"
+              placeholder="Nombre de zones">
+          </div>
+
+          <div class="pilot-field">
+            <label>Tours</label>
+            <input
+              id="compTours"
+              type="number"
+              min="1"
+              placeholder="Nombre de tours">
+          </div>
+
+        </div>
+
+        <div class="pilots-form-actions">
+
+          <button
+            class="pilots-save"
+            onclick="saveNewCompetition()">
+            ✓ Créer la compétition
+          </button>
+
+          <button
+            class="pilots-cancel"
+            onclick="goHome()">
+            Annuler
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
   `;
 }
 
@@ -2941,27 +3094,91 @@ function editCompetition(i){
 
   app.innerHTML = `
 
-    <h2>Modifier compétition</h2>
+    <div class="pilots-page">
 
-    <input
-      id="editCompName"
-      value="${c.name}"
-      placeholder="Nom">
+      <div class="pilots-header">
 
-    <input
-      id="editCompDate"
-      type="date"
-      value="${c.date}">
+        <div class="pilots-header-title">
+          <h2>Modifier compétition</h2>
+          <span>Modifier les informations de la compétition</span>
+        </div>
 
-    <br><br>
+        <button
+          class="pilots-back"
+          onclick="openCompetition(${i})">
+          ← Retour
+        </button>
 
-    <button onclick="saveCompetitionEdit(${i})">
-      Enregistrer
-    </button>
+      </div>
 
-    <button onclick="openCompetition(${i})">
-      Annuler
-    </button>
+
+      <div class="pilots-form-card">
+
+        <div class="pilots-form-title">
+          ✏️ Informations de la compétition
+        </div>
+
+        <div class="pilots-form-grid competition-edit-grid">
+
+          <div class="pilot-field">
+            <label>Nom</label>
+            <input
+              id="editCompName"
+              value="${c.name}"
+              placeholder="Nom de la compétition">
+          </div>
+
+          <div class="pilot-field">
+            <label>Date</label>
+            <input
+              id="editCompDate"
+              type="date"
+              value="${c.date}">
+          </div>
+
+          <div class="pilot-field">
+            <label>Zones</label>
+            <input
+              id="editCompZones"
+              type="number"
+              min="1"
+              value="${c.zones || ""}"
+              placeholder="Nombre de zones">
+          </div>
+
+          <div class="pilot-field">
+            <label>Tours</label>
+            <input
+              id="editCompTours"
+              type="number"
+              min="1"
+              value="${c.tours || ""}"
+              placeholder="Nombre de tours">
+          </div>
+
+        </div>
+
+        <div id="formError" class="form-error"></div>
+
+        <div class="pilots-form-actions">
+
+          <button
+            class="pilots-save"
+            onclick="saveCompetitionEdit(${i})">
+            ✓ Enregistrer
+          </button>
+
+          <button
+            class="pilots-cancel"
+            onclick="openCompetition(${i})">
+            Annuler
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
   `;
 }
 
@@ -2975,15 +3192,33 @@ function saveCompetitionEdit(i){
   let newDate =
     document.getElementById("editCompDate").value;
 
-  if(!newName || !newDate){
+  let newZones =
+    parseInt(
+      document.getElementById("editCompZones").value
+    );
 
-    alert("Champs manquants");
+  let newTours =
+    parseInt(
+      document.getElementById("editCompTours").value
+    );
+
+  if(
+    !newName ||
+    !newDate ||
+    !newZones ||
+    !newTours
+  ){
+
+    document.getElementById("formError").innerText =
+      "Champs manquants";
 
     return;
   }
 
   c.name = format(newName);
   c.date = newDate;
+  c.zones = newZones;
+  c.tours = newTours;
 
   save();
 
@@ -4143,17 +4378,18 @@ function showDoublePointageMatin(i){
 
   let participants = c.participants
     .map(id => getPilotById(id))
-  .filter(p => p)
-  .map(p => ({
+    .filter(p => p)
+    .map(p => ({
 
-    ...p,
+      ...p,
 
-    plaque:
-      c.participantPlates?.[p.id]
-      ??
-      p.plaque
+      plaque:
+        c.participantPlates?.[p.id]
+        ??
+        p.plaque
 
-  }));
+    }));
+
 
   function plaqueNumber(p){
 
@@ -4164,19 +4400,23 @@ function showDoublePointageMatin(i){
 
   }
 
+
   function mainCat(cat){
 
     if(cat.startsWith("N4")) return "N4";
     if(cat.startsWith("N5")) return "N5";
 
     return cat;
+
   }
+
 
   const order = ["N4","N5"];
 
+
   let list = participants
 
-    .filter(p=>
+    .filter(p =>
 
       p.cat.startsWith("N4")
       ||
@@ -4201,230 +4441,30 @@ function showDoublePointageMatin(i){
 
     });
 
-  let html = `
-
-<div class="topbar">
-
-<div class="topbar-title">
-Double Pointage Matin
-</div>
-
-<div class="topbar-actions">
-
-<button onclick="printDoublePointageMatinPDF()">
-Export PDF
-</button>
-
-<button onclick="showExportParticipantsMenu(${i})">
-Retour
-</button>
-
-</div>
-
-</div>
-
-<table class="double-pointage">
-
-<tr>
-
-<th style="width:10%">
-Plaque
-</th>
-
-<th style="width:38%">
-Nom
-</th>
-
-<th style="width:16%">
-Catégorie
-</th>
-
-<th style="width:12%">
-Tour 1
-</th>
-
-<th style="width:12%">
-Tour 2
-</th>
-
-<th style="width:12%">
-Tour 3
-</th>
-
-</tr>
-
-`;
-
-let rowCount = 0;
-
-  list.forEach(p=>{
-
-    html += `
-
-<tr>
-
-<td>
-${p.plaque || ""}
-</td>
-
-<td style="
-text-align:left;
-">
-${p.name}
-</td>
-
-<td
-style="
-background:${getCategoryColor(p.cat)};
-">
-${p.cat}
-</td>
-
-<td></td>
-
-<td></td>
-
-<td></td>
-
-</tr>
-
-`;
-
-rowCount++;
-
-  });
-
-const minRows = 43
-;
-
-while(rowCount < minRows){
-
-  html += `
-
-<tr>
-
-<td>&nbsp;</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-
-</tr>
-
-`;
-
-  rowCount++;
-
-}
-
-  html += `
-</table>
-`;
-
-window.currentExportInfo = {
-
-  type:"double-pointage-matin",
-
-  competitionName:c.name,
-
-  competitionDate:c.date
-
-};
-
-  app.innerHTML = html;
-
-}
-
-function showDoublePointageApresMidi(i){
-
-  let c = state.competitions[i];
-
-  let participants = c.participants
-    .map(id => getPilotById(id))
-  .filter(p => p)
-  .map(p => ({
-
-    ...p,
-
-    plaque:
-      c.participantPlates?.[p.id]
-      ??
-      p.plaque
-
-  }));
-
-  function plaqueNumber(p){
-
-    return parseInt(
-      String(p.plaque || "")
-        .replace(/[^\d]/g,"")
-    ) || 99999;
-
-  }
-
-  function mainCat(cat){
-
-    if(cat.startsWith("Elite")) return "Elite";
-    if(cat.startsWith("N1")) return "N1";
-    if(cat.startsWith("N2")) return "N2";
-    if(cat.startsWith("N3")) return "N3";
-
-    return cat;
-  }
-
-  const order = ["Elite","N1","N2","N3"];
-
-  let list = participants
-
-    .filter(p=>
-
-      p.cat.startsWith("Elite")
-      ||
-      p.cat.startsWith("N1")
-      ||
-      p.cat.startsWith("N2")
-      ||
-      p.cat.startsWith("N3")
-
-    )
-
-    .sort((a,b)=>{
-
-      let diff =
-        order.indexOf(mainCat(a.cat))
-        -
-        order.indexOf(mainCat(b.cat));
-
-      if(diff!==0){
-        return diff;
-      }
-
-      return plaqueNumber(a)
-        -
-        plaqueNumber(b);
-
-    });
 
   let html = `
 
 <div class="topbar">
 
-<div class="topbar-title">
-Double Pointage Matin
-</div>
+  <div class="topbar-title">
+    Double Pointage Matin
+  </div>
 
-<div class="topbar-actions">
+  <div class="topbar-actions">
 
-<button onclick="printDoublePointageApresMidiPDF()">
-Export PDF
-</button>
+    <button
+      class="export-pdf-btn"
+      onclick="printDoublePointageMatinPDF()">
+      Export PDF
+    </button>
 
-<button onclick="showExportParticipantsMenu(${i})">
-Retour
-</button>
+    <button
+      class="export-return-btn"
+      onclick="showExportParticipantsMenu(${i})">
+      ← Retour
+    </button>
 
-</div>
+  </div>
 
 </div>
 
@@ -4461,6 +4501,227 @@ Tour 3
 `;
 
   let rowCount = 0;
+
+
+  list.forEach(p=>{
+
+    html += `
+
+<tr>
+
+<td>
+${p.plaque || ""}
+</td>
+
+<td style="
+text-align:left;
+">
+${p.name}
+</td>
+
+<td
+style="
+background:${getCategoryColor(p.cat)};
+">
+${p.cat}
+</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+
+</tr>
+
+`;
+
+    rowCount++;
+
+  });
+
+
+  const minRows = 43;
+
+
+  while(rowCount < minRows){
+
+    html += `
+
+<tr>
+
+<td>&nbsp;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+
+</tr>
+
+`;
+
+    rowCount++;
+
+  }
+
+
+  html += `
+</table>
+`;
+
+
+  window.currentExportInfo = {
+
+    type:"double-pointage-matin",
+
+    competitionName:c.name,
+
+    competitionDate:c.date
+
+  };
+
+
+  app.innerHTML = html;
+
+}
+
+function showDoublePointageApresMidi(i){
+
+  let c = state.competitions[i];
+
+  let participants = c.participants
+    .map(id => getPilotById(id))
+    .filter(p => p)
+    .map(p => ({
+
+      ...p,
+
+      plaque:
+        c.participantPlates?.[p.id]
+        ??
+        p.plaque
+
+    }));
+
+
+  function plaqueNumber(p){
+
+    return parseInt(
+      String(p.plaque || "")
+        .replace(/[^\d]/g,"")
+    ) || 99999;
+
+  }
+
+
+  function mainCat(cat){
+
+    if(cat.startsWith("Elite")) return "Elite";
+    if(cat.startsWith("N1")) return "N1";
+    if(cat.startsWith("N2")) return "N2";
+    if(cat.startsWith("N3")) return "N3";
+
+    return cat;
+
+  }
+
+
+  const order = ["Elite","N1","N2","N3"];
+
+
+  let list = participants
+
+    .filter(p =>
+
+      p.cat.startsWith("Elite")
+      ||
+      p.cat.startsWith("N1")
+      ||
+      p.cat.startsWith("N2")
+      ||
+      p.cat.startsWith("N3")
+
+    )
+
+    .sort((a,b)=>{
+
+      let diff =
+        order.indexOf(mainCat(a.cat))
+        -
+        order.indexOf(mainCat(b.cat));
+
+      if(diff!==0){
+        return diff;
+      }
+
+      return plaqueNumber(a)
+        -
+        plaqueNumber(b);
+
+    });
+
+
+  let html = `
+
+<div class="topbar">
+
+  <div class="topbar-title">
+    Double Pointage Après-midi
+  </div>
+
+  <div class="topbar-actions">
+
+    <button
+      class="export-pdf-btn"
+      onclick="printDoublePointageApresMidiPDF()">
+      Export PDF
+    </button>
+
+    <button
+      class="export-return-btn"
+      onclick="showExportParticipantsMenu(${i})">
+      ← Retour
+    </button>
+
+  </div>
+
+</div>
+
+<table class="double-pointage">
+
+<tr>
+
+<th style="width:10%">
+Plaque
+</th>
+
+<th style="width:38%">
+Nom
+</th>
+
+<th style="width:16%">
+Catégorie
+</th>
+
+<th style="width:12%">
+Tour 1
+</th>
+
+<th style="width:12%">
+Tour 2
+</th>
+
+<th style="width:12%">
+Tour 3
+</th>
+
+</tr>
+
+`;
+
+  let rowCount = 0;
+
 
   list.forEach(p=>{
 
@@ -4499,15 +4760,17 @@ ${p.cat}
 
 `;
 
-rowCount++;
+    rowCount++;
 
   });
 
-const minRows = 43;
 
-while(rowCount < minRows){
+  const minRows = 43;
 
-  html += `
+
+  while(rowCount < minRows){
+
+    html += `
 
 <tr>
 
@@ -4522,23 +4785,26 @@ while(rowCount < minRows){
 
 `;
 
-  rowCount++;
+    rowCount++;
 
-}
+  }
+
 
   html += `
 </table>
 `;
 
-window.currentExportInfo = {
 
-  type:"double-pointage-matin",
+  window.currentExportInfo = {
 
-  competitionName:c.name,
+    type:"double-pointage-apres-midi",
 
-  competitionDate:c.date
+    competitionName:c.name,
 
-};
+    competitionDate:c.date
+
+  };
+
 
   app.innerHTML = html;
 
@@ -4968,23 +5234,30 @@ html += `
 
   <div class="topbar-actions">
 
-    <button onclick="printResults()">
+    <button
+      class="results-export-btn"
+      onclick="printResults()"
+    >
       Export PDF
     </button>
 
     <button
-  id="tvDisplayButton"
-  onclick="toggleTVDisplay()"
->
-  ${
-    tvDisplayActive
-      ? "🛑 Arrêter affichage TV"
-      : "📺 Affichage TV"
-  }
-</button>
+      id="tvDisplayButton"
+      class="results-tv-btn ${tvDisplayActive ? "stop" : ""}"
+      onclick="toggleTVDisplay()"
+    >
+      ${
+        tvDisplayActive
+          ? "🛑 Arrêter affichage TV"
+          : "📺 Affichage TV"
+      }
+    </button>
 
-    <button onclick="returnCompetitionMenu()">
-    Retour
+    <button
+      class="results-return-btn"
+      onclick="returnCompetitionMenu()"
+    >
+      Retour
     </button>
 
   </div>
@@ -5776,208 +6049,65 @@ async function cancelTieBreak(ci,tieKey){
 
 async function deleteCompetition(i){
 
-let c = state.competitions[i];
+  let c = state.competitions[i];
 
-if(c.locked){
+  if(c.locked){
 
-app.innerHTML=`
+    app.innerHTML=`
 
-<h3>
-Suppression impossible
-</h3>
+    <h3>
+    Suppression impossible
+    </h3>
 
-<div class="card">
+    <div class="card">
 
-🔒 Cette compétition est verrouillée.
+    🔒 Cette compétition est verrouillée.
 
-<br><br>
+    <br><br>
 
-Une compétition verrouillée est considérée
-comme officiellement validée.
+    Une compétition verrouillée est considérée
+    comme officiellement validée.
 
-<br><br>
+    <br><br>
 
-Elle ne peut plus être supprimée.
+    Elle ne peut plus être supprimée.
 
-</div>
+    </div>
 
-<br>
+    <br>
 
-<button onclick="returnCompetitionMenu()">
+    <button onclick="returnCompetitionMenu()">
 
-Retour
+    Retour
 
-</button>
+    </button>
 
-`;
+    `;
 
-return;
+    return;
 
-}
+  }
 
-let ok = await askConfirm(
-"Supprimer définitivement :\n\n" +
-c.name +
-"\n" +
-(c.date || "")
-);
 
-if(!ok){
-return;
-}
+  /* =========================================
+     PREMIÈRE CONFIRMATION
+     ========================================= */
 
-state.competitions.splice(i,1);
-
-save();
-
-home();
-
-}
-async function lockCompetition(i){
-
-let c = state.competitions[i];
-
-  if(c.participants.length===0){
-
-app.innerHTML=`
-
-<h3>
-Validation impossible
-</h3>
-
-<div class="card">
-
-⚠️ Aucun participant n'a été ajouté.
-
-<br><br>
-
-Une compétition vide
-ne peut pas être verrouillée.
-
-</div>
-
-<br>
-
-<button onclick="returnCompetitionMenu()">
-
-Retour
-
-</button>
-
-`;
-
-return;
-
-}
-
-  let stats = buildStats(c);
-
-  let incomplete = stats.some(p =>
-    p.status !== "AB" && !p.completed
+  let ok = await askConfirm(
+    "Supprimer définitivement :\n\n" +
+    c.name +
+    "\n" +
+    (c.date || "")
   );
 
-  if(incomplete){
-
-app.innerHTML=`
-
-<h3>
-Validation impossible
-</h3>
-
-<div class="card">
-
-⚠️ Certains pilotes ont une saisie incomplète.
-
-<br><br>
-
-Tous les scores doivent être renseignés
-avant de verrouiller définitivement
-la compétition.
+  if(!ok){
+    return;
+  }
 
 
-</div>
-
-<br>
-
-<button onclick="returnCompetitionMenu()">
-
-Retour
-
-</button>
-
-`;
-
-return;
-
-}
-
-  let groups = MAIN_GROUPS;
-
-  let unresolved = false;
-
-  groups.forEach(g => {
-
-    let list = stats.filter(
-  p => g.cats.includes(p.cat)
-);
-
-list = Engine.sortScratch(list);
-
-let tieResult = applyTieBreaks(
-  list,
-  c,
-  g.title
-);
-
-    if(tieResult.unresolved){
-      unresolved = true;
-    }
-  });
-
-  if(unresolved){
-
-app.innerHTML=`
-
-<h3>
-Validation impossible
-</h3>
-
-<div class="card">
-
-⚖️ Certains départages ne sont pas finalisés.
-
-<br><br>
-
-Les classements doivent être entièrement
-validés avant de verrouiller
-définitivement la compétition.
-
-</div>
-
-<br>
-
-<button onclick="returnCompetitionMenu()">
-
-Retour
-
-</button>
-
-`;
-
-return;
-
-}
-
-  let ok = await askConfirm("Verrouiller définitivement cette compétition ?");
-  if(!ok) return;
-
-  c.locked = true;
-
-  save();
-  openCompetition(i);
-}
-
-async function unlockCompetition(i){
+  /* =========================================
+     CONFIRMATION CODE ADMIN
+     ========================================= */
 
   while(true){
 
@@ -5996,16 +6126,300 @@ async function unlockCompetition(i){
     let code = (data.code || "").trim();
 
     if(code === ""){
+      continue;
+    }
+
+    if(code !== "1234"){
+
+      await askConfirm(
+        "❌ Code administrateur incorrect."
+      );
+
+      continue;
+    }
+
+    // ✅ bon code
+    break;
+  }
+
+
+  /* =========================================
+     SUPPRESSION
+     ========================================= */
+
+  state.competitions.splice(i,1);
+
+  save();
+
+  home();
+
+}
+
+async function lockCompetition(i){
+
+  let c = state.competitions[i];
+
+  /* =========================================
+     AUCUN PARTICIPANT
+     ========================================= */
+
+  if(c.participants.length === 0){
+
+    app.innerHTML = `
+
+      <div class="validation-card">
+
+        <div class="validation-card-title">
+          Validation impossible
+        </div>
+
+        <div class="validation-card-message">
+
+          ⚠️ Aucun participant n'a été ajouté.
+
+          <br><br>
+
+          Une compétition vide
+          ne peut pas être verrouillée.
+
+        </div>
+
+        <div class="validation-card-actions">
+
+          <button
+  class="validation-btn"
+  onclick="returnCompetitionMenu()"
+>
+  Retour
+</button>
+
+        </div>
+
+      </div>
+
+    `;
+
+    return;
+  }
+
+
+  /* =========================================
+     SAISIE INCOMPLÈTE
+     ========================================= */
+
+  let stats = buildStats(c);
+
+  let incomplete = stats.some(p =>
+    p.status !== "AB" && !p.completed
+  );
+
+  if(incomplete){
+
+    app.innerHTML = `
+
+      <div class="validation-card">
+
+        <div class="validation-card-title">
+          Validation impossible
+        </div>
+
+        <div class="validation-card-message">
+
+          ⚠️ Certains pilotes ont une saisie incomplète.
+
+          <br><br>
+
+          Tous les scores doivent être renseignés
+          avant de verrouiller définitivement
+          la compétition.
+
+        </div>
+
+        <div class="validation-card-actions">
+
+          <button
+            class="comp-close"
+            onclick="returnCompetitionMenu()"
+          >
+            Retour
+          </button>
+
+        </div>
+
+      </div>
+
+    `;
+
+    return;
+  }
+
+
+  /* =========================================
+     DÉPARTAGES NON FINALISÉS
+     ========================================= */
+
+  let groups = MAIN_GROUPS;
+
+  let unresolved = false;
+
+  groups.forEach(g => {
+
+    let list = stats.filter(
+      p => g.cats.includes(p.cat)
+    );
+
+    list = Engine.sortScratch(list);
+
+    let tieResult = applyTieBreaks(
+      list,
+      c,
+      g.title
+    );
+
+    if(tieResult.unresolved){
+      unresolved = true;
+    }
+
+  });
+
+
+  if(unresolved){
+
+    app.innerHTML = `
+
+      <div class="validation-card">
+
+        <div class="validation-card-title">
+          Validation impossible
+        </div>
+
+        <div class="validation-card-message">
+
+          ⚖️ Certains départages ne sont pas finalisés.
+
+          <br><br>
+
+          Les classements doivent être entièrement
+          validés avant de verrouiller
+          définitivement la compétition.
+
+        </div>
+
+        <div class="validation-card-actions">
+
+          <button
+            class="comp-close"
+            onclick="returnCompetitionMenu()"
+          >
+            Retour
+          </button>
+
+        </div>
+
+      </div>
+
+    `;
+
+    return;
+  }
+
+
+  /* =========================================
+     CONFIRMATION DE VALIDATION
+     ========================================= */
+
+  app.innerHTML = `
+
+    <div class="validation-card">
+
+      <div class="validation-card-title">
+        Valider la compétition ?
+      </div>
+
+      <div class="validation-card-message">
+
+        ✅ Toutes les saisies sont terminées.
+
+        <br><br>
+
+        La compétition va être verrouillée
+        définitivement et déplacée dans
+        l'historique.
+
+        <br><br>
+
+        Cette action pourra uniquement être
+        annulée avec le code administrateur.
+
+      </div>
+
+      <div class="validation-card-actions">
+
+        <button
+  class="comp-close"
+  onclick="confirmLockCompetition(${i})"
+>
+  Oui
+</button>
+
+<button
+  class="comp-close"
+  onclick="returnCompetitionMenu()"
+>
+  Non
+</button>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+function confirmLockCompetition(i){
+
+  let c = state.competitions[i];
+
+  c.locked = true;
+
+  save();
+
+  openCompetition(i);
+
+}
+
+async function unlockCompetition(i){
+
+  while(true){
+
+    let data = await askForm("Code admin", [
+      {
+        key: "code",
+        label: "Code admin ?"
+      }
+    ]);
+
+    // Annulation
+    if(!data){
+      return;
+    }
+
+    let code = (data.code || "").trim();
+
+    // Code vide
+    if(code === ""){
       console.log("Code obligatoire");
       continue;
     }
 
+    // Code incorrect
     if(code !== "1234"){
       console.log("Code incorrect");
       continue;
     }
 
-    // ✅ bon code
+    // Code correct
     break;
   }
 
@@ -6015,43 +6429,8 @@ async function unlockCompetition(i){
 
   openCompetition(i);
 }
+
 // ===== CHAMPIONNAT =====
-
-function showChampionshipChoice(){
-
-  let html=`
-
-<h2>
-  Championnat UFOLEP
-</h2>
-
-  <div class="card">
-
-    Choisir le nombre de jokers :
-
-    <br><br>
-
-    <button onclick="showChampionship(0)">
-      0 Joker
-    </button>
-
-    <button onclick="showChampionship(1)">
-      1 Joker
-    </button>
-
-    <button onclick="showChampionship(2)">
-      2 Jokers
-    </button>
-
-    </div>
-
-    <button onclick="goHome()">
-      Retour
-    </button>
-    `;
-
-  app.innerHTML=html;
-}
 
 function parseDateFR(str){
 
@@ -6629,25 +7008,67 @@ function showChampionship(jokers){
 
   let html=`
 
-  <div class="topbar">
+<div class="topbar championship-topbar">
 
-    <div class="topbar-title">
-    </div>
+  <div class="topbar-title">
+    🏆 CLASSEMENT CHAMPIONNAT
+  </div>
 
-    <div class="topbar-actions">
+  <div class="topbar-actions">
 
-      <button onclick="printChampionshipPDF()">
-      Export PDF
+    <button
+      class="championship-back"
+      onclick="goHome()"
+    >
+      ← Retour
+    </button>
+
+    <div class="championship-jokers">
+
+      <span class="championship-jokers-label">
+        JOKERS
+      </span>
+
+      <button
+        class="championship-joker ${
+          jokers === 0 ? "active" : ""
+        }"
+        onclick="showChampionship(0)"
+      >
+        0
       </button>
 
-      <button onclick="showChampionshipChoice()">
-        Retour
+      <button
+        class="championship-joker ${
+          jokers === 1 ? "active" : ""
+        }"
+        onclick="showChampionship(1)"
+      >
+        1
+      </button>
+
+      <button
+        class="championship-joker ${
+          jokers === 2 ? "active" : ""
+        }"
+        onclick="showChampionship(2)"
+      >
+        2
       </button>
 
     </div>
+
+    <button
+      class="championship-export"
+      onclick="printChampionshipPDF()"
+    >
+      📄 Export PDF
+    </button>
 
   </div>
-  `;
+
+</div>
+`;
 
   MAIN_GROUPS.forEach(g=>{
 
@@ -7113,31 +7534,41 @@ const endYear = Math.max(...years);
 
 let html=`
 
-  <h2>
-    CLASSEMENT CLUBS — CHAMPIONNAT UFOLEP
-    <br>
-    SAISON ${startYear}-${endYear}
-  </h2>
+<div class="topbar club-championship-topbar">
 
-  <div class="topbar">
+  <div class="topbar-title">
+    🏅 CLASSEMENT CLUBS
+  </div>
 
-    <div class="topbar-title">
-          </div>
+  <div class="topbar-actions">
 
-    <div class="topbar-actions">
+    <button
+      class="club-back"
+      onclick="goHome()"
+    >
+      ← Retour
+    </button>
 
-      <button onclick="printClubPDF()">
-      Export PDF
-      </button>
-
-      <button onclick="goHome()">
-        Retour
-      </button>
-
-    </div>
+    <button
+      class="club-export"
+      onclick="printClubPDF()"
+    >
+      📄 Export PDF
+    </button>
 
   </div>
+
+</div>
+
+<div class="club-season-info">
+
+  CHAMPIONNAT UFOLEP
+  •
+  SAISON ${startYear}-${endYear}
+
+</div>
 `;
+
 html += `
 
   <div class="print-page">
@@ -8305,31 +8736,175 @@ function showExportParticipantsMenu(i){
 
   app.innerHTML = `
 
-    <h2>Exports</h2>
+    <div class="export-page">
 
-    <div class="card">
+      <div class="export-header">
 
-      <button onclick="exportParticipantsExcel(${i})">
-        Participants Excel
-      </button>
+        <div class="export-header-title">
 
-      <br><br>
+          <h2>Exports</h2>
 
-      <button onclick="showDoublePointageMatin(${i})">
-      Double Pointage Matin PDF
-      </button>
+          <span>
+            Documents et impressions de la compétition
+          </span>
 
-      <br><br>
+        </div>
 
-      <button onclick="showDoublePointageApresMidi(${i})">
-      Double Pointage Après-midi PDF
-      </button>
+        <button
+          class="export-back"
+          onclick="returnCompetitionMenu()">
+          ← Retour
+        </button>
+
+      </div>
+
+
+      <div class="export-competition-card">
+
+        <div class="export-competition-icon">
+          📄
+        </div>
+
+        <div>
+
+          <div class="export-competition-name">
+            ${state.competitions[i].name}
+          </div>
+
+          <div class="export-competition-meta">
+
+            📅
+            ${
+              state.competitions[i].date
+                ? state.competitions[i].date
+                    .split("-")
+                    .reverse()
+                    .join("/")
+                : "Date inconnue"
+            }
+
+            &nbsp;&nbsp;•&nbsp;&nbsp;
+
+            🏁 ${state.competitions[i].tours} tours
+
+            &nbsp;&nbsp;•&nbsp;&nbsp;
+
+            🎯 ${state.competitions[i].zones} zones
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="export-section-title">
+
+        📊 Export direct
+
+      </div>
+
+
+      <div class="export-direct-card">
+
+        <div class="export-card-icon excel">
+          📊
+        </div>
+
+        <div class="export-card-content">
+
+          <div class="export-card-title">
+            Participants Excel
+          </div>
+
+          <div class="export-card-description">
+            Exporter la liste des participants
+            au format Excel.
+          </div>
+
+        </div>
+
+        <button
+          class="export-excel-btn"
+          onclick="exportParticipantsExcel(${i})"
+        >
+          Exporter
+        </button>
+
+      </div>
+
+
+      <div class="export-section-title export-pointage-title">
+
+        📋 Documents de double pointage
+
+      </div>
+
+
+      <div class="export-pointage-list">
+
+
+        <div
+          class="export-pointage-card"
+          onclick="showDoublePointageMatin(${i})"
+        >
+
+          <div class="export-card-icon">
+            🌅
+          </div>
+
+          <div class="export-card-content">
+
+            <div class="export-card-title">
+              Double pointage matin
+            </div>
+
+            <div class="export-card-description">
+              N4 et N5 · Prévisualisation du document
+              avant export PDF.
+            </div>
+
+          </div>
+
+          <div class="export-preview-btn">
+            Aperçu →
+          </div>
+
+        </div>
+
+
+        <div
+          class="export-pointage-card"
+          onclick="showDoublePointageApresMidi(${i})"
+        >
+
+          <div class="export-card-icon">
+            ☀️
+          </div>
+
+          <div class="export-card-content">
+
+            <div class="export-card-title">
+              Double pointage après-midi
+            </div>
+
+            <div class="export-card-description">
+              Elite, N1, N2 et N3 · Prévisualisation
+              avant export PDF.
+            </div>
+
+          </div>
+
+          <div class="export-preview-btn">
+            Aperçu →
+          </div>
+
+        </div>
+
+
+      </div>
 
     </div>
-
-    <button onclick="returnCompetitionMenu()">
-      Retour
-    </button>
 
   `;
 }
@@ -10591,22 +11166,112 @@ function getCategoryColor(cat){
 
 // ===== RESET FIN DE SAISON =====
 
-async function seasonReset() {
+async function seasonReset(){
+
+  app.innerHTML = `
+
+    <div class="reset-page">
+
+      <div class="reset-header">
+
+        <div class="reset-header-title">
+          <h2>⚠️ Reset fin de saison</h2>
+          <span>Réinitialisation complète des données</span>
+        </div>
+
+        <button
+          class="reset-back"
+          onclick="home()">
+          ← Retour
+        </button>
+
+      </div>
+
+
+      <div class="reset-card">
+
+        <div class="reset-card-icon">
+          ⚠️
+        </div>
+
+        <h3>
+          Réinitialiser les données de la saison
+        </h3>
+
+        <p>
+          Cette opération va effacer définitivement
+          toutes les données actuellement enregistrées
+          dans l'application.
+        </p>
+
+
+        <div class="reset-list">
+
+          <div>🏁 Toutes les compétitions</div>
+
+          <div>👥 Tous les pilotes</div>
+
+          <div>📊 Tous les scores et classements associés</div>
+
+        </div>
+
+
+        <div class="reset-warning">
+
+          ⚠️ Cette opération est irréversible.
+          Pensez à effectuer une sauvegarde avant
+          de continuer.
+
+        </div>
+
+
+        <div class="reset-preserved">
+
+          🏅 Les clubs par défaut seront conservés.
+
+        </div>
+
+
+        <div class="reset-actions">
+
+          <button
+            class="reset-confirm"
+            onclick="confirmSeasonReset()">
+            Réinitialiser la saison
+          </button>
+
+          <button
+            class="reset-cancel"
+            onclick="home()">
+            Annuler
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+  `;
+
+}
+
+async function confirmSeasonReset(){
 
   while(true){
 
     let data = await askForm("Code admin", [
-      { key: "code", label: "Code" },
-      { key: "confirm", label: "Tape RESET" }
+      {
+        key: "code",
+        label: "Code admin"
+      }
     ]);
 
-    // fermeture / annulation
     if(!data){
       return;
     }
 
-    let code = (data.code || "").trim();
-    let confirm = (data.confirm || "").trim();
+    let code =
+      (data.code || "").trim();
 
     if(code === ""){
       console.log("Code obligatoire");
@@ -10618,20 +11283,18 @@ async function seasonReset() {
       continue;
     }
 
-    if(confirm !== "RESET"){
-      console.log("Tape RESET exactement");
-      continue;
-    }
-
-    // ✅ tout est bon
     break;
   }
 
-  let ok = await askConfirm("Tout supprimer ?");
-  
+
+  let ok = await askConfirm(
+    "Confirmer la suppression définitive de toutes les données de la saison ?"
+  );
+
   if(!ok){
     return;
   }
+
 
   state.competitions = [];
   state.pilots = [];
@@ -10641,6 +11304,7 @@ async function seasonReset() {
 
   home();
 }
+
 // ===== INIT =====
 
 setInterval(() => {
