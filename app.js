@@ -656,241 +656,775 @@ function applyTieBreaks(list,c,groupName){
 
 function home(){
 
+  /* =========================================
+     COMPÉTITIONS
+     ========================================= */
+
+  const activeCompetitions =
+    state.competitions.filter(c => !c.locked);
+
+  const finishedCompetitions =
+    state.competitions.filter(c => c.locked);
+
+
   let html=`
 
-  <button onclick="goPilots()">
-  Liste Des Pilotes
-</button>
+  <div class="home-header">
 
-  <button onclick="showNewCompetition()">
-    Nouvelle compétition
-  </button>
+    <h1>
+      🏁 TRIAL MANAGER
+    </h1>
 
-  <button onclick="showChampionshipChoice()">
-Classement Championnat
-</button>
+    <p>
+      Gestion des pilotes • Compétitions • Classements
+    </p>
 
-  <button onclick="showClubChampionship()">
-Classement Clubs
-</button>
+  </div>
 
-  <button onclick="exportBackup()">
-Exporter Sauvegarde
-</button>
 
-  <button onclick="importBackup()">
-Charger Sauvegarde
-</button>
+  <!-- ============================= -->
+  <!-- ACTIONS PRINCIPALES -->
+  <!-- ============================= -->
 
-  <button class="delete"
-  onclick="seasonReset()">
-  RESET FIN DE SAISON
-</button>
+  <div class="home-actions">
 
-  <h3>Compétitions</h3>
+
+    <div
+      class="home-action primary"
+      onclick="goPilots()"
+    >
+
+      <div class="home-action-icon">
+        👥
+      </div>
+
+      <div class="home-action-text">
+
+        <div class="home-action-title">
+          Liste des pilotes
+        </div>
+
+        <div class="home-action-description">
+          Gérer les pilotes, licences et catégories
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="home-action primary"
+      onclick="showNewCompetition()"
+    >
+
+      <div class="home-action-icon">
+        🏁
+      </div>
+
+      <div class="home-action-text">
+
+        <div class="home-action-title">
+          Nouvelle compétition
+        </div>
+
+        <div class="home-action-description">
+          Créer une nouvelle épreuve
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="home-action"
+      onclick="showChampionshipChoice()"
+    >
+
+      <div class="home-action-icon">
+        🏆
+      </div>
+
+      <div class="home-action-text">
+
+        <div class="home-action-title">
+          Classement championnat
+        </div>
+
+        <div class="home-action-description">
+          Voir le classement général de la saison
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="home-action"
+      onclick="showClubChampionship()"
+    >
+
+      <div class="home-action-icon">
+        🏅
+      </div>
+
+      <div class="home-action-text">
+
+        <div class="home-action-title">
+          Classement clubs
+        </div>
+
+        <div class="home-action-description">
+          Classement des clubs de la saison
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- SAUVEGARDE -->
+    <!-- ============================= -->
+
+    <div
+      class="home-action"
+      onclick="exportBackup()"
+    >
+
+      <div class="home-action-icon">
+        💾
+      </div>
+
+      <div class="home-action-text">
+
+        <div class="home-action-title">
+          Sauvegarder tout
+        </div>
+
+        <div class="home-action-description">
+          Créer une sauvegarde complète
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="home-action"
+      onclick="importBackup()"
+    >
+
+      <div class="home-action-icon">
+        📂
+      </div>
+
+      <div class="home-action-text">
+
+        <div class="home-action-title">
+          Charger une sauvegarde
+        </div>
+
+        <div class="home-action-description">
+          Restaurer les données sauvegardées
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- RESET -->
+    <!-- ============================= -->
+
+    <div
+      class="home-action danger"
+      onclick="seasonReset()"
+    >
+
+      <div class="home-action-icon">
+        ⚠️
+      </div>
+
+      <div class="home-action-text">
+
+        <div class="home-action-title">
+          Reset fin de saison
+        </div>
+
+        <div class="home-action-description">
+          Réinitialiser les données de la saison
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- HISTORIQUE -->
+    <!-- ============================= -->
+
+    <div
+      class="home-action"
+      onclick="
+        const box =
+          document.getElementById('finishedCompetitions');
+
+        if(box){
+
+          box.style.display =
+            box.style.display === 'none'
+              ? 'block'
+              : 'none';
+
+        }
+      "
+    >
+
+      <div class="home-action-icon">
+        📚
+      </div>
+
+      <div class="home-action-text">
+
+        <div class="home-action-title">
+          Compétitions terminées
+        </div>
+
+        <div class="home-action-description">
+
+          ${
+            finishedCompetitions.length === 0
+              ? "Aucune compétition terminée"
+              : `${finishedCompetitions.length} compétition${finishedCompetitions.length > 1 ? "s" : ""} dans l'historique`
+          }
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+  </div>
+
+
+  <!-- ============================= -->
+  <!-- COMPÉTITIONS EN COURS -->
+  <!-- ============================= -->
+
+  <div class="home-section-title">
+
+    🏁
+    Compétitions en cours
+
+  </div>
+
   `;
 
-  state.competitions.forEach((c,i)=>{
 
-html+=`
+  if(activeCompetitions.length === 0){
 
-<div class="competition-card"
-onclick="openCompetition(${i})">
+    html+=`
 
-<div class="comp-header">
+    <div class="home-empty">
 
-<div>
+      <div class="home-empty-icon">
+        🏁
+      </div>
 
-<div class="comp-title">
+      <div class="home-empty-title">
+        Aucune compétition en cours
+      </div>
 
-${c.name}
+      <div class="home-empty-text">
+        La saison est prête à démarrer.
+        <br>
+        Créez une nouvelle compétition pour commencer.
+      </div>
 
-${c.locked
-? `<span class="locked-badge">
-🔒 VERROUILLÉE
-</span>`
-:""}
+    </div>
 
-</div>
+    `;
 
-<div class="comp-date">
+  }
 
-📅 ${
-  c.date
-    ? c.date.split("-").reverse().join("/")
-    : "Date inconnue"
-}
 
-<br>
+  /* =========================================
+     COMPÉTITIONS EN COURS
+     ========================================= */
 
-${c.tours} tours • ${c.zones} zones
+  activeCompetitions.forEach((c)=>{
 
-</div>
+    const i =
+      state.competitions.indexOf(c);
 
-</div>
+    html+=`
 
+    <div
+      class="competition-card"
+      onclick="openCompetition(${i})"
+    >
 
-<div style="
-display:flex;
-gap:8px;
-align-items:center;
-">
+      <div class="comp-header">
 
-${
-!c.locked
-? `
+        <div>
 
-<button
-onclick="
-event.stopPropagation();
-editCompetition(${i});
-">
+          <div class="comp-title">
 
-⚙ Modifier infos
+            ${c.name}
 
-</button>
+          </div>
 
-`
-:""
-}
 
-<button
-class="comp-delete"
+          <div class="comp-date">
 
-onclick="
-event.stopPropagation();
-deleteCompetition(${i});
-">
+            📅
+            ${
+              c.date
+                ? c.date.split("-").reverse().join("/")
+                : "Date inconnue"
+            }
 
-X
+            <br>
 
-</button>
+            ${c.tours} tours • ${c.zones} zones
 
-</div>
+          </div>
 
-</div>
+        </div>
 
-</div>
 
-`;
+        <div
+          style="
+            display:flex;
+            gap:8px;
+            align-items:center;
+          "
+        >
 
+          <button
+            onclick="
+              event.stopPropagation();
+              editCompetition(${i});
+            "
+          >
 
-if(state.ui.openCompetition===i){
+            ⚙ Modifier infos
 
-html+=`
+          </button>
 
-<div class="competition-menu">
 
+          <button
+            class="comp-delete"
+            onclick="
+              event.stopPropagation();
+              deleteCompetition(${i});
+            "
+          >
 
-<div
-class="menu-card"
+            X
 
-onclick="selectPilot(${i})">
+          </button>
 
-📝 SAISIE DES SCORES
+        </div>
 
-</div>
+      </div>
 
+    </div>
 
-<div
-class="menu-card"
+    `;
 
-onclick="manageParticipants(${i})">
 
-👥 PARTICIPANTS
+    /* =========================================
+       MENU COMPÉTITION EN COURS
+       ========================================= */
 
-</div>
+    if(state.ui.openCompetition===i){
 
+      html+=`
 
-<div
-class="menu-card"
+      <div class="competition-menu">
 
-onclick="showResults(${i})">
 
-🏆 CLASSEMENTS
+        <div
+          class="menu-card"
+          onclick="selectPilot(${i})"
+        >
+          📝 SAISIE DES SCORES
+        </div>
 
-</div>
 
+        <div
+          class="menu-card"
+          onclick="manageParticipants(${i})"
+        >
+          👥 PARTICIPANTS
+        </div>
 
-<div
-class="menu-card"
 
-onclick="showExportParticipantsMenu(${i})">
+        <div
+          class="menu-card"
+          onclick="showResults(${i})"
+        >
+          🏆 CLASSEMENTS
+        </div>
 
-📄 EXPORTS
 
+        <div
+          class="menu-card"
+          onclick="showExportParticipantsMenu(${i})"
+        >
+          📄 EXPORTS
+        </div>
 
-</div>
 
+        <div
+          class="menu-card"
+          onclick="lockCompetition(${i})"
+        >
+          ✔ VALIDER LA COMPÉTITION
+        </div>
 
-${
-c.locked
-? `
 
-<div
-class="menu-card"
+        <div
+          class="menu-card"
+          onclick="showCompetitionInfo(${i})"
+        >
+          ℹ️ INFOS COMPÉTITION
+        </div>
 
-onclick="unlockCompetition(${i})">
 
-🔓 DÉVERROUILLER
+        <div
+          style="
+            grid-column:1 / -1;
+            text-align:center;
+            margin-top:24px;
+          "
+        >
 
-</div>
+          <button
+            onclick="
+              event.stopPropagation();
 
-`
-:`
+              state.ui.openCompetition=null;
 
-<div
-class="menu-card"
+              home();
+            "
+          >
+            Fermer
+          </button>
 
-onclick="lockCompetition(${i})">
+        </div>
 
-✔ VALIDER LA COMPÉTITION
 
-</div>
+      </div>
 
-`
-}
+      `;
 
-<div
-class="menu-card"
+    }
 
-onclick="showCompetitionInfo(${i})">
+  });
 
-ℹ️ INFOS COMPÉTITION
 
-</div>
+  /* =========================================
+     HISTORIQUE
+     ========================================= */
 
+  html+=`
 
-<div style="
-grid-column:1 / -1;
-text-align:center;
-margin-top:24px;
-">
+  <div
+    id="finishedCompetitions"
+    style="display:none;"
+  >
 
-<button
-onclick="
-event.stopPropagation();
+    <div class="home-section-title">
 
-state.ui.openCompetition=null;
+      📚
+      Historique des compétitions
 
-home();
-">
+    </div>
 
-Fermer
+  `;
 
-</button>
 
-</div>
+  if(finishedCompetitions.length === 0){
 
-</div>
+    html+=`
 
-`;
+    <div class="home-empty">
 
-}
+      <div class="home-empty-icon">
+        📚
+      </div>
 
-});
+      <div class="home-empty-title">
+        Aucun historique
+      </div>
+
+      <div class="home-empty-text">
+        Les compétitions validées apparaîtront ici.
+      </div>
+
+    </div>
+
+    `;
+
+  }
+
+
+  /* =========================================
+     COMPÉTITIONS TERMINÉES
+     ========================================= */
+
+  finishedCompetitions.forEach((c)=>{
+
+    const i =
+      state.competitions.indexOf(c);
+
+    html+=`
+
+    <div
+      id="finished-${i}"
+      class="competition-card"
+      onclick="
+        state.ui.openCompetition = ${i};
+
+        const history =
+          document.getElementById('finishedCompetitions');
+
+        if(history){
+          history.style.display = 'block';
+        }
+
+        home();
+
+        setTimeout(() => {
+
+          const card =
+            document.getElementById('finished-${i}');
+
+          if(card){
+
+            card.scrollIntoView({
+              behavior:'smooth',
+              block:'center'
+            });
+
+          }
+
+        }, 50);
+      "
+      style="
+        border-left-color:#94a3b8;
+      "
+    >
+
+      <div class="comp-header">
+
+        <div>
+
+          <div class="comp-title">
+
+            ${c.name}
+
+            <span class="locked-badge">
+              🔒 TERMINÉE
+            </span>
+
+          </div>
+
+
+          <div class="comp-date">
+
+            📅
+            ${
+              c.date
+                ? c.date.split("-").reverse().join("/")
+                : "Date inconnue"
+            }
+
+            <br>
+
+            ${c.tours} tours • ${c.zones} zones
+
+          </div>
+
+        </div>
+
+
+        <div>
+
+          <button
+            onclick="
+              event.stopPropagation();
+
+              state.ui.openCompetition = ${i};
+
+              home();
+
+              setTimeout(() => {
+
+                const card =
+                  document.getElementById('finished-${i}');
+
+                if(card){
+
+                  card.scrollIntoView({
+                    behavior:'smooth',
+                    block:'center'
+                  });
+
+                }
+
+              }, 50);
+            "
+          >
+            Voir
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    `;
+
+
+    /* =========================================
+       MENU D'UNE COMPÉTITION TERMINÉE
+       ========================================= */
+
+    if(state.ui.openCompetition===i){
+
+      html+=`
+
+      <div class="competition-menu">
+
+
+        <div
+          class="menu-card"
+          onclick="selectPilot(${i})"
+        >
+          📝 SAISIE DES SCORES
+        </div>
+
+
+        <div
+          class="menu-card"
+          onclick="manageParticipants(${i})"
+        >
+          👥 PARTICIPANTS
+        </div>
+
+
+        <div
+          class="menu-card"
+          onclick="showResults(${i})"
+        >
+          🏆 CLASSEMENTS
+        </div>
+
+
+        <div
+          class="menu-card"
+          onclick="showExportParticipantsMenu(${i})"
+        >
+          📄 EXPORTS
+        </div>
+
+
+        <div
+          class="menu-card"
+          onclick="unlockCompetition(${i})"
+        >
+          🔓 DÉVERROUILLER
+        </div>
+
+
+        <div
+          class="menu-card"
+          onclick="showCompetitionInfo(${i})"
+        >
+          ℹ️ INFOS COMPÉTITION
+        </div>
+
+
+        <div
+          style="
+            grid-column:1 / -1;
+            text-align:center;
+            margin-top:24px;
+          "
+        >
+
+          <button
+            onclick="
+              event.stopPropagation();
+
+              state.ui.openCompetition=null;
+
+              home();
+            "
+          >
+            Fermer
+          </button>
+
+        </div>
+
+
+      </div>
+
+      `;
+
+    }
+
+  });
+
+
+  html+=`
+
+  </div>
+
+  `;
+
 
   app.innerHTML=html;
+
+
+  /* =========================================
+     SI UNE COMPÉTITION TERMINÉE EST OUVERTE
+     ON LAISSE L'HISTORIQUE VISIBLE
+     ========================================= */
+
+  if(
+    finishedCompetitions.length &&
+    finishedCompetitions.some(
+      c =>
+        state.ui.openCompetition ===
+        state.competitions.indexOf(c)
+    )
+  ){
+
+    const history =
+      document.getElementById(
+        'finishedCompetitions'
+      );
+
+    if(history){
+
+      history.style.display='block';
+
+    }
+
+  }
+
 }
 
 function showCompetitionInfo(i){
@@ -1460,229 +1994,594 @@ function showPilots(){
   state.ui.currentScreen = "pilots";
 
   let pilots = sortPilots(
-  state.pilots
-);
+    state.pilots
+  );
 
-  let html=`
+  const editingPilot =
+    editingPilotId
+      ? getPilotById(editingPilotId)
+      : null;
 
-  <div class="topbar">
+  const pilotUsed =
+    editingPilotId
+      ? state.competitions.some(c =>
+          c.participants.includes(editingPilotId)
+        )
+      : false;
 
-    <div style="
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      width:100%;
-    ">
 
-      <h3 style="margin:0;">
-        Pilotes
-      </h3>
+  let html = `
 
-      <div style="
-        display:flex;
-        flex-wrap:wrap;
-        gap:8px;
-        align-items:center;
-      ">
+  <div class="pilots-page">
+
+
+    <!-- ===== EN-TÊTE ===== -->
+
+    <div class="pilots-header">
+
+      <div class="pilots-header-title">
+
+        <h2>
+          👤 Gestion des pilotes
+        </h2>
+
+        <span>
+          Ajouter, modifier et gérer les pilotes
+        </span>
+
+      </div>
+
+
+      <button
+        class="pilots-back"
+        onclick="returnCompetitionMenu()">
+
+        ← Retour
+
+      </button>
+
+    </div>
+
+
+    <!-- ===== FORMULAIRE ===== -->
+
+    <div class="pilots-form-card">
+
+
+      ${
+        editingPilotId
+        ? `
+
+          <div class="pilots-edit-banner">
+
+            ✏️
+
+            Modification de :
+
+            <strong>
+              ${editingPilot ? editingPilot.name : ""}
+            </strong>
+
+            ${
+              pilotUsed
+              ? `
+                <span>
+                  — Catégorie verrouillée
+                </span>
+              `
+              : ""
+            }
+
+          </div>
+
+        `
+        : ""
+      }
+
+
+      <div class="pilots-form-title">
+
+        ${
+          editingPilotId
+            ? "✏️ Modifier le pilote"
+            : "➕ Nouveau pilote"
+        }
+
+      </div>
+
+
+      <div class="pilots-form-grid">
+
+
+        <div class="pilot-field">
+
+          <label>
+            Plaque
+          </label>
+
+          <input
+            id="plaque"
+            placeholder="N° plaque">
+
+        </div>
+
+
+        <div class="pilot-field">
+
+          <label>
+            Nom
+          </label>
+
+          <input
+            id="name"
+            placeholder="Nom du pilote">
+
+        </div>
+
+
+        <div class="pilot-field">
+
+          <label>
+            Club
+          </label>
+
+          <select
+            id="club"
+            onchange="toggleClub()">
+
+            <option value="">
+              -- Club --
+            </option>
+
+            ${state.clubs.map(c =>
+              `<option>${c}</option>`
+            ).join("")}
+
+            <option value="NEW">
+              NOUVEAU
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="pilot-field">
+
+          <label>
+            Catégorie
+          </label>
+
+          <select
+            id="cat"
+            ${
+              editingPilotId && pilotUsed
+                ? "disabled"
+                : ""
+            }
+          >
+
+            <option value="">
+              CAT
+            </option>
+
+            ${categories.map(c =>
+              `<option>${c}</option>`
+            ).join("")}
+
+          </select>
+
+        </div>
+
+
+        <div class="pilot-field">
+
+          <label>
+            Licence
+          </label>
+
+          <select id="lic">
+
+            <option value="UFOLEP">
+              UFOLEP
+            </option>
+
+            <option value="FFC">
+              FFC
+            </option>
+
+            <option value="NL">
+              NON LICENCIÉ
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="pilot-field">
+
+          <label>
+            N° licence
+          </label>
+
+          <input
+            id="licenceNumber"
+            placeholder="N° licence">
+
+        </div>
+
+
+        <div class="pilot-field">
+
+          <label>
+            Naissance
+          </label>
+
+          <input
+            id="birthDate"
+            type="date">
+
+        </div>
+
+
         <input
-          id="plaque"
-          placeholder="N° plaque"
-          style="width:120px">
-
-        <input id="name"
-        placeholder="Nom"
-        style="width:340px">
-
-        
-
-        <select id="club" onchange="toggleClub()">
-          <option value="">--Club--</option>
-          ${state.clubs.map(c=>`<option>${c}</option>`).join("")}
-          <option value="NEW">NOUVEAU</option>
-        </select>
-
-        <input id="newClub"
+          id="newClub"
           placeholder="Nouveau club"
           style="display:none">
 
-        <select
-          id="cat"
-          ${editingPilotId ? "disabled" : ""}
-        >
-          <option value="">CAT</option>
-          ${categories.map(c=>`<option>${c}</option>`).join("")}
-        </select>
 
-        <select id="lic">
-          <option value="UFOLEP">UFOLEP</option>
-          <option value="FFC">FFC</option>
-          <option value="NL">NON LICENCIÉ</option>
-        </select>       
+      </div>
 
-        <input
-          id="licenceNumber"
-          placeholder="N° licence"
-          style="width:120px">
 
-        <span>Naissance</span>
+      <div class="pilots-form-actions">
 
-        <input
-        id="birthDate"
-        type="date">
 
-        <button onclick="
+        ${
           editingPilotId
-            ? savePilotEdit()
-            : addPilot()
-        ">
+          ? `
 
-          ${
-            editingPilotId
-              ? "Modifier"
-              : "Ajouter"
-          }
+            <button
+              class="pilots-save"
+              onclick="savePilotEdit()">
 
-        </button>
+              💾 Enregistrer
 
-        <button class="delete"
-          onclick="toggleDeletePilots()">
+            </button>
 
-          ${
-            deleteModePilots
-            ? "Fermer suppression"
-            : "Supprimer"
-          }
 
-        </button>
+            <button
+              class="pilots-cancel"
+              onclick="
+                editingPilotId = null;
+                editingPilotCat = null;
+                showPilots();
+              ">
 
-        <button onclick="importPilotsExcel()">
-        Import Excel
-        </button>
+              ↩️ Annuler
 
-        <button onclick="exportPilotsExcel()">
-        Export Excel
-        </button>
+            </button>
 
-        <button onclick="returnCompetitionMenu()">
-          Retour
-        </button>
+          `
+          : `
+
+            <button
+              class="pilots-save"
+              onclick="addPilot()">
+
+              ➕ Ajouter le pilote
+
+            </button>
+
+          `
+        }
+
 
       </div>
 
     </div>
 
-  </div>
 
-  <table class="pilot-table">
-  <tr> 
+    <!-- ===== OUTILS ===== -->
 
-      <th class="col-plaque"
-    onclick="changePilotSort('plaque')"
-    style="cursor:pointer">
-  Plaque   ↕
-</th>
+    <div class="pilots-tools">
 
-<th class="col-name"
-    onclick="changePilotSort('name')"
-    style="cursor:pointer">
-  Nom   ↕
-</th>
 
-<th class="col-club"
-    onclick="changePilotSort('club')"
-    style="cursor:pointer">
-  Club   ↕
-</th>
+      <div class="pilots-tools-left">
 
-<th class="col-cat"
-    onclick="changePilotSort('cat')"
-    style="cursor:pointer">
-  Catégorie   ↕
-</th>
+        <button
+          class="pilots-tool"
+          onclick="importPilotsExcel()">
 
-<th class="col-lic"
-    onclick="changePilotSort('lic')"
-    style="cursor:pointer">
-  Licence   ↕
-</th>
+          📥 Import Excel
 
-<th class="col-licnum">
-  N° licence
-</th>
+        </button>
 
-<th class="col-birth"
-    onclick="changePilotSort('birthDate')"
-    style="cursor:pointer">
-  Naissance   ↕
-</th>
 
-<th class="col-actions">
-  Actions
-</th>
-    </tr>
+        <button
+          class="pilots-tool"
+          onclick="exportPilotsExcel()">
+
+          📤 Export Excel
+
+        </button>
+
+      </div>
+
+
+      <div class="pilots-tools-right">
+
+        <button
+          class="pilots-delete"
+          onclick="toggleDeletePilots()">
+
+          ${
+            deleteModePilots
+              ? "✖ Fermer suppression"
+              : "🗑️ Activer suppression"
+          }
+
+        </button>
+
+      </div>
+
+
+    </div>
+
+
+    <!-- ===== RECHERCHE ===== -->
+
+    <div class="pilots-search">
+
+      <span class="pilots-search-icon">
+        🔎
+      </span>
+
+      <input
+        id="pilotSearch"
+        type="search"
+        placeholder="Rechercher un pilote, une plaque ou un club..."
+        autocomplete="off"
+        oninput="filterPilotList(this.value)"
+      >
+
+      <span
+        id="pilotSearchCount"
+        class="pilots-search-count">
+
+        ${pilots.length} pilote${pilots.length > 1 ? "s" : ""}
+
+      </span>
+
+    </div>
+
+
+    <!-- ===== LISTE ===== -->
+
+    <div class="pilots-list-header">
+
+      <div class="pilots-list-title">
+
+        Liste des pilotes
+
+      </div>
+
+      <div class="pilots-count">
+
+        ${pilots.length}
+        pilote${pilots.length > 1 ? "s" : ""}
+
+      </div>
+
+    </div>
+
+
+    <div class="pilots-table-wrap">
+
+
+      <table class="pilot-table">
+
+        <thead>
+
+          <tr>
+
+            <th
+              class="col-plaque"
+              onclick="changePilotSort('plaque')">
+
+              Plaque ↕
+
+            </th>
+
+            <th
+              class="col-name"
+              onclick="changePilotSort('name')">
+
+              Nom ↕
+
+            </th>
+
+            <th
+              class="col-club"
+              onclick="changePilotSort('club')">
+
+              Club ↕
+
+            </th>
+
+            <th
+              class="col-cat"
+              onclick="changePilotSort('cat')">
+
+              Catégorie ↕
+
+            </th>
+
+            <th
+              class="col-lic"
+              onclick="changePilotSort('lic')">
+
+              Licence ↕
+
+            </th>
+
+            <th class="col-licnum">
+
+              N° licence
+
+            </th>
+
+            <th
+              class="col-birth"
+              onclick="changePilotSort('birthDate')">
+
+              Naissance ↕
+
+            </th>
+
+            <th class="col-actions">
+
+              Actions
+
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody id="pilotTableBody">
+
   `;
+
 
   pilots.forEach((p)=>{
 
     html += `
 
-    <tr
-  class="${
-    state.selectedPilotId === p.id
-      ? 'pilot-selected'
-      : ''
-  }"
-  onclick="selectPilotRow('${p.id}')"
->
+      <tr
+        class="pilot-row"
+        data-name="${(p.name || "").toLowerCase()}"
+        data-plaque="${(p.plaque || "").toLowerCase()}"
+        data-club="${(p.club || "").toLowerCase()}"
+        data-pilot-id="${p.id}"
 
-      <td>${p.plaque || ""}</td>
+        onclick="selectPilotRow('${p.id}')"
+      >
 
-      <td>${p.name}</td>
+        <td>
+          ${p.plaque || ""}
+        </td>
 
-      <td>${p.club || ""}</td>
+        <td>
+          <strong>
+            ${p.name}
+          </strong>
+        </td>
 
-      <td class="pilot-cat ${getPilotTableCatClass(p.cat)}">
-      ${p.cat}</td>
+        <td>
+          ${p.club || "—"}
+        </td>
 
-      <td>${p.lic}</td>
+        <td
+          class="pilot-cat ${getPilotTableCatClass(p.cat)}">
 
-      <td>${p.licenceNumber || ""}</td>
+          ${p.cat}
 
-      <td>
-  ${
-    p.birthDate
-      ? p.birthDate.split("-").reverse().join("/")
-      : ""
-  }
-</td>
+        </td>
 
-      <td class="col-actions">
-        
-        <button
-  class="pilot-action-btn"
-  onclick="event.stopPropagation();editPilot('${p.id}')">
-  ✏️
-</button>
+        <td>
+          ${p.lic}
+        </td>
 
-        ${
-          deleteModePilots
-          ? `
+        <td>
+          ${p.licenceNumber || "—"}
+        </td>
+
+        <td>
+
+          ${
+            p.birthDate
+              ? p.birthDate
+                  .split("-")
+                  .reverse()
+                  .join("/")
+              : "—"
+          }
+
+        </td>
+
+        <td class="col-actions pilot-actions-cell">
+
           <button
-  class="pilot-action-btn delete"
-  onclick="event.stopPropagation();deletePilot('${p.id}')">
-  X
-</button>
-          `
-          : ""
-        }
+            class="pilot-action-btn"
+            title="Modifier"
+            onclick="
+              event.stopPropagation();
+              editPilot('${p.id}')
+            ">
 
-      </td>
+            ✏️
 
-    </tr>
+          </button>
+
+          ${
+            deleteModePilots
+            ? `
+
+              <button
+                class="pilot-action-btn delete"
+                title="Supprimer"
+                onclick="
+                  event.stopPropagation();
+                  deletePilot('${p.id}')
+                ">
+
+                🗑️
+
+              </button>
+
+            `
+            : ""
+          }
+
+        </td>
+
+      </tr>
+
     `;
+
   });
 
-  app.innerHTML=html;
+
+  html += `
+
+        </tbody>
+
+      </table>
+
+      <div
+        id="pilotNoResult"
+        class="pilots-no-result"
+        style="display:none;">
+
+        <div class="pilots-no-result-icon">
+          🔎
+        </div>
+
+        Aucun pilote trouvé.
+
+      </div>
+
+    </div>
+
+
+  </div>
+
+  `;
+
+
+  app.innerHTML = html;
+
 
   setTimeout(() => {
 
@@ -1691,26 +2590,127 @@ function showPilots(){
 
     if(nameInput){
 
-      nameInput.addEventListener("keydown", e => {
+      nameInput.addEventListener(
+        "keydown",
+        e => {
 
-        if(e.key === "Enter"){
+          if(e.key === "Enter"){
 
-          addPilot();
+            if(editingPilotId){
+
+              savePilotEdit();
+
+            }else{
+
+              addPilot();
+
+            }
+
+          }
+
         }
-
-      });
+      );
 
       nameInput.focus();
+
     }
 
-  }, 0);
+  },0);
+
+}
+
+function filterPilotList(value){
+
+  let search =
+    (value || "")
+      .trim()
+      .toLowerCase();
+
+  let rows =
+    document.querySelectorAll(
+      "#pilotTableBody .pilot-row"
+    );
+
+  let visible = 0;
+
+  rows.forEach(row => {
+
+    let name =
+      row.dataset.name || "";
+
+    let plaque =
+      row.dataset.plaque || "";
+
+    let club =
+      row.dataset.club || "";
+
+    let match =
+      !search ||
+      name.includes(search) ||
+      plaque.includes(search) ||
+      club.includes(search);
+
+    row.style.display =
+      match
+        ? ""
+        : "none";
+
+    if(match){
+      visible++;
+    }
+
+  });
+
+
+  let count =
+    document.getElementById(
+      "pilotSearchCount"
+    );
+
+  if(count){
+
+    count.textContent =
+      `${visible} pilote${visible > 1 ? "s" : ""}`;
+
+  }
+
+
+  let noResult =
+    document.getElementById(
+      "pilotNoResult"
+    );
+
+  if(noResult){
+
+    noResult.style.display =
+      visible === 0
+        ? "block"
+        : "none";
+
+  }
+
 }
 
 function selectPilotRow(id){
 
   state.selectedPilotId = id;
 
-  showPilots();
+  // Retire la sélection précédente
+  document
+    .querySelectorAll(".pilot-table tbody .pilot-row")
+    .forEach(row => {
+      row.classList.remove("pilot-selected");
+    });
+
+  // Sélectionne uniquement la ligne cliquée
+  const row = document.querySelector(
+    `.pilot-row[data-pilot-id="${id}"]`
+  );
+
+  if(row){
+    row.classList.add("pilot-selected");
+  }
+
 }
 
 function toggleClub(){
@@ -1829,13 +2829,6 @@ save();
 
 showPilots();
 
-}
-
-function selectPilotRow(id){
-
-  state.selectedPilotId = id;
-
-  showPilots();
 }
 
 // ===== COMPETITIONS =====
@@ -2332,7 +3325,7 @@ function manageParticipants(i){
 
   let html=`
 
-<div class="topbar">
+<div class="topbar participants-topbar">
 
   <div class="topbar-title">
     Participants
@@ -2340,18 +3333,22 @@ function manageParticipants(i){
 
   <div class="topbar-actions">
 
-    <button onclick="toggleParticipantPlateEdit()">
+    <button
+      class="participants-plate-btn"
+      onclick="toggleParticipantPlateEdit()"
+    >
+      ${
+        editParticipantPlates
+          ? "✓ Terminer"
+          : "✏️ Modifier les plaques"
+      }
+    </button>
 
-    ${
-      editParticipantPlates
-        ? "Fermer modification"
-        : "Modifier les plaques"
-    }
-
-  </button>
-
-    <button onclick="returnCompetitionMenu()">
-    Retour
+    <button
+      class="pilots-back"
+      onclick="returnCompetitionMenu()"
+    >
+      ← Retour
     </button>
 
   </div>
@@ -2612,6 +3609,8 @@ if(c.locked){
 
   let html=`
 
+<div class="score-entry-page">
+
 <div class="topbar">
 
   <div class="topbar-title">
@@ -2715,6 +3714,8 @@ ${getStatusLabel(c,p.id)}
 </div>
 `;
   });
+
+html += `</div>`;
 
   app.innerHTML=html;
 }
@@ -4625,6 +5626,9 @@ function savePilotEdit(){
   let lic =
     document.getElementById("lic").value;
 
+  let cat =
+  document.getElementById("cat").value;
+
   let plaque =
   document.getElementById("plaque").value.trim();
 
@@ -4652,6 +5656,17 @@ function savePilotEdit(){
   p.name = format(name);
   p.club = club;
   p.lic = lic;
+  // La catégorie ne peut être modifiée
+// que si le pilote n'est utilisé dans aucune compétition.
+
+const pilotUsed =
+  state.competitions.some(c =>
+    c.participants.includes(editingPilotId)
+  );
+
+if(!pilotUsed){
+  p.cat = cat;
+}
   p.plaque = plaque;
   p.licenceNumber = licenceNumber;
   p.birthDate = birthDate;
