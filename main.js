@@ -66,6 +66,7 @@ function createWindow() {
   });
 
   mainWindow.loadFile("index.html");
+  mainWindow.maximize();
 }
 
 app.whenReady().then(createWindow);
@@ -580,36 +581,24 @@ ipcMain.handle("close-tv", () => {
 
 function openTVWindow(){
 
-  // Si la fenêtre existe déjà,
-  // on la remet simplement au premier plan.
   if(tvWindow && !tvWindow.isDestroyed()){
 
-    tvWindow.focus();
+    tvWindow.show();
+
     return;
+
   }
 
 
-  /*
-   * Récupération des écrans disponibles.
-   */
   const displays = screen.getAllDisplays();
 
 
-  /*
-   * On cherche un deuxième écran.
-   *
-   * Le premier est normalement l'écran
-   * principal du PC.
-   */
   const tvDisplay =
     displays.length > 1
       ? displays[1]
       : displays[0];
 
 
-  /*
-   * Position de l'écran choisi.
-   */
   const { x, y } =
     tvDisplay.bounds;
 
@@ -622,17 +611,24 @@ function openTVWindow(){
     width: tvDisplay.bounds.width,
     height: tvDisplay.bounds.height,
 
-    fullscreen: true,
+    fullscreen: false,
 
-    frame: false,
+    frame: true,
 
     webPreferences: {
+
       preload: path.join(__dirname, "preload.js"),
+
       nodeIntegration: false,
+
       contextIsolation: true
+
     }
 
   });
+
+
+  tvWindow.maximize();
 
 
   tvWindow.loadFile(

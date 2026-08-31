@@ -4563,59 +4563,60 @@ function pilotDetail(ci,id){
 
 function declareAB(ci,id){
 
-let c=state.competitions[ci];
+  let c = state.competitions[ci];
 
-let pilot =
-state.pilots.find(
-p => p.id === id
-);
+  let pilot =
+    state.pilots.find(
+      p => p.id === id
+    );
 
-app.innerHTML=`
 
-<h3>
-Confirmer abandon
-</h3>
+  app.innerHTML = `
 
-<div class="card">
+<div class="score-entry-page">
 
-⚠️ Le pilote :
+  <h3>
+    ⚠️ Confirmer abandon
+  </h3>
 
-<br><br>
 
-<b>
-${pilot?.name || ""}
-</b>
+  <div class="card abandon-confirm-card">
 
-<br><br>
+    <div class="abandon-pilot-name">
+      ${pilot?.name || ""}
+    </div>
 
-sera marqué abandonné.
+    <div class="abandon-message">
 
-<br><br>
+      Ce pilote sera marqué <b>AB</b> dans les classements.
 
-Ses scores resteront enregistrés
-mais il apparaîtra AB
-dans les classements.
+      <br><br>
 
-</div>
+      Ses scores resteront enregistrés.
 
-<div class="score-actions">
+    </div>
 
-<button
-class="delete"
+  </div>
 
-onclick="confirmAB(${ci},'${id}')">
 
-Confirmer abandon
+  <div class="score-actions">
 
-</button>
+    <button
+      class="score-abandon-btn"
+      onclick="confirmAB(${ci},'${id}')"
+    >
+      Confirmer l'abandon
+    </button>
 
-<button
 
-onclick="selectPilot(${ci})">
+    <button
+      class="score-cancel-btn"
+      onclick="selectPilot(${ci})"
+    >
+      Retour
+    </button>
 
-Retour
-
-</button>
+  </div>
 
 </div>
 
@@ -5551,7 +5552,7 @@ function renderTable(title,list,c,htmlRef,ci,provisional){
   <div class="print-page">
 
   <div class="section-title">
-  CLASSEMENT ${title} — ${c.name} (${c.date || ""})
+  CLASSEMENT ${title} — ${c.name} (${formatBirthDate(c.date)})
 </div>
 
 <div class="category-status ${
@@ -5616,64 +5617,75 @@ function renderTable(title,list,c,htmlRef,ci,provisional){
 
       <td>
 
-        <b>${p.name}
+        <b>${p.name}</b>
 
-        <b>${p.tiebreak
-   ? `
-<span class="tie-icon">⚖️</span>
+        ${
+          p.tiebreak
+          ? `
+            <span class="tie-icon">⚖️</span>
 
-<button class="delete"
-  style="font-size:10px;padding:2px 5px;"
-  onclick="cancelTieBreak(${ci},'${p.tieKey}')">
+            ${
+              !c.locked
+              ? `
+                <button class="delete"
+                  style="font-size:10px;padding:2px 5px;"
+                  onclick="cancelTieBreak(${ci},'${p.tieKey}')">
 
-  X
+                  X
 
-</button>
-`
-: ""
-}
+                </button>
+              `
+              : ""
+            }
+          `
+          : ""
+        }
 
-${p.externalTie
-  ? `<span class="tie-icon">⚖️</span>`
-  : ""
-}
+        ${
+          p.externalTie
+          ? `<span class="tie-icon">⚖️</span>`
+          : ""
+        }
 
-        ${p.pendingTie
-  ? `
-  <button class="tie-btn"
-    onclick="manageTieBreak(${ci},'${p.tieKey}')">
-    ⚖️
-  </button>
-  `
-  : ""
-}
+        ${
+          p.pendingTie
+          ? `
+            <button class="tie-btn"
+              onclick="manageTieBreak(${ci},'${p.tieKey}')">
+
+              ⚖️
+
+            </button>
+          `
+          : ""
+        }
 
       </td>
 
-      <td><b>${p.club}</td>
-      <td><b>${p.cat}</td>
+      <td><b>${p.club}</b></td>
+      <td><b>${p.cat}</b></td>
 
-      <td><b>${p.status==="AB"?"AB":p.nb0}</td>
-      <td><b>${p.status==="AB"?"AB":p.nb1}</td>
-      <td><b>${p.status==="AB"?"AB":p.nb2}</td>
-      <td><b>${p.status==="AB"?"AB":p.nb3}</td>
-      <td><b>${p.status==="AB"?"AB":p.nb5}</td>
+      <td><b>${p.status==="AB"?"AB":p.nb0}</b></td>
+      <td><b>${p.status==="AB"?"AB":p.nb1}</b></td>
+      <td><b>${p.status==="AB"?"AB":p.nb2}</b></td>
+      <td><b>${p.status==="AB"?"AB":p.nb3}</b></td>
+      <td><b>${p.status==="AB"?"AB":p.nb5}</b></td>
     `;
 
     p.tours.forEach(v=>{
 
       htmlRef+=`
-      <td><b>${p.status==="AB"?"AB":v}</td>
+      <td><b>${p.status==="AB"?"AB":v}</b></td>
       `;
     });
 
     htmlRef+=`
 
-      <td><b>${p.status==="AB"?"AB":p.bestTour}</td>
-      <td><b>${p.status==="AB"?"AB":p.total}</td>
-      <td><b>${p.rankScratch}</td>
-      <td><b>${p.rankUfolep}</td>
-      <td><b>${p.ufoPoints}</td>
+      <td><b>${p.status==="AB"?"AB":p.bestTour}</b></td>
+      <td><b>${p.status==="AB"?"AB":p.total}</b></td>
+      <td><b>${p.rankScratch}</b></td>
+      <td><b>${p.rankUfolep}</b></td>
+      <td><b>${p.ufoPoints}</b></td>
 
     </tr>
     `;
@@ -6944,22 +6956,24 @@ function buildChampionship(jokers){
 
   // création pilotes
   state.pilots
-  .filter(p=>p.lic==="UFOLEP")
-  .forEach(p=>{
+    .filter(p=>p.lic==="UFOLEP")
+    .forEach(p=>{
 
-    championship[p.id]={
+      championship[p.id]={
 
-      pilot:p,
+        pilot:p,
 
-      scores:{},
+        scores:{},
 
-      totalBrut:0,
+        participated:false,
 
-      jokerPoints:0,
+        totalBrut:0,
 
-      totalNet:0
-    };
-});
+        jokerPoints:0,
+
+        totalNet:0
+      };
+    });
 
   // récupération points
   competitions.forEach(comp=>{
@@ -6978,13 +6992,13 @@ function buildChampionship(jokers){
 
       list = buildOrderedRanking(list);
 
-let tieResult = applyTieBreaks(
-  list,
-  comp,
-  g.title
-);
+      let tieResult = applyTieBreaks(
+        list,
+        comp,
+        g.title
+      );
 
-list = buildOrderedRanking(tieResult.list);
+      list = buildOrderedRanking(tieResult.list);
 
       list.forEach((p,index)=>{
 
@@ -7002,9 +7016,12 @@ list = buildOrderedRanking(tieResult.list);
             : Engine.getUfolepPoints(ufoPos);
         }
 
-       if(championship[p.id]){
-        championship[p.id]
-          .scores[comp.name]=points;
+        if(championship[p.id]){
+
+          championship[p.id].participated=true;
+
+          championship[p.id]
+            .scores[comp.name]=points;
         }
       });
     });
@@ -7039,13 +7056,21 @@ list = buildOrderedRanking(tieResult.list);
       row.totalBrut-row.jokerPoints;
   });
 
+  // retirer les pilotes n'ayant participé
+  // à aucune compétition du championnat
+  Object.keys(championship).forEach(id=>{
+
+    if(!championship[id].participated){
+
+      delete championship[id];
+    }
+  });
+
   return {
     competitions,
     championship
   };
 }
-
-
 
 function renderChampionshipTable(
   title,
@@ -7203,6 +7228,8 @@ function buildFemaleChampionship(jokers){
 
         scores:{},
 
+        participated:false,
+
         totalBrut:0,
 
         jokerPoints:0,
@@ -7215,21 +7242,24 @@ function buildFemaleChampionship(jokers){
 
     let stats = buildStats(comp);
 
-   let femaleList = stats
-  .filter(p => categoryOrderFemale[p.cat] !== undefined);
+    let femaleList = stats
+      .filter(
+        p => categoryOrderFemale[p.cat] !== undefined
+      );
 
-femaleList.sort((a,b)=>{
+    femaleList.sort((a,b)=>{
 
-  let catDiff =
-    categoryOrderFemale[a.cat]
-    - categoryOrderFemale[b.cat];
+      let catDiff =
+        categoryOrderFemale[a.cat]
+        -
+        categoryOrderFemale[b.cat];
 
-  if(catDiff !== 0){
-    return catDiff;
-  }
+      if(catDiff !== 0){
+        return catDiff;
+      }
 
-  return Engine.compare(a,b);
-});
+      return Engine.compare(a,b);
+    });
 
     if(!femaleList.length){
       return;
@@ -7237,53 +7267,59 @@ femaleList.sort((a,b)=>{
 
     let finalFemaleList = [];
 
-[
-  "Elite F",
-  "N1 F",
-  "N2 F",
-  "N3 F",
-  "N4 F",
-  "N5 F"
-].forEach(cat=>{
+    [
+      "Elite F",
+      "N1 F",
+      "N2 F",
+      "N3 F",
+      "N4 F",
+      "N5 F"
+    ].forEach(cat=>{
 
-  let subList = femaleList.filter(
-    p => p.cat === cat
-  );
+      let subList = femaleList.filter(
+        p => p.cat === cat
+      );
 
-  let tieResult = applyTieBreaks(
-    subList,
-    comp,
-    cat
-  );
+      let tieResult = applyTieBreaks(
+        subList,
+        comp,
+        cat
+      );
 
-  finalFemaleList.push(
-    ...tieResult.list
-  );
+      finalFemaleList.push(
+        ...tieResult.list
+      );
 
-});
+    });
 
-femaleList = finalFemaleList;
+    femaleList = finalFemaleList;
 
     femaleList.forEach((p,index)=> {
 
-  let points = 0;
+      let points = 0;
 
-  if(p.lic !== "UFOLEP") return;
+      if(p.lic !== "UFOLEP"){
+        return;
+      }
 
-  let ufoPos = femaleList
-    .filter(x => x.lic === "UFOLEP")
-    .findIndex(x => x.id === p.id) + 1;
+      let ufoPos = femaleList
+        .filter(x => x.lic === "UFOLEP")
+        .findIndex(x => x.id === p.id) + 1;
 
-  points =
-    p.status === "AB"
-    ? 1
-    : Engine.getUfolepPoints(ufoPos);
+      points =
+        p.status === "AB"
+        ? 1
+        : Engine.getUfolepPoints(ufoPos);
 
-  if(championship[p.id]){
-  championship[p.id].scores[comp.name] = points;
-}
+      if(championship[p.id]){
+
+        championship[p.id].participated = true;
+
+        championship[p.id]
+          .scores[comp.name] = points;
+      }
+    });
   });
-});
 
   Object.values(championship).forEach(row => {
 
@@ -7313,6 +7349,16 @@ femaleList = finalFemaleList;
       row.totalBrut-row.jokerPoints;
   });
 
+  // retirer les pilotes n'ayant participé
+  // à aucune compétition du championnat
+  Object.keys(championship).forEach(id=>{
+
+    if(!championship[id].participated){
+
+      delete championship[id];
+    }
+  });
+
   return {
     competitions,
     championship
@@ -7339,10 +7385,17 @@ function buildVeteranChampionship(jokers){
     .forEach(p => {
 
       championship[p.id] = {
+
         pilot:p,
+
         scores:{},
+
+        participated:false,
+
         totalBrut:0,
+
         jokerPoints:0,
+
         totalNet:0
       };
     });
@@ -7351,92 +7404,117 @@ function buildVeteranChampionship(jokers){
 
     let stats = buildStats(comp);
 
-let vetList = stats
-  .filter(p => categoryOrderVeteran[p.cat] !== undefined);
+    let vetList = stats
+      .filter(
+        p => categoryOrderVeteran[p.cat] !== undefined
+      );
 
-if(!vetList.length){
-  return;
-}
+    if(!vetList.length){
+      return;
+    }
 
-vetList.sort((a,b)=>{
+    vetList.sort((a,b)=>{
 
-  let catDiff =
-    categoryOrderVeteran[a.cat]
-    - categoryOrderVeteran[b.cat];
+      let catDiff =
+        categoryOrderVeteran[a.cat]
+        -
+        categoryOrderVeteran[b.cat];
 
-  if(catDiff !== 0){
-    return catDiff;
-  }
+      if(catDiff !== 0){
+        return catDiff;
+      }
 
-  return Engine.compare(a,b);
-});
+      return Engine.compare(a,b);
+    });
 
-let finalVetList = [];
+    let finalVetList = [];
 
-[
-  "Elite V",
-  "N1 V",
-  "N2 V",
-  "N3 V",
-  "N4 V",
-  "N5 V"
-].forEach(cat=>{
+    [
+      "Elite V",
+      "N1 V",
+      "N2 V",
+      "N3 V",
+      "N4 V",
+      "N5 V"
+    ].forEach(cat=>{
 
-  let subList = vetList.filter(
-    p => p.cat === cat
-  );
+      let subList = vetList.filter(
+        p => p.cat === cat
+      );
 
-  let tieResult = applyTieBreaks(
-    subList,
-    comp,
-    cat
-  );
+      let tieResult = applyTieBreaks(
+        subList,
+        comp,
+        cat
+      );
 
-  finalVetList.push(
-    ...tieResult.list
-  );
+      finalVetList.push(
+        ...tieResult.list
+      );
 
-});
+    });
 
-vetList = finalVetList;
+    vetList = finalVetList;
 
-vetList.forEach((p,index)=>{
+    vetList.forEach((p,index)=>{
 
-  if(p.lic !== "UFOLEP") return;
+      if(p.lic !== "UFOLEP"){
+        return;
+      }
 
-  let ufoPos = vetList
-    .filter(x => x.lic === "UFOLEP")
-    .findIndex(x => x.id === p.id) + 1;
+      let ufoPos = vetList
+        .filter(x => x.lic === "UFOLEP")
+        .findIndex(x => x.id === p.id) + 1;
 
-  let points =
-    p.status === "AB"
-    ? 1
-    : Engine.getUfolepPoints(ufoPos);
+      let points =
+        p.status === "AB"
+        ? 1
+        : Engine.getUfolepPoints(ufoPos);
 
-  if(championship[p.id]){
-    championship[p.id].scores[comp.name] = points;
-  }
-});
+      if(championship[p.id]){
+
+        championship[p.id].participated = true;
+
+        championship[p.id]
+          .scores[comp.name] = points;
+      }
+    });
   });
 
   Object.values(championship).forEach(row => {
 
     competitions.forEach(comp => {
+
       if(row.scores[comp.name] === undefined){
+
         row.scores[comp.name] = 0;
       }
     });
 
     let values = Object.values(row.scores);
 
-    row.totalBrut = values.reduce((a,b)=>a+b,0);
+    row.totalBrut =
+      values.reduce((a,b)=>a+b,0);
 
-    let sorted = [...values].sort((a,b)=>a-b);
+    let sorted = [...values]
+      .sort((a,b)=>a-b);
 
-    row.jokerPoints = sorted.slice(0,jokers)
-      .reduce((a,b)=>a+b,0);
+    row.jokerPoints =
+      sorted.slice(0,jokers)
+        .reduce((a,b)=>a+b,0);
 
-    row.totalNet = row.totalBrut - row.jokerPoints;
+    row.totalNet =
+      row.totalBrut-row.jokerPoints;
+  });
+
+  // retirer les pilotes n'ayant participé
+  // à aucune compétition du championnat
+  Object.keys(championship).forEach(id=>{
+
+    if(!championship[id].participated){
+
+      delete championship[id];
+    }
   });
 
   return {
@@ -9515,50 +9593,71 @@ Retour
   }
 
 
-  function processImportedPilots(pilots){
+function processImportedPilots(pilots){
 
-    state.pilots = [];
-    state.clubs = [];
+  state.pilots = [];
+  state.clubs = [];
 
-    pilots.forEach(p => {
+  pilots.forEach(p => {
 
-      state.pilots.push({
+    const name =
+      format(p.name || "");
 
-        id: generatePilotId(),
+    const club =
+      format(p.club || "");
 
-        plaque: p.plaque,
+    const lic =
+      format(p.lic || "");
 
-        name: p.name,
+    const rawCat =
+      String(p.cat || "").trim();
 
-        club: p.club,
-
-        cat: p.cat,
-
-        lic: p.lic,
-
-        licenceNumber: p.licenceNumber,
-
-        birthDate: p.birthDate
-
-      });
+    const cat =
+      rawCat.toUpperCase() === "ELITE"
+        ? "Elite"
+        : rawCat.toUpperCase();
 
 
-      if(
-        p.club &&
-        !state.clubs.includes(p.club)
-      ){
+    state.pilots.push({
 
-        state.clubs.push(p.club);
+      id: generatePilotId(),
 
-      }
+      plaque:
+        String(p.plaque || "").trim(),
+
+      name,
+
+      club,
+
+      cat,
+
+      lic,
+
+      licenceNumber:
+        String(p.licenceNumber || "").trim(),
+
+      birthDate:
+        String(p.birthDate || "").trim()
 
     });
 
 
-    save();
+    if(
+      club &&
+      !state.clubs.includes(club)
+    ){
+
+      state.clubs.push(club);
+
+    }
+
+  });
 
 
-    app.innerHTML = `
+  save();
+
+
+  app.innerHTML = `
 
 <h3>
 Import terminé
@@ -9579,7 +9678,7 @@ Continuer
 
 `;
 
-  }
+}
 
 
   /* ================================
