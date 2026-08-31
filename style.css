@@ -2707,4 +2707,1111 @@ body > button{
 
 }
 
+/* =========================================================
+   SAISIE DES SCORES
+   ========================================================= */
 
+.score-entry-page{
+  width:100%;
+}
+
+
+/* =========================================================
+   BARRE OUTILS
+   ========================================================= */
+
+.score-entry-toolbar{
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:space-between;
+
+  gap:15px;
+
+  margin:8px 0;
+
+  padding:9px 12px;
+
+  background:#ffffff;
+
+  border:1px solid #e2e8f0;
+
+  border-radius:10px;
+
+  box-shadow:0 1px 5px rgba(15,23,42,.06);
+
+}
+
+
+.score-entry-sort{
+
+  display:flex;
+
+  align-items:center;
+
+  gap:7px;
+
+  color:#475569;
+
+  font-size:13px;
+
+  font-weight:700;
+
+}
+
+
+.score-entry-sort select{
+
+  padding:6px 9px;
+
+  border:1px solid #cbd5e1;
+
+  border-radius:7px;
+
+  background:#ffffff;
+
+  color:#1e293b;
+
+  font-size:13px;
+
+  font-weight:600;
+
+  outline:none;
+
+}
+
+
+.score-entry-legend{
+
+  display:flex;
+
+  align-items:center;
+
+  gap:10px;
+
+  color:#64748b;
+
+  font-size:12px;
+
+  font-weight:600;
+
+}
+
+
+/* =========================================================
+   CONTENEUR TABLE
+   ========================================================= */
+
+.score-entry-table-wrap{
+
+  width:100%;
+
+  overflow-x:auto;
+
+  background:#ffffff;
+
+  border:1px solid #e2e8f0;
+
+  border-radius:10px;
+
+  box-shadow:0 1px 5px rgba(15,23,42,.06);
+
+}
+
+
+/* =========================================================
+   TABLE
+   ========================================================= */
+
+.score-entry-table{
+
+  width:100%;
+
+  border-collapse:separate;
+
+  border-spacing:0;
+
+  table-layout:fixed;
+
+}
+
+
+/* =========================================================
+   EN-TÊTES
+   ========================================================= */
+
+.score-entry-table thead th{
+
+  padding:6px 7px;
+
+  background:#f8fafc;
+
+  color:#475569;
+
+  border-bottom:2px solid #e2e8f0;
+
+  font-size:11px;
+
+  font-weight:800;
+
+  text-transform:uppercase;
+
+  letter-spacing:.25px;
+
+  white-space:nowrap;
+
+}
+
+
+/* =========================================================
+   CELLULES
+   ========================================================= */
+
+.score-entry-table td{
+
+  padding:4px 7px;
+
+  border-bottom:1px solid #e2e8f0;
+
+  color:#1e293b;
+
+  font-size:13px;
+
+  vertical-align:middle;
+
+}
+
+
+.score-entry-table tbody tr:last-child td{
+
+  border-bottom:none;
+
+}
+
+
+/* =========================================================
+   LARGEURS
+   ========================================================= */
+
+.score-col-plate,
+.score-plate{
+
+  width:65px;
+
+  text-align:center;
+
+}
+
+
+.score-col-name{
+
+  width:180px;
+
+  text-align:left;
+
+}
+
+
+.score-col-club{
+
+  width:160px;
+
+  text-align:left;
+
+}
+
+
+.score-col-cat{
+
+  width:85px;
+
+  text-align:center;
+
+}
+
+
+.score-col-tour,
+.score-tour-cell{
+
+  width:55px;
+
+  text-align:center;
+
+}
+
+
+.score-col-action,
+.score-action-cell{
+
+  width:62px;
+
+  text-align:center;
+
+}
+
+
+/* =========================================================
+   PILOTE
+   ========================================================= */
+
+.score-name{
+
+  font-weight:800;
+
+  cursor:pointer;
+
+  white-space:nowrap;
+
+  overflow:hidden;
+
+  text-overflow:ellipsis;
+
+}
+
+
+.score-name:hover{
+
+  text-decoration:underline;
+
+}
+
+
+.score-club{
+
+  color:#64748b;
+
+  white-space:nowrap;
+
+  overflow:hidden;
+
+  text-overflow:ellipsis;
+
+}
+
+
+.score-plate{
+
+  font-weight:800;
+
+}
+
+
+/* =========================================================
+   CATÉGORIE
+   ========================================================= */
+
+.score-cat{
+
+  padding:5px 6px !important;
+
+  font-weight:800;
+
+  text-align:center;
+
+  white-space:nowrap;
+
+}
+
+
+/* =========================================================
+   VOYANTS DES TOURS
+   ========================================================= */
+
+.score-tour-cell{
+
+  cursor:pointer;
+
+  user-select:none;
+
+  text-align:center;
+
+}
+
+
+.score-tour-cell:hover{
+
+  background:#f8fafc;
+
+}
+
+
+.score-tour-cell:active{
+
+  background:#f1f5f9;
+
+}
+
+
+.score-status-icon{
+
+  display:inline-flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  width:26px;
+
+  height:24px;
+
+  font-size:16px;
+
+}
+
+
+/* =========================================================
+   AB
+   ========================================================= */
+
+.score-ab-btn{
+
+  display:inline-flex !important;
+
+  align-items:center !important;
+  justify-content:center !important;
+
+  min-width:38px !important;
+  height:23px !important;
+
+  padding:2px 6px !important;
+
+  background:#f8fafc !important;
+
+  color:#475569 !important;
+
+  border:1px solid #cbd5e1 !important;
+
+  border-radius:5px !important;
+
+  font-size:10px !important;
+  font-weight:800 !important;
+
+  cursor:pointer !important;
+
+  box-shadow:none !important;
+
+  transform:none !important;
+}
+
+
+.score-ab-btn:hover{
+
+  background:#f1f5f9 !important;
+
+  color:#334155 !important;
+
+  border-color:#94a3b8 !important;
+
+  box-shadow:none !important;
+
+}
+
+
+.score-ab-btn:active{
+
+  background:#e2e8f0 !important;
+
+  color:#334155 !important;
+
+  transform:scale(.97) !important;
+
+}
+
+
+/* Pilote déjà en abandon */
+
+.score-ab-active{
+
+  background:#fee2e2 !important;
+
+  color:#991b1b !important;
+
+  border-color:#fecaca !important;
+
+}
+
+
+.score-ab-active:hover{
+
+  background:#fecaca !important;
+
+  color:#7f1d1d !important;
+
+  border-color:#fca5a5 !important;
+
+}
+
+
+/* =========================================================
+   PILOTE AB
+   ========================================================= */
+
+.pilot-ab-row{
+
+  background:#fff7f7;
+
+}
+
+
+.pilot-ab-row .score-name{
+
+  color:#991b1b;
+
+}
+
+
+/* =========================================================
+   PETITS ÉCRANS
+   ========================================================= */
+
+@media(max-width:900px){
+
+  .score-entry-toolbar{
+
+    align-items:flex-start;
+
+    flex-direction:column;
+
+  }
+
+
+  .score-entry-legend{
+
+    flex-wrap:wrap;
+
+  }
+
+
+  .score-col-club,
+  .score-club{
+
+    display:none;
+
+  }
+
+
+  .score-col-name{
+
+    width:160px;
+
+  }
+
+}
+
+/* =========================================================
+   DÉTAIL PILOTE
+   ========================================================= */
+
+.score-detail-page{
+  width:100%;
+}
+
+
+.score-pilot-header{
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:space-between;
+
+  gap:15px;
+
+  margin:8px 0;
+
+  padding:12px 14px;
+
+  background:#ffffff;
+
+  border:1px solid #e2e8f0;
+
+  border-radius:10px;
+
+  box-shadow:0 1px 5px rgba(15,23,42,.06);
+
+}
+
+
+.score-pilot-name{
+
+  font-size:20px;
+
+  font-weight:800;
+
+  color:#1e293b;
+
+}
+
+
+.score-pilot-meta{
+
+  display:flex;
+
+  align-items:center;
+
+  flex-wrap:wrap;
+
+  gap:8px;
+
+  margin-top:5px;
+
+  color:#64748b;
+
+  font-size:12px;
+
+  font-weight:600;
+
+}
+
+
+.score-pilot-cat{
+
+  display:inline-flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  padding:3px 7px;
+
+  border-radius:5px;
+
+  color:#1e293b;
+
+  font-weight:800;
+
+}
+
+
+.score-pilot-ab{
+
+  padding:6px 9px;
+
+  border-radius:6px;
+
+  background:#fee2e2;
+
+  color:#991b1b;
+
+  border:1px solid #fecaca;
+
+  font-size:11px;
+
+  font-weight:800;
+
+  white-space:nowrap;
+
+}
+
+
+/* =========================================================
+   LISTE DES TOURS
+   ========================================================= */
+
+.score-detail-list{
+
+  display:flex;
+
+  flex-direction:column;
+
+  gap:6px;
+
+}
+
+
+.score-detail-tour{
+
+  display:flex;
+
+  align-items:center;
+
+  min-height:52px;
+
+  padding:7px 11px;
+
+  background:#ffffff;
+
+  border:1px solid #e2e8f0;
+
+  border-radius:9px;
+
+  cursor:pointer;
+
+  box-shadow:0 1px 4px rgba(15,23,42,.05);
+
+  transition:
+
+    background .12s,
+
+    border-color .12s,
+
+    transform .08s,
+
+    box-shadow .12s;
+
+}
+
+
+.score-detail-tour:hover{
+
+  background:#f8fafc;
+
+  border-color:#cbd5e1;
+
+  box-shadow:0 3px 9px rgba(15,23,42,.08);
+
+}
+
+
+.score-detail-tour:active{
+
+  transform:scale(.995);
+
+}
+
+
+.score-detail-tour-left{
+
+  display:flex;
+
+  align-items:center;
+
+  gap:14px;
+
+  flex:1;
+
+}
+
+
+.score-detail-tour-number{
+
+  width:34px;
+
+  font-size:15px;
+
+  font-weight:800;
+
+  color:#1e293b;
+
+}
+
+
+.score-detail-tour-status{
+
+  display:flex;
+
+  align-items:center;
+
+  gap:7px;
+
+  color:#64748b;
+
+  font-size:13px;
+
+  font-weight:600;
+
+}
+
+
+.score-detail-icon{
+
+  font-size:17px;
+
+}
+
+
+.score-detail-tour-result{
+
+  min-width:80px;
+
+  text-align:right;
+
+  color:#1e293b;
+
+  font-size:13px;
+
+}
+
+
+.score-detail-tour-arrow{
+
+  width:25px;
+
+  margin-left:10px;
+
+  text-align:right;
+
+  color:#94a3b8;
+
+  font-size:22px;
+
+  font-weight:400;
+
+}
+
+
+.score-detail-footer{
+
+  display:flex;
+
+  justify-content:flex-end;
+
+  margin-top:10px;
+
+}
+
+
+.score-detail-ab{
+
+  padding:8px 12px;
+
+  border-radius:7px;
+
+  border:1px solid #fecaca;
+
+  background:#fee2e2;
+
+  color:#991b1b;
+
+  font-size:12px;
+
+  font-weight:800;
+
+  cursor:pointer;
+
+}
+
+
+.score-detail-ab:hover{
+
+  background:#fecaca;
+
+}
+
+
+/* =========================================================
+   FORMULAIRE DE SAISIE
+   ========================================================= */
+
+.score-entry-form-page{
+
+  width:100%;
+
+}
+
+
+.score-form-pilot{
+
+  margin:8px 0;
+
+  padding:11px 14px;
+
+  background:#ffffff;
+
+  border:1px solid #e2e8f0;
+
+  border-radius:10px;
+
+  box-shadow:0 1px 5px rgba(15,23,42,.06);
+
+}
+
+
+.score-form-pilot-name{
+
+  font-size:20px;
+
+  font-weight:800;
+
+  color:#1e293b;
+
+}
+
+
+.score-form-pilot-meta{
+
+  display:flex;
+
+  align-items:center;
+
+  flex-wrap:wrap;
+
+  gap:8px;
+
+  margin-top:5px;
+
+  color:#64748b;
+
+  font-size:12px;
+
+  font-weight:600;
+
+}
+
+
+/* =========================================================
+   ZONES
+   ========================================================= */
+
+.score-zones{
+
+  display:flex;
+
+  flex-direction:column;
+
+  gap:5px;
+
+}
+
+
+.score-zone-row{
+
+  display:flex;
+
+  align-items:center;
+
+  min-height:52px;
+
+  padding:5px 8px;
+
+  background:#ffffff;
+
+  border:1px solid #e2e8f0;
+
+  border-radius:8px;
+
+  box-shadow:0 1px 3px rgba(15,23,42,.04);
+
+}
+
+
+.score-zone-number{
+
+  width:70px;
+
+  color:#475569;
+
+  font-size:13px;
+
+  font-weight:800;
+
+}
+
+
+.score-buttons{
+
+  display:flex;
+
+  gap:5px;
+
+  flex:1;
+
+}
+
+
+.score-btn{
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  width:43px;
+
+  height:38px;
+
+  padding:0;
+
+  border:1px solid #cbd5e1;
+
+  border-radius:7px;
+
+  background:#f8fafc;
+
+  color:#334155;
+
+  font-size:15px;
+
+  font-weight:800;
+
+  cursor:pointer;
+
+  box-shadow:none;
+
+  transition:
+
+    background .10s,
+
+    border-color .10s,
+
+    transform .08s;
+
+}
+
+
+.score-btn:hover{
+
+  background:#f1f5f9;
+
+  border-color:#94a3b8;
+
+}
+
+
+.score-btn:active{
+
+  transform:scale(.96);
+
+}
+
+
+.score-btn.selected{
+
+  background:#e2e8f0;
+
+  border-color:#64748b;
+
+  color:#0f172a;
+
+  box-shadow:
+
+    inset 0 0 0 2px #ffffff,
+
+    0 0 0 2px #64748b;
+
+}
+
+
+.score-zone-current{
+
+  width:55px;
+
+  text-align:right;
+
+  color:#64748b;
+
+  font-size:12px;
+
+  font-weight:700;
+
+}
+
+
+.score-form-actions{
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:flex-start;
+
+  gap:8px;
+
+  margin-top:10px;
+
+}
+
+
+.score-validate-btn{
+
+  padding:8px 13px;
+
+  border:1px solid #cbd5e1 !important;
+
+  border-radius:8px;
+
+  background:#e2e8f0 !important;
+
+  color:#1e293b !important;
+
+  font-size:13px;
+
+  font-weight:800;
+
+  cursor:pointer;
+
+  box-shadow:0 2px 5px rgba(15,23,42,.08);
+
+}
+
+
+.score-validate-btn:hover{
+
+  background:#cbd5e1 !important;
+
+  border-color:#94a3b8 !important;
+
+}
+
+
+.score-validate-btn:active{
+
+  transform:scale(.98);
+
+}
+
+
+.score-cancel-btn{
+
+  padding:8px 13px;
+
+  border:1px solid #cbd5e1 !important;
+
+  border-radius:8px;
+
+  background:#ffffff !important;
+
+  color:#475569 !important;
+
+  font-size:13px;
+
+  font-weight:700;
+
+  cursor:pointer;
+
+  box-shadow:0 2px 5px rgba(15,23,42,.06);
+
+}
+
+
+.score-cancel-btn:hover{
+
+  background:#f8fafc !important;
+
+  border-color:#94a3b8 !important;
+
+}
+
+
+/* =========================================================
+   PETITS ÉCRANS
+   ========================================================= */
+
+@media(max-width:700px){
+
+  .score-zone-number{
+
+    width:58px;
+
+  }
+
+
+  .score-btn{
+
+    width:38px;
+
+    height:36px;
+
+  }
+
+
+  .score-zone-current{
+
+    display:none;
+
+  }
+
+}

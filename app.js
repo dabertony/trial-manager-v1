@@ -3814,145 +3814,362 @@ let currentScores=[];
 
 function selectPilot(i){
 
-  let c=state.competitions[i];
-if(c.locked){
+  let c = state.competitions[i];
 
-  app.innerHTML=`
+  if(c.locked){
 
-  <h3>Compétition verrouillée</h3>
+    app.innerHTML = `
 
-  <div class="card">
-    Les scores sont figés.
-  </div>
+      <h3>Compétition verrouillée</h3>
 
-  <button onclick="returnCompetitionMenu()">
-  Retour
-  </button>
-  `;
+      <div class="card">
+        Les scores sont figés.
+      </div>
 
-  return;
-}
+      <button
+        class="comp-close"
+        onclick="returnCompetitionMenu()"
+      >
+        ← Retour
+      </button>
 
-  let list=c.participants
-    .map(id=>getPilotById(id))
-    .filter(p=>p);
+    `;
 
-  list=sortEntryPilots(
-  list,
-  state.sortEntryMode
-);
+    return;
+  }
 
-  let html=`
+
+  let list = c.participants
+    .map(id => getPilotById(id))
+    .filter(p => p);
+
+
+  list = sortEntryPilots(
+    list,
+    state.sortEntryMode
+  );
+
+
+  /* =========================================
+     TOPBAR
+     ========================================= */
+
+  let html = `
 
 <div class="score-entry-page">
 
-<div class="topbar">
+  <div class="topbar">
 
-  <div class="topbar-title">
-    Saisie des scores
+    <div class="topbar-title">
+      Saisie des scores
+    </div>
+
+    <div class="topbar-actions">
+
+      <button
+        class="comp-close"
+        onclick="returnCompetitionMenu()"
+      >
+        ← Retour
+      </button>
+
+    </div>
+
   </div>
 
-  <div class="topbar-actions">
 
-    <button onclick="returnCompetitionMenu()">
-    Retour
-    </button>
+  <div class="score-entry-toolbar">
+
+    <div class="score-entry-sort">
+
+      <span>
+        Trier :
+      </span>
+
+      <select
+        onchange="changeSortEntry(this.value,${i})"
+      >
+
+        <option
+          value="nameAZ"
+          ${state.sortEntryMode==="nameAZ"?"selected":""}
+        >
+          Nom A → Z
+        </option>
+
+        <option
+          value="nameZA"
+          ${state.sortEntryMode==="nameZA"?"selected":""}
+        >
+          Nom Z → A
+        </option>
+
+        <option
+          value="catASC"
+          ${state.sortEntryMode==="catASC"?"selected":""}
+        >
+          Catégorie Elite → N5
+        </option>
+
+        <option
+          value="catDESC"
+          ${state.sortEntryMode==="catDESC"?"selected":""}
+        >
+          Catégorie N5 → Elite
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <div class="score-entry-legend">
+
+      <span>❌ Non saisi</span>
+      <span>🟡 En cours</span>
+      <span>🟢 Terminé</span>
+      <span>🟥 AB</span>
+
+    </div>
 
   </div>
 
-</div>
+
+  <div class="score-entry-table-wrap">
+
+    <table class="score-entry-table">
+
+      <thead>
+
+        <tr>
+
+          <th class="score-col-plate">
+            Plaque
+          </th>
+
+          <th class="score-col-name">
+            Nom
+          </th>
+
+          <th class="score-col-club">
+            Club
+          </th>
+
+          <th class="score-col-cat">
+            Catégorie
+          </th>
+
 `;
 
-  html += `
 
-  Trier :
+  /* =========================================
+     COLONNES DES TOURS
+     ========================================= */
 
-  <select onchange="changeSortEntry(this.value,${i})">
+  for(let t=1; t<=c.tours; t++){
 
-    <option value="nameAZ"
-      ${state.sortEntryMode==="nameAZ"?"selected":""}>
-      Nom A → Z
-    </option>
+    html += `
 
-    <option value="nameZA"
-      ${state.sortEntryMode==="nameZA"?"selected":""}>
-      Nom Z → A
-    </option>
+          <th class="score-col-tour">
+            T${t}
+          </th>
 
-    <option value="catASC"
-      ${state.sortEntryMode==="catASC"?"selected":""}>
-      Catégorie Elite → N5
-    </option>
-
-    <option value="catDESC"
-      ${state.sortEntryMode==="catDESC"?"selected":""}>
-      Catégorie N5 → Elite
-    </option>
-
-  </select>
-  `;
-
-  list.forEach((p,index)=>{
-
-    let status=getPilotStatus(c,p.id);
-
-let tours = "";
-
-for(let t = 1; t <= c.tours; t++){
-
-  let icon = "🟡";
-
-  if(c.status[p.id] === "AB"){
-
-    icon = "🟥";
-
-  }else if(c.scores[p.id + "-" + t]){
-
-    icon = "🟢";
+    `;
 
   }
 
-  tours += `
-    <span
-      class="tour-chip"
-      onclick="event.stopPropagation();clickTour(${i},'${p.id}',${t})">
 
-      T${t} ${icon}
+  html += `
 
-    </span>
-`;
-}
+          <th class="score-col-action">
+            Action
+          </th>
 
-html += `
-<div class="card ${getCatClass(p.cat)}">
+        </tr>
 
-  <div class="tour-line">
+      </thead>
 
-    ${tours}
+      <tbody>
 
-    <span
-class="status-chip"
-onclick="pilotDetail(${i},'${p.id}')">
+  `;
 
-${getStatusLabel(c,p.id)}
 
-</span>
+  /* =========================================
+     PILOTES
+     ========================================= */
 
-    <span class="pilot-line">
+  list.forEach(p => {
 
-      ${p.cat} - ${p.name} - ${p.club || "Sans club"}
+    let isAB =
+      c.status[p.id] === "AB";
 
-    </span>
+
+    let plaque =
+      c.participantPlates?.[p.id]
+      ??
+      p.plaque
+      ??
+      "";
+
+
+    html += `
+
+        <tr
+          class="
+            score-entry-row
+            ${isAB ? "pilot-ab-row" : ""}
+          "
+        >
+
+          <td class="score-plate">
+            ${plaque}
+          </td>
+
+
+          <td
+            class="score-name"
+            onclick="pilotDetail(${i},'${p.id}')"
+          >
+            ${p.name}
+          </td>
+
+
+          <td class="score-club">
+            ${p.club || "Sans club"}
+          </td>
+
+
+          <td
+            class="score-cat"
+            style="
+              background:${getCategoryColor(p.cat)};
+            "
+          >
+            ${p.cat}
+          </td>
+
+    `;
+
+
+    /* =========================================
+       TOURS
+       ========================================= */
+
+    for(let t=1; t<=c.tours; t++){
+
+      let score =
+        c.scores[p.id + "-" + t];
+
+
+      let icon = "❌";
+
+
+      if(isAB){
+
+        icon = "🟥";
+
+      }
+      else if(score){
+
+        if(score.includes(null)){
+
+          icon = "🟡";
+
+        }
+        else{
+
+          icon = "🟢";
+
+        }
+
+      }
+
+
+      html += `
+
+          <td
+            class="score-tour-cell"
+            onclick="
+              event.stopPropagation();
+              clickTour(${i},'${p.id}',${t})
+            "
+          >
+
+            <span class="score-status-icon">
+              ${icon}
+            </span>
+
+          </td>
+
+      `;
+
+    }
+
+
+    /* =========================================
+       ACTION AB
+       ========================================= */
+
+    html += `
+
+          <td class="score-action-cell">
+
+            ${
+              isAB
+
+              ?
+
+              `
+              <button
+                class="score-ab-btn score-ab-active"
+                onclick="
+                  event.stopPropagation();
+                  cancelAB(${i},'${p.id}')
+                "
+              >
+                ↩ AB
+              </button>
+              `
+
+              :
+
+              `
+              <button
+                class="score-ab-btn"
+                onclick="
+                  event.stopPropagation();
+                  declareAB(${i},'${p.id}')
+                "
+              >
+                AB
+              </button>
+              `
+            }
+
+          </td>
+
+        </tr>
+
+    `;
+
+  });
+
+
+  html += `
+
+      </tbody>
+
+    </table>
 
   </div>
 
 </div>
-`;
-  });
 
-html += `</div>`;
+  `;
 
-  app.innerHTML=html;
+
+  app.innerHTML = html;
+
 }
 
 function getStatusLabel(c,id){
@@ -4000,13 +4217,6 @@ function clickTour(ci,id,t){
   }
 
   if(c.status[id] === "AB"){
-
-    pilotDetail(ci,id);
-
-    return;
-  }
-
-  if(c.scores[id + "-" + t]){
 
     pilotDetail(ci,id);
 
@@ -4108,70 +4318,247 @@ function getStatus(c,id){
 
 function pilotDetail(ci,id){
 
-  let c=state.competitions[ci];
-if(c.locked){
+  let c = state.competitions[ci];
 
-  showResults(ci);
+  if(c.locked){
 
-  return;
-}
-  let p=getPilotById(id);
+    showResults(ci);
 
-  let html=`<h3>${p.name}</h3>`;
+    return;
+  }
 
-  for(let t=1;t<=c.tours;t++){
 
-    let s=c.scores[id+"-"+t];
+  let p = getPilotById(id);
 
-    html+=`
-    <div class="card">
+  if(!p){
+    selectPilot(ci);
+    return;
+  }
 
-      Tour ${t} :
-      ${s ? s.join(" - ") : "Non saisi"}
 
-      <button onclick="enterScore(${ci},'${id}',${t})">
-        Modifier
+  let plaque =
+    c.participantPlates?.[id]
+    ??
+    p.plaque
+    ??
+    "";
+
+
+  let isAB =
+    c.status[id] === "AB";
+
+
+  let html = `
+
+<div class="score-detail-page">
+
+  <div class="topbar">
+
+    <div class="topbar-title">
+      Détail pilote
+    </div>
+
+    <div class="topbar-actions">
+
+      <button
+        class="comp-close"
+        onclick="selectPilot(${ci})"
+      >
+        ← Retour
       </button>
 
     </div>
+
+  </div>
+
+
+  <div class="score-pilot-header">
+
+    <div class="score-pilot-main">
+
+      <div class="score-pilot-name">
+        ${p.name}
+      </div>
+
+      <div class="score-pilot-meta">
+
+        <span class="score-pilot-plate">
+          Plaque ${plaque || "—"}
+        </span>
+
+        <span
+          class="score-pilot-cat"
+          style="
+            background:${getCategoryColor(p.cat)};
+          "
+        >
+          ${p.cat}
+        </span>
+
+        <span class="score-pilot-club">
+          ${p.club || "Sans club"}
+        </span>
+
+      </div>
+
+    </div>
+
+
+    ${
+      isAB
+      ?
+      `
+      <div class="score-pilot-ab">
+        🟥 ABANDON
+      </div>
+      `
+      :
+      ""
+    }
+
+  </div>
+
+
+  <div class="score-detail-list">
+
+`;
+
+
+  for(let t=1; t<=c.tours; t++){
+
+    let s =
+      c.scores[id + "-" + t];
+
+
+    let icon = "❌";
+
+    let label = "Non saisi";
+
+    let total = "";
+
+
+    if(isAB && !s){
+
+      icon = "🟥";
+
+      label = "Abandon";
+
+    }
+    else if(s){
+
+      if(s.includes(null)){
+
+        icon = "🟡";
+
+        label = "En cours";
+
+      }
+      else{
+
+        icon = "🟢";
+
+        label = "Terminé";
+
+        let tourTotal =
+          s.reduce(
+            (sum,v) => sum + (v ?? 0),
+            0
+          );
+
+        total =
+          `${tourTotal} point${tourTotal > 1 ? "s" : ""}`;
+
+      }
+
+    }
+
+
+    html += `
+
+    <div
+      class="score-detail-tour"
+      onclick="
+        enterScore(${ci},'${id}',${t})
+      "
+    >
+
+      <div class="score-detail-tour-left">
+
+        <div class="score-detail-tour-number">
+          T${t}
+        </div>
+
+        <div class="score-detail-tour-status">
+          <span class="score-detail-icon">
+            ${icon}
+          </span>
+
+          <span>
+            ${label}
+          </span>
+        </div>
+
+      </div>
+
+
+      <div class="score-detail-tour-result">
+
+        ${
+          total
+          ?
+          `<strong>${total}</strong>`
+          :
+          ""
+        }
+
+      </div>
+
+
+      <div class="score-detail-tour-arrow">
+        ›
+      </div>
+
+    </div>
+
     `;
+
   }
-let isAB = c.status[id] === "AB";
 
-html+=`
 
-<div style="margin-top:20px;">
+  html += `
 
-<button onclick="selectPilot(${ci})">
-Retour
-</button>
+  </div>
 
-${
-isAB
-? `
-<button
-onclick="cancelAB(${ci},'${id}')">
 
-Annuler abandon
+  <div class="score-detail-footer">
 
-</button>
-`
-: `
-<button
-class="delete"
-onclick="declareAB(${ci},'${id}')">
+    ${
+      isAB
+      ?
+      `
+      <button
+        class="score-detail-ab cancel"
+        onclick="
+          cancelAB(${ci},'${id}')
+        "
+      >
+        ↩ Annuler l'abandon
+      </button>
+      `
+      :
+      ""
+    }
 
-Déclarer abandon
+  </div>
 
-</button>
-`
-}
 
 </div>
 
 `;
 
-  app.innerHTML=html;
+
+  app.innerHTML = html;
+
 }
 
 function declareAB(ci,id){
@@ -4274,102 +4661,197 @@ function enterScore(ci,id,t){
     return;
   }
 
-  currentScores = new Array(c.zones).fill(null);
 
-  let old = c.scores[id + "-" + t];
+  currentScores =
+    new Array(c.zones).fill(null);
+
+
+  let old =
+    c.scores[id + "-" + t];
+
 
   if(old){
+
     currentScores = [...old];
+
   }
 
-  let pilot =
-  state.pilots.find(
-    p => p.id === id
-  );
 
-  let isAB =
-  c.status[id] === "AB";
+  let pilot =
+    state.pilots.find(
+      p => p.id === id
+    );
+
+
+  if(!pilot){
+    selectPilot(ci);
+    return;
+  }
+
+
+  let plaque =
+    c.participantPlates?.[id]
+    ??
+    pilot.plaque
+    ??
+    "";
+
 
   let html = `
 
-<h3 class="score-tour">
-Tour ${t}
-</h3>
+<div class="score-entry-form-page">
 
-<div class="score-pilot">
+  <div class="topbar">
 
-${pilot?.name || ""}
+    <div class="topbar-title">
+      Tour ${t}
+    </div>
 
-</div>
+    <div class="topbar-actions">
 
-<div id="zones"></div>
-
-<div class="score-actions">
-
-  <button onclick="saveScore(${ci},'${id}',${t})">
-    Valider
-  </button>
-
-  ${
-    isAB
-    ? `
       <button
-      onclick="cancelAB(${ci},'${id}')">
-
-      Annuler abandon
-
+        class="comp-close"
+        onclick="selectPilot(${ci})"
+      >
+        ← Retour
       </button>
-    `
-    : `
-      <button
-      class="delete"
-      onclick="declareAB(${ci},'${id}')">
 
-      Déclarer abandon
+    </div>
 
-      </button>
-    `
-  }
+  </div>
 
-  <button
-    onclick="selectPilot(${ci})">
 
-    Retour
+  <div class="score-form-pilot">
 
-  </button>
+    <div class="score-form-pilot-name">
+      ${pilot.name}
+    </div>
+
+    <div class="score-form-pilot-meta">
+
+      <span>
+        Plaque ${plaque || "—"}
+      </span>
+
+      <span
+        class="score-pilot-cat"
+        style="
+          background:${getCategoryColor(pilot.cat)};
+        "
+      >
+        ${pilot.cat}
+      </span>
+
+      <span>
+        ${pilot.club || "Sans club"}
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <div class="score-zones" id="zones">
+
+  </div>
+
+
+  <div class="score-form-actions">
+
+    <button
+      class="score-validate-btn"
+      onclick="saveScore(${ci},'${id}',${t})"
+    >
+      ✓ Valider le tour
+    </button>
+
+
+    <button
+      class="score-cancel-btn"
+      onclick="selectPilot(${ci})"
+    >
+      ← Retour
+    </button>
+
+  </div>
+
 
 </div>
 
 `;
 
-  app.innerHTML=html;
 
-  let z="";
+  app.innerHTML = html;
 
-  for(let i=0;i<c.zones;i++){
 
-z+=`
-<div class="zone-block">
+  let z = "";
 
-  <span class="zone-label">
-    Zone ${i+1} :
-  </span>
 
-  ${[0,1,2,3,5].map(v=>`
+  for(let i=0; i<c.zones; i++){
 
-  <button
-    class="score-btn ${currentScores[i]===v ? "selected" : ""}"
-    onclick="setScore(${i},${v},this)">
-    ${v}
-  </button>
+    let selected =
+      currentScores[i];
 
-  `).join("")}
 
-</div>
-`;
+    z += `
+
+    <div class="score-zone-row">
+
+      <div class="score-zone-number">
+        Zone ${i+1}
+      </div>
+
+
+      <div class="score-buttons">
+
+        ${
+
+          [0,1,2,3,5]
+
+          .map(v => `
+
+            <button
+              class="
+                score-btn
+                ${selected === v ? "selected" : ""}
+              "
+              onclick="
+                setScore(${i},${v},this)
+              "
+            >
+              ${v}
+            </button>
+
+          `)
+
+          .join("")
+
+        }
+
+      </div>
+
+
+      <div class="score-zone-current">
+
+        ${
+          selected !== null
+          ?
+          `✓ ${selected}`
+          :
+          "—"
+        }
+
+      </div>
+
+    </div>
+
+    `;
+
   }
 
-  document.getElementById("zones").innerHTML=z;
+
+  document.getElementById("zones").innerHTML = z;
+
 }
 
 function showDoublePointageMatin(i){
@@ -9032,12 +9514,321 @@ Retour
     return;
   }
 
-  const result =
-    await window.api.importPilotsExcel();
 
-  if(!result.success){
+  function processImportedPilots(pilots){
 
-    if(result.error==="FORMAT"){
+    state.pilots = [];
+    state.clubs = [];
+
+    pilots.forEach(p => {
+
+      state.pilots.push({
+
+        id: generatePilotId(),
+
+        plaque: p.plaque,
+
+        name: p.name,
+
+        club: p.club,
+
+        cat: p.cat,
+
+        lic: p.lic,
+
+        licenceNumber: p.licenceNumber,
+
+        birthDate: p.birthDate
+
+      });
+
+
+      if(
+        p.club &&
+        !state.clubs.includes(p.club)
+      ){
+
+        state.clubs.push(p.club);
+
+      }
+
+    });
+
+
+    save();
+
+
+    app.innerHTML = `
+
+<h3>
+Import terminé
+</h3>
+
+<div class="card">
+
+✅ ${state.pilots.length}
+pilotes importés.
+
+</div>
+
+<br>
+
+<button onclick="showPilots()">
+Continuer
+</button>
+
+`;
+
+  }
+
+
+  /* ================================
+     ELECTRON
+     ================================ */
+
+  if(
+    window.api &&
+    typeof window.api.importPilotsExcel === "function"
+  ){
+
+    const result =
+      await window.api.importPilotsExcel();
+
+
+    if(!result.success){
+
+      if(result.error === "FORMAT"){
+
+        app.innerHTML = `
+
+<h3>
+Import impossible
+</h3>
+
+<div class="card">
+
+❌ Format Excel invalide.
+
+<br><br>
+
+Le fichier doit provenir de l'export
+Pilotes Trial Manager.
+
+</div>
+
+<br>
+
+<button onclick="showPilots()">
+Retour
+</button>
+
+`;
+
+        return;
+      }
+
+
+      showPilots();
+
+      return;
+
+    }
+
+
+    processImportedPilots(result.pilots);
+
+    return;
+
+  }
+
+
+  /* ================================
+     IPHONE / IPAD / NAVIGATEUR
+     ================================ */
+
+  if(typeof XLSX === "undefined"){
+
+    app.innerHTML = `
+
+<h3>
+Import impossible
+</h3>
+
+<div class="card">
+
+❌ La lecture des fichiers Excel
+n'est pas disponible sur cet appareil.
+
+</div>
+
+<br>
+
+<button onclick="showPilots()">
+Retour
+</button>
+
+`;
+
+    return;
+
+  }
+
+
+  const input =
+    document.createElement("input");
+
+  input.type = "file";
+
+  input.accept =
+    ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+  input.style.display = "none";
+
+  document.body.appendChild(input);
+
+
+  input.onchange = async function(){
+
+    const file =
+      input.files && input.files[0];
+
+    input.remove();
+
+
+    if(!file){
+      return;
+    }
+
+
+    try{
+
+      const buffer =
+        await file.arrayBuffer();
+
+
+      const workbook =
+        XLSX.read(
+          buffer,
+          {
+            type: "array"
+          }
+        );
+
+
+      if(!workbook.SheetNames.length){
+
+        throw new Error("FORMAT");
+
+      }
+
+
+      const sheet =
+        workbook.Sheets[
+          workbook.SheetNames[0]
+        ];
+
+
+      const rows =
+        XLSX.utils.sheet_to_json(
+          sheet,
+          {
+            header: 1,
+            defval: ""
+          }
+        );
+
+
+      const expectedHeaders = [
+
+        "Plaque",
+        "Nom",
+        "Club",
+        "Catégorie",
+        "Licence",
+        "N° licence",
+        "Date naissance"
+
+      ];
+
+
+      const headers =
+        rows[0] || [];
+
+
+      for(let i = 0; i < 7; i++){
+
+        if(
+          String(headers[i] ?? "").trim()
+          !==
+          expectedHeaders[i]
+        ){
+
+          throw new Error("FORMAT");
+
+        }
+
+      }
+
+
+      const pilots = [];
+
+
+      for(
+        let r = 1;
+        r < rows.length;
+        r++
+      ){
+
+        const row =
+          rows[r] || [];
+
+
+        const name =
+          String(row[1] ?? "").trim();
+
+
+        if(!name){
+          continue;
+        }
+
+
+        pilots.push({
+
+          plaque:
+            String(row[0] ?? "").trim(),
+
+          name: name,
+
+          club:
+            String(row[2] ?? "").trim(),
+
+          cat:
+            String(row[3] ?? "").trim(),
+
+          lic:
+            String(row[4] ?? "").trim(),
+
+          licenceNumber:
+            String(row[5] ?? "").trim(),
+
+          birthDate:
+            String(row[6] ?? "").trim()
+
+        });
+
+      }
+
+
+      processImportedPilots(pilots);
+
+
+    }catch(error){
+
+      console.error(
+        "Erreur import Excel :",
+        error
+      );
+
 
       app.innerHTML = `
 
@@ -9064,74 +9855,12 @@ Retour
 
 `;
 
-      return;
     }
 
-    showPilots();
+  };
 
-    return;
-  }
 
-  state.pilots = [];
-  state.clubs = [];
-
-  result.pilots.forEach(p=>{
-
-    state.pilots.push({
-
-      id:generatePilotId(),
-
-      plaque:p.plaque,
-
-      name:p.name,
-
-      club:p.club,
-
-      cat:p.cat,
-
-      lic:p.lic,
-
-      licenceNumber:
-        p.licenceNumber,
-
-      birthDate:
-        p.birthDate
-
-    });
-
-    if(
-      p.club &&
-      !state.clubs.includes(p.club)
-    ){
-
-      state.clubs.push(p.club);
-
-    }
-
-  });
-
-  save();
-
-  app.innerHTML = `
-
-<h3>
-Import terminé
-</h3>
-
-<div class="card">
-
-✅ ${state.pilots.length}
-pilotes importés.
-
-</div>
-
-<br>
-
-<button onclick="showPilots()">
-Continuer
-</button>
-
-`;
+  input.click();
 
 }
 
