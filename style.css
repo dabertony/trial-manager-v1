@@ -1433,10 +1433,10 @@ body > button{
 
 .competition-form-grid{
   grid-template-columns:
-    minmax(240px,2fr)
+    minmax(300px,2fr)
     180px
-    140px
-    140px;
+    180px
+    180px;
 }
 
 .competition-form-grid .pilot-field input{

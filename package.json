@@ -1,6 +1,6 @@
 {
   "name": "trial_manager_v12",
-  "version": "1.0.0",
+  "version": "12.0.0",
   "description": "Trial Manager UFOLEP",
   "main": "main.js",
   "scripts": {

@@ -2945,7 +2945,7 @@ async function newCompetition(){
     { key: "tours", label: "Nombre de tours", type:"number" }
   ]);
 
-    state.competitions.push({
+  state.competitions.push({
     name: format(data.name),
     date: data.date,
     zones: parseInt(data.zones),
