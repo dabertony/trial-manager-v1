@@ -1071,51 +1071,51 @@ function home(){
 
 
         <div
-          class="menu-card"
-          onclick="selectPilot(${i})"
-        >
-          📝 SAISIE DES SCORES
-        </div>
+  class="menu-card"
+  onclick="manageParticipants(${i})"
+>
+  👥 PARTICIPANTS
+</div>
 
 
-        <div
-          class="menu-card"
-          onclick="manageParticipants(${i})"
-        >
-          👥 PARTICIPANTS
-        </div>
+<div
+  class="menu-card"
+  onclick="showExportParticipantsMenu(${i})"
+>
+  📄 EXPORTS
+</div>
 
 
-        <div
-          class="menu-card"
-          onclick="showResults(${i})"
-        >
-          🏆 CLASSEMENTS
-        </div>
+<div
+  class="menu-card"
+  onclick="selectPilot(${i})"
+>
+  📝 SAISIE DES SCORES
+</div>
 
 
-        <div
-          class="menu-card"
-          onclick="showExportParticipantsMenu(${i})"
-        >
-          📄 EXPORTS
-        </div>
+<div
+  class="menu-card"
+  onclick="showCompetitionInfo(${i})"
+>
+  ℹ️ INFOS COMPÉTITION
+</div>
 
 
-        <div
+<div
+  class="menu-card"
+  onclick="showResults(${i})"
+>
+  🏆 CLASSEMENTS
+</div>
+
+
+<div
   class="menu-card menu-card-validation"
   onclick="lockCompetition(${i})"
 >
   ✔ VALIDER LA COMPÉTITION
 </div>
-
-
-        <div
-          class="menu-card"
-          onclick="showCompetitionInfo(${i})"
-        >
-          ℹ️ INFOS COMPÉTITION
-        </div>
 
 
         <div
@@ -2007,13 +2007,109 @@ function showCompetitionInfo(i){
 
     `;
 
-    levels.forEach(level=>{
+
+    // =====================================================
+    // CALCUL MATIN — N4 / N5
+    // =====================================================
+
+    let morningPilots = c.participants.filter(id=>{
+
+      let p = getPilotById(id);
+
+      return p &&
+        (
+          p.cat.startsWith("N4") ||
+          p.cat.startsWith("N5")
+        );
+
+    });
+
+    let morningTotal = morningPilots.length;
+
+    let morningDone = morningPilots.filter(id=>{
+
+      if(c.status[id] === "AB"){
+        return true;
+      }
+
+      return !!c.scores[id+"-"+t];
+
+    }).length;
+
+    let morningMissing =
+      morningTotal - morningDone;
+
+
+    // =====================================================
+    // CALCUL APRÈS-MIDI — ELITE / N1 / N2 / N3
+    // =====================================================
+
+    let afternoonPilots = c.participants.filter(id=>{
+
+      let p = getPilotById(id);
+
+      return p &&
+        (
+          p.cat.startsWith("Elite") ||
+          p.cat.startsWith("N1") ||
+          p.cat.startsWith("N2") ||
+          p.cat.startsWith("N3")
+        );
+
+    });
+
+    let afternoonTotal =
+      afternoonPilots.length;
+
+    let afternoonDone =
+      afternoonPilots.filter(id=>{
+
+        if(c.status[id] === "AB"){
+          return true;
+        }
+
+        return !!c.scores[id+"-"+t];
+
+      }).length;
+
+    let afternoonMissing =
+      afternoonTotal - afternoonDone;
+
+
+    // =====================================================
+    // TOTAL MATIN
+    // =====================================================
+
+    html += `
+
+      <div class="info-line">
+
+        <span class="info-label">
+          🌅 Matin
+        </span>
+
+        <b>
+          Reste ${morningMissing} / ${morningTotal}
+          pilotes à saisir
+        </b>
+
+      </div>
+
+    `;
+
+
+    // =====================================================
+    // DÉTAIL MATIN — N4 / N5
+    // =====================================================
+
+    ["N4","N5"].forEach(level=>{
 
       let pilots = c.participants.filter(id=>{
 
         let p = getPilotById(id);
 
-        return p && p.cat.startsWith(level);
+        return p &&
+          p.cat.startsWith(level);
 
       });
 
@@ -2052,9 +2148,7 @@ function showCompetitionInfo(i){
             ${level}
           </span>
 
-          <b>
-            ${done}/${total}
-          </b>
+          <b>${done}/${total}</b>
 
           ${
             missing > 0
@@ -2067,6 +2161,94 @@ function showCompetitionInfo(i){
       `;
 
     });
+
+
+    // =====================================================
+    // TOTAL APRÈS-MIDI
+    // =====================================================
+
+    html += `
+
+      <div class="info-line">
+
+        <span class="info-label">
+          ☀️ Après-midi
+        </span>
+
+        <b>
+          Reste ${afternoonMissing} / ${afternoonTotal}
+          pilotes à saisir
+        </b>
+
+      </div>
+
+    `;
+
+
+    // =====================================================
+    // DÉTAIL APRÈS-MIDI
+    // =====================================================
+
+    ["Elite","N1","N2","N3"].forEach(level=>{
+
+      let pilots = c.participants.filter(id=>{
+
+        let p = getPilotById(id);
+
+        return p &&
+          p.cat.startsWith(level);
+
+      });
+
+      let total = pilots.length;
+
+      let done = pilots.filter(id=>{
+
+        if(c.status[id] === "AB"){
+          return true;
+        }
+
+        return !!c.scores[id+"-"+t];
+
+      }).length;
+
+      let missing = total - done;
+
+      let icon = "🟥";
+
+      if(done === total){
+        icon = "🟩";
+      }
+      else if(done > 0){
+        icon = "🟨";
+      }
+
+      html += `
+
+        <div class="info-line">
+
+          <span class="info-status">
+            ${icon}
+          </span>
+
+          <span class="info-label">
+            ${level}
+          </span>
+
+          <b>${done}/${total}</b>
+
+          ${
+            missing > 0
+              ? `<span class="info-missing">(${missing})</span>`
+              : ""
+          }
+
+        </div>
+
+      `;
+
+    });
+
 
     html += `
 
@@ -3918,6 +4100,20 @@ function selectPilot(i){
           Catégorie N5 → Elite
         </option>
 
+        <option
+    value="morningAZ"
+    ${state.sortEntryMode==="morningAZ"?"selected":""}
+  >
+    🌅 Matin — N4/N5 par nom
+  </option>
+
+  <option
+    value="afternoonAZ"
+    ${state.sortEntryMode==="afternoonAZ"?"selected":""}
+  >
+    ☀️ Après-midi — Elite/N1/N2/N3 par nom
+  </option>
+
       </select>
 
     </div>
@@ -4240,19 +4436,36 @@ function sortEntryPilots(list,mode){
 
   let arr=[...list];
 
+
+  // =====================================================
+  // NOM A → Z
+  // =====================================================
+
   if(mode==="nameAZ"){
 
     arr.sort((a,b)=>
       a.name.localeCompare(b.name)
     );
+
   }
+
+
+  // =====================================================
+  // NOM Z → A
+  // =====================================================
 
   if(mode==="nameZA"){
 
     arr.sort((a,b)=>
       b.name.localeCompare(a.name)
     );
+
   }
+
+
+  // =====================================================
+  // CATÉGORIE ELITE → N5
+  // =====================================================
 
   if(mode==="catASC"){
 
@@ -4265,8 +4478,15 @@ function sortEntryPilots(list,mode){
       if(diff!==0) return diff;
 
       return a.name.localeCompare(b.name);
+
     });
+
   }
+
+
+  // =====================================================
+  // CATÉGORIE N5 → ELITE
+  // =====================================================
 
   if(mode==="catDESC"){
 
@@ -4279,10 +4499,89 @@ function sortEntryPilots(list,mode){
       if(diff!==0) return diff;
 
       return a.name.localeCompare(b.name);
+
     });
+
   }
 
+
+  // =====================================================
+  // MATIN — N4 / N5 PRIORITAIRES
+  // N4 + N5 mélangés, A → Z
+  // puis toutes les autres catégories, A → Z
+  // =====================================================
+
+  if(mode==="morningAZ"){
+
+    arr.sort((a,b)=>{
+
+      let aMorning =
+        a.cat.startsWith("N4") ||
+        a.cat.startsWith("N5");
+
+      let bMorning =
+        b.cat.startsWith("N4") ||
+        b.cat.startsWith("N5");
+
+
+      if(aMorning && !bMorning) return -1;
+
+      if(!aMorning && bMorning) return 1;
+
+
+      return a.name.localeCompare(b.name);
+
+    });
+
+  }
+
+
+  // =====================================================
+  // APRÈS-MIDI — ELITE / N1 / N2 / N3 PRIORITAIRES
+  // Toutes mélangées, A → Z
+  // puis toutes les autres catégories, A → Z
+  // =====================================================
+
+  if(mode==="afternoonAZ"){
+
+    arr.sort((a,b)=>{
+
+      let aAfternoon =
+        a.cat.startsWith("Elite") ||
+        a.cat.startsWith("N1") ||
+        a.cat.startsWith("N2") ||
+        a.cat.startsWith("N3");
+
+      let bAfternoon =
+        b.cat.startsWith("Elite") ||
+        b.cat.startsWith("N1") ||
+        b.cat.startsWith("N2") ||
+        b.cat.startsWith("N3");
+
+
+      if(aAfternoon && !bAfternoon) return -1;
+
+      if(!aAfternoon && bAfternoon) return 1;
+
+
+      return a.name.localeCompare(b.name);
+
+    });
+
+  }
+
+
   return arr;
+}
+
+
+function changeSortEntry(mode,i){
+
+  state.sortEntryMode=mode;
+
+  save();
+
+  selectPilot(i);
 }
 
 function getStatus(c,id){
@@ -4756,6 +5055,7 @@ function enterScore(ci,id,t){
 
   </div>
 
+  <div id="score-validation-warning"></div>
 
   <div class="score-form-actions">
 
@@ -4765,6 +5065,31 @@ function enterScore(ci,id,t){
     >
       ✓ Valider le tour
     </button>
+
+    ${
+    old
+    ?
+    `
+    <button
+      class="score-cancel-btn"
+      onclick="deleteScoreTour(${ci},'${id}',${t})"
+    >
+      🗑 Effacer ce tour
+    </button>
+    `
+    :
+    ""
+  }
+
+
+  <button
+    class="score-cancel-btn"
+    onclick="selectPilot(${ci})"
+  >
+    ← Retour
+  </button>
+
+</div>
 
 
     <button
@@ -4852,6 +5177,33 @@ function enterScore(ci,id,t){
 
 
   document.getElementById("zones").innerHTML = z;
+
+}
+
+function deleteScoreTour(ci,id,t){
+
+  let c = state.competitions[ci];
+
+  if(c.locked){
+    return;
+  }
+
+  delete c.scores[id + "-" + t];
+
+  Object.keys(c.tiebreaks)
+    .forEach(key => {
+
+      if(key.includes(id)){
+        delete c.tiebreaks[key];
+      }
+
+    });
+
+  save();
+
+  updateTVResults(ci);
+
+  selectPilot(ci);
 
 }
 
@@ -5316,38 +5668,23 @@ return;
 
 if(currentScores.includes(null)){
 
-app.innerHTML=`
+  const warning =
+    document.getElementById(
+      "score-validation-warning"
+    );
 
-<h3>
-Saisie incomplète
-</h3>
+  if(warning){
 
-<div class="card">
+    warning.innerHTML = `
+      <div class="score-validation-warning">
+        ⚠️ Certaines zones n'ont pas encore été renseignées.
+        Complète toutes les zones avant de valider le tour.
+      </div>
+    `;
 
-⚠️ Certaines zones
-n'ont pas été renseignées.
+  }
 
-<br><br>
-
-Complète toutes les zones
-avant validation.
-
-</div>
-
-<div class="score-actions">
-
-<button
-onclick="enterScore(${ci},'${id}',${t})">
-
-Retour
-
-</button>
-
-</div>
-
-`;
-
-return;
+  return;
 
 }
 
