@@ -1067,7 +1067,10 @@ function home(){
 
       html+=`
 
-      <div class="competition-menu">
+      <div
+  id="competition-menu-${i}"
+  class="competition-menu"
+>
 
 
         <div
@@ -3409,17 +3412,37 @@ function saveCompetitionEdit(i){
 
 function openCompetition(i){
 
-if(state.ui.openCompetition===i){
+  if(state.ui.openCompetition===i){
 
-state.ui.openCompetition=null;
+    state.ui.openCompetition=null;
 
-}else{
+    home();
 
-state.ui.openCompetition=i;
+  }else{
 
-}
+    state.ui.openCompetition=i;
 
-home();
+    home();
+
+    setTimeout(() => {
+
+      const menu =
+        document.getElementById(
+          `competition-menu-${i}`
+        );
+
+      if(menu){
+
+        menu.scrollIntoView({
+          behavior:"smooth",
+          block:"start"
+        });
+
+      }
+
+    },50);
+
+  }
 
 }
 
@@ -4254,31 +4277,47 @@ function selectPilot(i){
     for(let t=1; t<=c.tours; t++){
 
       let score =
-        c.scores[p.id + "-" + t];
+  c.scores[p.id + "-" + t];
 
 
-      let icon = "❌";
+// Un pilote a commencé dès qu'au moins
+// un tour possède une saisie, même partielle.
+let pilotStarted =
+  Object.keys(c.scores)
+    .some(key => {
+
+      return key.startsWith(p.id + "-");
+
+    });
 
 
-      if(isAB){
+let icon = "❌";
 
-        icon = "🟥";
 
-      }
-      else if(score){
+if(isAB){
 
-        if(score.includes(null)){
+  icon = "🟥";
 
-          icon = "🟡";
+}
+else if(score){
 
-        }
-        else{
+  if(score.includes(null)){
 
-          icon = "🟢";
+    icon = "🟡";
 
-        }
+  }
+  else{
 
-      }
+    icon = "🟢";
+
+  }
+
+}
+else if(pilotStarted){
+
+  icon = "🟡";
+
+}
 
 
       html += `
