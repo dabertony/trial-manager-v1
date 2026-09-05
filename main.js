@@ -385,152 +385,267 @@ ipcMain.handle("import-pilots-excel",async () => {
   }
 );
 
-ipcMain.handle("export-participants-excel",async (event, data) => {
+ipcMain.handle("export-participants-excel", async (event, data) => {
 
-const dateFR =
-  formatDateForFile(data.competitionDate);
+  const dateFR =
+    formatDateForFile(data.competitionDate);
 
-const filePath = dialog.showSaveDialogSync(
-  mainWindow,
-  {
-    defaultPath:
-`Participants_${data.competitionName}_${dateFR}.xlsx`
-.replaceAll(" ","_")
-  }
-);
+  const filePath = dialog.showSaveDialogSync(
+    mainWindow,
+    {
+      defaultPath:
+        `Participants_${data.competitionName}_${dateFR}.xlsx`
+          .replaceAll(" ", "_")
+    }
+  );
 
-if(!filePath){
-  return false;
-}
-
-const workbook =
-  new ExcelJS.Workbook();
-
-buildParticipantsClubSheet(
-  workbook,
-  data.participants,
-  colorMap
-);
-
-// ===== CATÉGORIE + ALPHA =====
-
-const categoryOrder = [
-
-  "Elite",
-  "Elite F",
-  "Elite V",
-
-  "N1",
-  "N1 F",
-  "N1 V",
-
-  "N2",
-  "N2 F",
-  "N2 V",
-
-  "N3",
-  "N3 F",
-  "N3 V",
-
-  "N4",
-  "N4 F",
-  "N4 V",
-
-  "N5",
-  "N5 F",
-  "N5 V"
-
-];
-
-const categorieAlpha = [...data.participants]
-.sort((a,b)=>{
-
-  let diff =
-    categoryOrder.indexOf(a.cat)
-    -
-    categoryOrder.indexOf(b.cat);
-
-  if(diff !== 0){
-    return diff;
+  if(!filePath){
+    return false;
   }
 
-  return a.name.localeCompare(b.name);
+  const workbook =
+    new ExcelJS.Workbook();
 
-});
 
-buildParticipantsSimpleSheet(
-  workbook,
-  "Catégorie + Alpha",
-  categorieAlpha,
-  colorMap
-);
+  // =========================================
+  // DONNÉES COMMUNES
+  // =========================================
 
-// ===== MATIN =====
+  buildParticipantsClubSheet(
+    workbook,
+    data.participants,
+    colorMap
+  );
 
-const matin = data.participants
-.filter(p=>
-  p.cat.startsWith("N4")
-  ||
-  p.cat.startsWith("N5")
-)
-.sort((a,b)=>
-  a.name.localeCompare(b.name)
-);
 
-buildParticipantsSimpleSheet(
-  workbook,
-  "Matin",
-  matin,
-  colorMap
-);
+  // =========================================
+  // CATÉGORIE + ALPHA
+  // =========================================
 
-// ===== APRÈS-MIDI =====
+  const categoryOrder = [
+    "Elite",
+    "Elite F",
+    "Elite V",
+    "N1",
+    "N1 F",
+    "N1 V",
+    "N2",
+    "N2 F",
+    "N2 V",
+    "N3",
+    "N3 F",
+    "N3 V",
+    "N4",
+    "N4 F",
+    "N4 V",
+    "N5",
+    "N5 F",
+    "N5 V"
+  ];
 
-const apresMidi = data.participants
-.filter(p=>
+  const categorieAlpha =
+    [...data.participants]
+      .sort((a, b) => {
 
-  p.cat.startsWith("Elite")
-  ||
+        let diff =
+          categoryOrder.indexOf(a.cat)
+          -
+          categoryOrder.indexOf(b.cat);
 
-  p.cat.startsWith("N1")
-  ||
+        if(diff !== 0){
+          return diff;
+        }
 
-  p.cat.startsWith("N2")
-  ||
+        return a.name.localeCompare(b.name);
+      });
 
-  p.cat.startsWith("N3")
+  buildParticipantsSimpleSheet(
+    workbook,
+    "Catégorie + Alpha",
+    categorieAlpha,
+    colorMap
+  );
 
-)
-.sort((a,b)=>
-  a.name.localeCompare(b.name)
-);
 
-buildParticipantsSimpleSheet(
-  workbook,
-  "Après-midi",
-  apresMidi,
-  colorMap
-);
+  // =========================================
+  // COMPÉTITION TOUTES CATÉGORIES
+  // =========================================
 
-buildCartonsSheet(
-  workbook,
-  "Cartons Matin",
-  matin,
-  colorMap
-);
+  if(data.mode === "toutes"){
 
-buildCartonsSheet(
-  workbook,
-  "Cartons Après-midi",
-  apresMidi,
-  colorMap
-);
+    const toutesCategories =
+      [...data.participants]
+        .sort((a, b) => {
 
-await workbook.xlsx.writeFile(
-  filePath
-);
+          let diff =
+            categoryOrder.indexOf(a.cat)
+            -
+            categoryOrder.indexOf(b.cat);
 
-return true;
+          if(diff !== 0){
+            return diff;
+          }
+
+          return a.name.localeCompare(b.name);
+        });
+
+    buildParticipantsSimpleSheet(
+      workbook,
+      "Toutes catégories",
+      toutesCategories,
+      colorMap
+    );
+
+
+    // =======================================
+    // CARTONS TOUTES CATÉGORIES
+    // =======================================
+
+    function mainCat(cat){
+
+      if(cat.startsWith("Elite")){
+        return "Elite";
+      }
+
+      if(cat.startsWith("N1")){
+        return "N1";
+      }
+
+      if(cat.startsWith("N2")){
+        return "N2";
+      }
+
+      if(cat.startsWith("N3")){
+        return "N3";
+      }
+
+      if(cat.startsWith("N4")){
+        return "N4";
+      }
+
+      if(cat.startsWith("N5")){
+        return "N5";
+      }
+
+      return "";
+    }
+
+
+    const cartonOrder = [
+      "Elite",
+      "N1",
+      "N2",
+      "N3",
+      "N4",
+      "N5"
+    ];
+
+
+    const cartons =
+      [...data.participants]
+        .sort((a, b) => {
+
+          let diff =
+            cartonOrder.indexOf(mainCat(a.cat))
+            -
+            cartonOrder.indexOf(mainCat(b.cat));
+
+          if(diff !== 0){
+            return diff;
+          }
+
+          return plaqueNumber(a) - plaqueNumber(b);
+        });
+
+
+    buildCartonsSheet(
+      workbook,
+      "Cartons",
+      cartons,
+      colorMap
+    );
+
+  }
+
+
+  // =========================================
+  // COMPÉTITION EN 2 SESSIONS
+  // =========================================
+
+  else{
+
+    const matin =
+      data.participants
+        .filter(p =>
+          p.cat.startsWith("N4")
+          ||
+          p.cat.startsWith("N5")
+        )
+        .sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+
+
+    buildParticipantsSimpleSheet(
+      workbook,
+      "Matin",
+      matin,
+      colorMap
+    );
+
+
+    const apresMidi =
+      data.participants
+        .filter(p =>
+          p.cat.startsWith("Elite")
+          ||
+          p.cat.startsWith("N1")
+          ||
+          p.cat.startsWith("N2")
+          ||
+          p.cat.startsWith("N3")
+        )
+        .sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+
+
+    buildParticipantsSimpleSheet(
+      workbook,
+      "Après-midi",
+      apresMidi,
+      colorMap
+    );
+
+
+    buildCartonsSheet(
+      workbook,
+      "Cartons Matin",
+      matin,
+      colorMap
+    );
+
+
+    buildCartonsSheet(
+      workbook,
+      "Cartons Après-midi",
+      apresMidi,
+      colorMap
+    );
+
+  }
+
+
+  // =========================================
+  // CRÉATION DU FICHIER
+  // =========================================
+
+  await workbook.xlsx.writeFile(
+    filePath
+  );
+
+  return true;
+
 });
 
 ipcMain.handle("open-tv", (event, html) => {
@@ -1335,7 +1450,7 @@ function buildPilotCartons(
     const r =
       startRow + (index * 11);
 
-sheet.getRow(r).height = 25;
+sheet.getRow(r).height = 30;
 sheet.getRow(r+1).height = 30;
 sheet.getRow(r+2).height = 25;
 

@@ -5684,6 +5684,243 @@ ${p.cat}
 
 }
 
+function showDoublePointageToutesCategories(i){
+
+  let c = state.competitions[i];
+
+  let participants = c.participants
+    .map(id => getPilotById(id))
+    .filter(p => p)
+    .map(p => ({
+
+      ...p,
+
+      plaque:
+        c.participantPlates?.[p.id]
+        ??
+        p.plaque
+
+    }));
+
+
+  function plaqueNumber(p){
+
+    return parseInt(
+      String(p.plaque || "")
+        .replace(/[^\d]/g,"")
+    ) || 99999;
+
+  }
+
+
+  function mainCat(cat){
+
+    if(cat.startsWith("Elite")) return "Elite";
+    if(cat.startsWith("N1")) return "N1";
+    if(cat.startsWith("N2")) return "N2";
+    if(cat.startsWith("N3")) return "N3";
+    if(cat.startsWith("N4")) return "N4";
+    if(cat.startsWith("N5")) return "N5";
+
+    return cat;
+
+  }
+
+
+  const order = [
+    "Elite",
+    "N1",
+    "N2",
+    "N3",
+    "N4",
+    "N5"
+  ];
+
+
+  let list = participants
+
+    .filter(p =>
+
+      p.cat.startsWith("Elite")
+      ||
+      p.cat.startsWith("N1")
+      ||
+      p.cat.startsWith("N2")
+      ||
+      p.cat.startsWith("N3")
+      ||
+      p.cat.startsWith("N4")
+      ||
+      p.cat.startsWith("N5")
+
+    )
+
+    .sort((a,b)=>{
+
+      let diff =
+        order.indexOf(mainCat(a.cat))
+        -
+        order.indexOf(mainCat(b.cat));
+
+      if(diff!==0){
+        return diff;
+      }
+
+      return plaqueNumber(a)
+        -
+        plaqueNumber(b);
+
+    });
+
+
+  let html = `
+
+<div class="topbar">
+
+  <div class="topbar-title">
+    Double Pointage Toutes catégories
+  </div>
+
+  <div class="topbar-actions">
+
+    <button
+      class="export-pdf-btn"
+      onclick="printDoublePointageToutesCategoriesPDF()">
+      Export PDF
+    </button>
+
+    <button
+      class="export-return-btn"
+      onclick="showExportParticipantsMenu(${i})">
+      ← Retour
+    </button>
+
+  </div>
+
+</div>
+
+<table class="double-pointage">
+
+<tr>
+
+<th style="width:10%">
+Plaque
+</th>
+
+<th style="width:38%">
+Nom
+</th>
+
+<th style="width:16%">
+Catégorie
+</th>
+
+<th style="width:12%">
+Tour 1
+</th>
+
+<th style="width:12%">
+Tour 2
+</th>
+
+<th style="width:12%">
+Tour 3
+</th>
+
+</tr>
+
+`;
+
+  let rowCount = 0;
+
+
+  list.forEach(p=>{
+
+    let group = mainCat(p.cat);
+
+    currentGroup = group;
+
+    html += `
+
+<tr>
+
+<td>
+${p.plaque || ""}
+</td>
+
+<td style="
+text-align:left;
+">
+${p.name}
+</td>
+
+<td
+style="
+background:${getCategoryColor(p.cat)};
+">
+${p.cat}
+</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+
+</tr>
+
+`;
+
+    rowCount++;
+
+  });
+
+
+  const minRows = 43;
+
+
+  while(rowCount < minRows){
+
+    html += `
+
+<tr>
+
+<td>&nbsp;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+
+</tr>
+
+`;
+
+    rowCount++;
+
+  }
+
+
+  html += `
+</table>
+`;
+
+
+  window.currentExportInfo = {
+
+    type:"double-pointage-toutes-categories",
+
+    competitionName:c.name,
+
+    competitionDate:c.date
+
+  };
+
+
+  app.innerHTML = html;
+
+}
+
 function setScore(i,v,btn){
 
   currentScores[i]=v;
@@ -8785,6 +9022,61 @@ async function printDoublePointageApresMidiPDF(){
 
 }
 
+async function printDoublePointageToutesCategoriesPDF(){
+
+  const info =
+    window.currentExportInfo;
+
+  if(!info){
+    return;
+  }
+
+
+  const dateFR =
+    formatDateForFile(
+      info.competitionDate
+    );
+
+
+  const fileName =
+    `Double_Pointage_Toutes_Categories_${info.competitionName}_${dateFR}.pdf`;
+
+
+  if(
+    window.api &&
+    typeof window.api.exportPDF === "function"
+  ){
+
+    await window.api.exportPDF({
+
+      fileName,
+
+      landscape:false
+
+    });
+
+    return;
+
+  }
+
+
+  if(
+    typeof window.print === "function"
+  ){
+
+    printPDFPWA(fileName);
+
+    return;
+
+  }
+
+
+  alert(
+    "L'export PDF n'est pas disponible sur cet appareil."
+  );
+
+}
+
 async function exportPilotsExcelPWA(){
 
   try{
@@ -9736,103 +10028,219 @@ function showExportParticipantsMenu(i){
 
       <div class="export-section-title">
 
-        📊 Export direct
+        📊 Exports
 
       </div>
 
 
-      <div class="export-direct-card">
+      <div class="export-modes">
 
-        <div class="export-card-icon excel">
-          📊
+
+        <!-- ================================= -->
+        <!-- COMPÉTITION EN 2 SESSIONS -->
+        <!-- ================================= -->
+
+        <div class="export-mode-card">
+
+          <div class="export-mode-header">
+
+            <div class="export-mode-icon">
+              🌅
+            </div>
+
+            <div>
+
+              <div class="export-mode-title">
+                Compétition en 2 sessions
+              </div>
+
+              <div class="export-mode-subtitle">
+                Matin / Après-midi
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="export-mode-content">
+
+
+            <div class="export-direct-card">
+
+              <div class="export-card-icon excel">
+                📊
+              </div>
+
+              <div class="export-card-content">
+
+                <div class="export-card-title">
+                  Participants Excel
+                </div>
+
+                <div class="export-card-description">
+                  Exporter la liste des participants
+                  au format Excel.
+                </div>
+
+              </div>
+
+              <button
+                class="export-excel-btn"
+                onclick="exportParticipantsExcel(${i})">
+                Exporter
+              </button>
+
+            </div>
+
+
+            <div
+              class="export-pointage-card"
+              onclick="showDoublePointageMatin(${i})">
+
+              <div class="export-card-icon">
+                🌅
+              </div>
+
+              <div class="export-card-content">
+
+                <div class="export-card-title">
+                  Double pointage matin
+                </div>
+
+                <div class="export-card-description">
+                  N4 et N5 · Prévisualisation du document
+                  avant export PDF.
+                </div>
+
+              </div>
+
+              <div class="export-preview-btn">
+                Aperçu →
+              </div>
+
+            </div>
+
+
+            <div
+              class="export-pointage-card"
+              onclick="showDoublePointageApresMidi(${i})">
+
+              <div class="export-card-icon">
+                ☀️
+              </div>
+
+              <div class="export-card-content">
+
+                <div class="export-card-title">
+                  Double pointage après-midi
+                </div>
+
+                <div class="export-card-description">
+                  Elite, N1, N2 et N3 · Prévisualisation
+                  avant export PDF.
+                </div>
+
+              </div>
+
+              <div class="export-preview-btn">
+                Aperçu →
+              </div>
+
+            </div>
+
+
+          </div>
+
         </div>
 
-        <div class="export-card-content">
 
-          <div class="export-card-title">
-            Participants Excel
-          </div>
+        <!-- ================================= -->
+        <!-- COMPÉTITION TOUTES CATÉGORIES -->
+        <!-- ================================= -->
 
-          <div class="export-card-description">
-            Exporter la liste des participants
-            au format Excel.
-          </div>
+        <div class="export-mode-card">
 
-        </div>
+          <div class="export-mode-header">
 
-        <button
-          class="export-excel-btn"
-          onclick="exportParticipantsExcel(${i})"
-        >
-          Exporter
-        </button>
-
-      </div>
-
-
-      <div class="export-section-title export-pointage-title">
-
-        📋 Documents de double pointage
-
-      </div>
-
-
-      <div class="export-pointage-list">
-
-
-        <div
-          class="export-pointage-card"
-          onclick="showDoublePointageMatin(${i})"
-        >
-
-          <div class="export-card-icon">
-            🌅
-          </div>
-
-          <div class="export-card-content">
-
-            <div class="export-card-title">
-              Double pointage matin
+            <div class="export-mode-icon">
+              🏁
             </div>
 
-            <div class="export-card-description">
-              N4 et N5 · Prévisualisation du document
-              avant export PDF.
+            <div>
+
+              <div class="export-mode-title">
+                Compétition toutes catégories
+              </div>
+
+              <div class="export-mode-subtitle">
+                Une seule session
+              </div>
+
             </div>
 
           </div>
 
-          <div class="export-preview-btn">
-            Aperçu →
-          </div>
 
-        </div>
+          <div class="export-mode-content">
 
 
-        <div
-          class="export-pointage-card"
-          onclick="showDoublePointageApresMidi(${i})"
-        >
+            <div class="export-direct-card">
 
-          <div class="export-card-icon">
-            ☀️
-          </div>
+              <div class="export-card-icon excel">
+                📊
+              </div>
 
-          <div class="export-card-content">
+              <div class="export-card-content">
 
-            <div class="export-card-title">
-              Double pointage après-midi
+                <div class="export-card-title">
+                  Participants Excel
+                </div>
+
+                <div class="export-card-description">
+                  Toutes les catégories dans un seul
+                  fichier.
+                </div>
+
+              </div>
+
+              <button
+                class="export-excel-btn"
+                onclick="exportParticipantsExcel(${i}, 'toutes')">
+                Exporter
+              </button>
+
             </div>
 
-            <div class="export-card-description">
-              Elite, N1, N2 et N3 · Prévisualisation
-              avant export PDF.
+
+            <div
+              class="export-pointage-card"
+              onclick="showDoublePointageToutesCategories(${i})">
+
+              <div class="export-card-icon">
+                🏁
+              </div>
+
+              <div class="export-card-content">
+
+                <div class="export-card-title">
+                  Double pointage unique
+                </div>
+
+                <div class="export-card-description">
+                  Toutes les catégories · Prévisualisation
+                  du document avant export PDF.
+                </div>
+
+              </div>
+
+              <div class="export-preview-btn">
+                Aperçu →
+              </div>
+
             </div>
 
-          </div>
 
-          <div class="export-preview-btn">
-            Aperçu →
           </div>
 
         </div>
@@ -10339,7 +10747,7 @@ Retour
 
 }
 
-async function exportParticipantsExcelPWA(i){
+async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
   try{
 
@@ -10708,11 +11116,13 @@ async function exportParticipantsExcelPWA(i){
               b.club || ""
             );
 
+
           if(clubDiff !== 0){
 
             return clubDiff;
 
           }
+
 
           return (a.name || "")
             .localeCompare(
@@ -11167,72 +11577,6 @@ async function exportParticipantsExcelPWA(i){
 
     /*
      * ================================
-     * MATIN
-     * ================================
-     */
-
-    const matin =
-      participants
-      .filter(p =>
-
-        p.cat.startsWith("N4")
-        ||
-        p.cat.startsWith("N5")
-
-      )
-      .sort((a,b)=>
-
-        (a.name || "")
-          .localeCompare(
-            b.name || ""
-          )
-
-      );
-
-
-    buildSimpleSheet(
-      "Matin",
-      matin
-    );
-
-
-    /*
-     * ================================
-     * APRÈS-MIDI
-     * ================================
-     */
-
-    const apresMidi =
-      participants
-      .filter(p =>
-
-        p.cat.startsWith("Elite")
-        ||
-        p.cat.startsWith("N1")
-        ||
-        p.cat.startsWith("N2")
-        ||
-        p.cat.startsWith("N3")
-
-      )
-      .sort((a,b)=>
-
-        (a.name || "")
-          .localeCompare(
-            b.name || ""
-          )
-
-      );
-
-
-    buildSimpleSheet(
-      "Après-midi",
-      apresMidi
-    );
-
-
-    /*
-     * ================================
      * CARTONS
      * ================================
      */
@@ -11279,7 +11623,7 @@ async function exportParticipantsExcelPWA(i){
 
 
           sheet.getRow(r).height =
-            25;
+            30;
 
           sheet.getRow(r+1).height =
             30;
@@ -11926,16 +12270,231 @@ async function exportParticipantsExcelPWA(i){
     }
 
 
-    buildCartonsSheetPWA(
-      "Cartons Matin",
-      matin
-    );
+    /*
+     * ================================
+     * CHOIX DU FORMAT
+     * ================================
+     */
+
+    if(mode === "toutes"){
+
+      /*
+       * TOUTES CATÉGORIES
+       * Ordre : catégorie puis nom
+       */
+
+      const toutesCategories =
+        [...participants]
+        .sort((a,b)=>{
+
+          const diff =
+            categoryOrder.indexOf(a.cat)
+            -
+            categoryOrder.indexOf(b.cat);
 
 
-    buildCartonsSheetPWA(
-      "Cartons Après-midi",
-      apresMidi
-    );
+          if(diff !== 0){
+
+            return diff;
+
+          }
+
+
+          return (a.name || "")
+            .localeCompare(
+              b.name || ""
+            );
+
+        });
+
+
+      buildSimpleSheet(
+        "Toutes catégories",
+        toutesCategories
+      );
+
+
+      /*
+       * CARTONS TOUTES CATÉGORIES
+       * Ordre :
+       * Elite → N1 → N2 → N3 → N4 → N5
+       * puis plaque croissante
+       */
+
+      function mainCat(cat){
+
+        if(cat.startsWith("Elite")){
+          return "Elite";
+        }
+
+        if(cat.startsWith("N1")){
+          return "N1";
+        }
+
+        if(cat.startsWith("N2")){
+          return "N2";
+        }
+
+        if(cat.startsWith("N3")){
+          return "N3";
+        }
+
+        if(cat.startsWith("N4")){
+          return "N4";
+        }
+
+        if(cat.startsWith("N5")){
+          return "N5";
+        }
+
+        return "";
+
+      }
+
+
+      function plaqueNumber(p){
+
+        return parseInt(
+          String(p.plaque || "")
+            .replace(/[^\d]/g,"")
+        ) || 0;
+
+      }
+
+
+      const cartonOrder = [
+
+        "Elite",
+        "N1",
+        "N2",
+        "N3",
+        "N4",
+        "N5"
+
+      ];
+
+
+      const cartons =
+        [...participants]
+        .sort((a,b)=>{
+
+          const diff =
+            cartonOrder.indexOf(
+              mainCat(a.cat)
+            )
+            -
+            cartonOrder.indexOf(
+              mainCat(b.cat)
+            );
+
+
+          if(diff !== 0){
+
+            return diff;
+
+          }
+
+
+          return plaqueNumber(a)
+            -
+            plaqueNumber(b);
+
+        });
+
+
+      buildCartonsSheetPWA(
+        "Cartons",
+        cartons
+      );
+
+    }
+
+    else{
+
+      /*
+       * ================================
+       * MATIN
+       * ================================
+       */
+
+      const matin =
+        participants
+        .filter(p =>
+
+          p.cat.startsWith("N4")
+          ||
+          p.cat.startsWith("N5")
+
+        )
+        .sort((a,b)=>
+
+          (a.name || "")
+            .localeCompare(
+              b.name || ""
+            )
+
+        );
+
+
+      buildSimpleSheet(
+        "Matin",
+        matin
+      );
+
+
+      /*
+       * ================================
+       * APRÈS-MIDI
+       * ================================
+       */
+
+      const apresMidi =
+        participants
+        .filter(p =>
+
+          p.cat.startsWith("Elite")
+          ||
+          p.cat.startsWith("N1")
+          ||
+          p.cat.startsWith("N2")
+          ||
+          p.cat.startsWith("N3")
+
+        )
+        .sort((a,b)=>
+
+          (a.name || "")
+            .localeCompare(
+              b.name || ""
+            )
+
+        );
+
+
+      buildSimpleSheet(
+        "Après-midi",
+        apresMidi
+      );
+
+
+      /*
+       * ================================
+       * CARTONS MATIN / APRÈS-MIDI
+       * ================================
+       */
+
+      buildCartonsSheetPWA(
+        "Cartons Matin",
+        matin
+      );
+
+
+      buildCartonsSheetPWA(
+        "Cartons Après-midi",
+        apresMidi
+      );
+
+    }
 
 
     /*
@@ -12099,7 +12658,7 @@ Retour
 
 }
 
-async function exportParticipantsExcel(i){
+async function exportParticipantsExcel(i, mode = "sessions"){
 
   /*
    * ================================
@@ -12114,7 +12673,6 @@ async function exportParticipantsExcel(i){
 
     let c =
       state.competitions[i];
-
 
     let participants =
       c.participants
@@ -12131,7 +12689,6 @@ async function exportParticipantsExcel(i){
 
         }));
 
-
     let ok =
       await window.api.exportParticipantsExcel({
 
@@ -12141,10 +12698,11 @@ async function exportParticipantsExcel(i){
           c.name,
 
         competitionDate:
-          c.date
+          c.date,
+
+        mode
 
       });
-
 
     if(ok){
 
@@ -12181,7 +12739,7 @@ Retour
    * ================================
    */
 
-  await exportParticipantsExcelPWA(i);
+  await exportParticipantsExcelPWA(i, mode);
 
 }
 
