@@ -178,7 +178,7 @@ const RULES = {
       10,9,8,7,6,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5
     ],
     abPoints: 1,
-    fallbackMinPoints: 1
+    fallbackMinPoints: 5
   },
 
   ranking: {
@@ -674,17 +674,34 @@ function home(){
 
   let html=`
 
-  <div class="home-header">
+<div class="home-header">
 
-    <h1>
-      🏁 TRIAL MANAGER
-    </h1>
+  <h1>
+    🏁 TRIAL MANAGER
+  </h1>
 
-    <p>
+  <div class="home-header-subtitle">
+
+    <span>
       Gestion des pilotes • Compétitions • Classements
-    </p>
+    </span>
+
+    <button
+      class="home-rules-btn"
+      onclick="event.stopPropagation(); showRules();"
+    >
+      ⓘ Règles
+    </button>
 
   </div>
+
+</div>
+
+  <p>
+    Gestion des pilotes • Compétitions • Classements
+  </p>
+
+</div>
 
 
   <!-- ============================= -->
@@ -1447,6 +1464,328 @@ function home(){
 
     }
 
+  }
+
+}
+
+function showRules(){
+
+  const existing =
+    document.getElementById("rulesModal");
+
+  if(existing){
+    existing.remove();
+    return;
+  }
+
+  const modal = document.createElement("div");
+
+  modal.id = "rulesModal";
+
+  modal.className = "rules-modal-overlay";
+
+  modal.innerHTML = `
+
+    <div
+      class="rules-modal"
+      onclick="event.stopPropagation();"
+    >
+
+      <div class="rules-modal-header">
+
+        <div>
+
+          <div class="rules-modal-title">
+            📋 Règles de Trial Manager
+          </div>
+
+          <div class="rules-modal-subtitle">
+            Règles appliquées par Trial Manager
+          </div>
+
+        </div>
+
+        <button
+          class="rules-modal-close"
+          onclick="closeRules()"
+        >
+          ✕
+        </button>
+
+      </div>
+
+
+      <div class="rules-modal-content">
+
+
+        <section class="rules-section">
+
+          <h3>
+            Catégories
+          </h3>
+
+          <p>
+            Les catégories principales sont :
+          </p>
+
+          <div class="rules-list">
+
+            <span>Elite</span>
+            <span>N1</span>
+            <span>N2</span>
+            <span>N3</span>
+            <span>N4</span>
+            <span>N5</span>
+
+          </div>
+
+          <p class="rules-note">
+
+            Les classements <strong>F (féminines)</strong>
+            et <strong>V (vétérans)</strong> sont des
+            classements filtrés à partir des catégories
+            principales. Ils ne constituent pas des catégories
+            distinctes.
+
+          </p>
+
+        </section>
+
+
+        <section class="rules-section">
+
+          <h3>
+            Attribution des points UFOLEP
+          </h3>
+
+          <p class="rules-note">
+
+            Les points sont attribués uniquement aux
+            <strong>pilotes licenciés UFOLEP</strong>.
+
+          </p>
+
+          <div class="rules-points">
+
+            <div><strong>1er</strong><span>30 points</span></div>
+            <div><strong>2e</strong><span>27 points</span></div>
+            <div><strong>3e</strong><span>25 points</span></div>
+            <div><strong>4e</strong><span>23 points</span></div>
+            <div><strong>5e</strong><span>21 points</span></div>
+            <div><strong>6e</strong><span>19 points</span></div>
+            <div><strong>7e</strong><span>17 points</span></div>
+            <div><strong>8e</strong><span>15 points</span></div>
+            <div><strong>9e</strong><span>13 points</span></div>
+            <div><strong>10e</strong><span>11 points</span></div>
+            <div><strong>11e</strong><span>10 points</span></div>
+            <div><strong>12e</strong><span>9 points</span></div>
+            <div><strong>13e</strong><span>8 points</span></div>
+            <div><strong>14e</strong><span>7 points</span></div>
+            <div><strong>15e</strong><span>6 points</span></div>
+
+          </div>
+
+          <p>
+            À partir de la 16e place :
+            <strong>5 points minimum</strong>.
+          </p>
+
+          <p>
+            <strong>AB : 1 point</strong>.
+          </p>
+
+          <p class="rules-note">
+
+            Les pilotes FFC ou NL peuvent apparaître dans
+            les classements de la compétition, mais ne
+            marquent pas de points UFOLEP.
+
+          </p>
+
+        </section>
+
+
+        <section class="rules-section">
+
+          <h3>
+            ⚖️ Égalités et départages
+          </h3>
+
+          <p>
+            En cas d’ex æquo, les pilotes sont départagés
+            selon les critères prévus par le règlement :
+            <strong>total des pénalités, nombre de 0,
+            nombre de 1, nombre de 2, nombre de 3,
+            nombre de 5, puis meilleur tour</strong>.
+          </p>
+
+          <p>
+            Ce n’est qu’après l’application de l’ensemble
+            de ces critères que deux pilotes peuvent être
+            considérés comme parfaitement ex æquo.
+          </p>
+
+          <p>
+            Lorsqu’un ex æquo
+            <strong>a une incidence sur la composition du podium</strong>,
+            un départage réel est effectué
+            <strong>en zone</strong> afin de déterminer
+            les places concernées.
+          </p>
+
+          <p>
+            Pour les ex æquo sans incidence sur le podium,
+            un départage réel peut ne pas être effectué
+            en zone lorsque les conditions de la compétition
+            (notamment le timing) ne le permettent pas.
+          </p>
+
+          <p>
+            <strong>
+              Pour le classement championnat, les ex æquo
+              restent des ex æquo.
+            </strong>
+            Aucun départage supplémentaire n’est effectué
+            entre les pilotes à égalité.
+          </p>
+
+          <p class="rules-note">
+            Il est donc possible d’avoir, par exemple,
+            <strong>deux pilotes classés 2es</strong> ou
+            <strong>trois pilotes classés 7es</strong>
+            au championnat.
+          </p>
+
+        </section>
+
+
+        <section class="rules-section">
+
+  <h3>
+    🏆 Classement championnat
+  </h3>
+
+  <p>
+    Seuls les résultats des
+    <strong>pilotes licenciés UFOLEP</strong>
+    sont pris en compte pour le classement
+    championnat.
+  </p>
+
+  <p>
+    Les pilotes FFC ou NL ne marquent aucun
+    point championnat.
+  </p>
+
+  <p>
+    Une compétition doit être
+    <strong>validée</strong>
+    pour être prise en compte dans le
+    <strong>classement championnat et le classement clubs</strong>.
+  </p>
+
+  <p>
+    Lorsqu’un pilote change de catégorie en cours
+    de championnat, ses résultats restent rattachés
+    à la catégorie dans laquelle ils ont été obtenus.
+    Il peut donc apparaître dans
+    <strong>deux classements championnat distincts</strong>,
+    correspondant à ses deux catégories.
+  </p>
+
+  <p>
+    Les règles de jokers prévues pour le championnat
+    sont appliquées uniquement aux résultats
+    pris en compte pour le classement UFOLEP.
+  </p>
+
+</section>
+
+
+        <section class="rules-section">
+
+          <h3>
+            🏅 Classement clubs
+          </h3>
+
+          <p>
+            Seuls les résultats des
+            <strong>pilotes licenciés UFOLEP</strong>
+            sont pris en compte pour le classement clubs.
+          </p>
+
+          <p>
+            Les pilotes FFC ou NL ne contribuent pas
+            au classement de leur club.
+          </p>
+
+        </section>
+
+
+        <section class="rules-section">
+
+          <h3>
+            🚫 Pilotes AB
+          </h3>
+
+          <p>
+            Un pilote déclaré <strong>AB</strong> reste
+            présent dans les résultats de la compétition.
+          </p>
+
+          <p>
+            Lorsqu’il est licencié UFOLEP, il reçoit
+            <strong>1 point</strong> et est classé après
+            les pilotes ayant terminé la compétition.
+          </p>
+
+        </section>
+
+      <div class="rules-final-note">
+
+  Trial Manager applique ces règles automatiquement
+  lors de l’établissement des classements.
+
+</div>
+
+
+      </div>
+
+
+      <div class="rules-modal-footer">
+
+        <button
+          class="rules-modal-ok"
+          onclick="closeRules()"
+        >
+          Fermer
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  modal.addEventListener(
+    "click",
+    closeRules
+  );
+
+
+  document.body.appendChild(modal);
+
+}
+
+
+function closeRules(){
+
+  const modal =
+    document.getElementById("rulesModal");
+
+  if(modal){
+    modal.remove();
   }
 
 }

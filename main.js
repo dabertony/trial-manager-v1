@@ -474,20 +474,10 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
   if(data.mode === "toutes"){
 
     const toutesCategories =
-      [...data.participants]
-        .sort((a, b) => {
-
-          let diff =
-            categoryOrder.indexOf(a.cat)
-            -
-            categoryOrder.indexOf(b.cat);
-
-          if(diff !== 0){
-            return diff;
-          }
-
-          return a.name.localeCompare(b.name);
-        });
+  [...data.participants]
+    .sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
 
     buildParticipantsSimpleSheet(
       workbook,
@@ -542,20 +532,10 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
 
 
     const cartons =
-      [...data.participants]
-        .sort((a, b) => {
-
-          let diff =
-            cartonOrder.indexOf(mainCat(a.cat))
-            -
-            cartonOrder.indexOf(mainCat(b.cat));
-
-          if(diff !== 0){
-            return diff;
-          }
-
-          return plaqueNumber(a) - plaqueNumber(b);
-        });
+  [...data.participants]
+    .sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
 
 
     buildCartonsSheet(
