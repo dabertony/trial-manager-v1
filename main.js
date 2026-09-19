@@ -238,6 +238,51 @@ await workbook.xlsx.writeFile(filePath);
 
 });
 
+function formatImportedBirthDate(value){
+
+  if(!value){
+    return "";
+  }
+
+  if(value instanceof Date){
+
+    const day =
+      String(value.getDate()).padStart(2,"0");
+
+    const month =
+      String(value.getMonth() + 1).padStart(2,"0");
+
+    const year =
+      value.getFullYear();
+
+    return `${year}-${month}-${day}`;
+
+  }
+
+  const text =
+    String(value).trim();
+
+  const match =
+    text.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+    );
+
+  if(match){
+
+    return (
+      match[3]
+      + "-"
+      + String(match[2]).padStart(2,"0")
+      + "-"
+      + String(match[1]).padStart(2,"0")
+    );
+
+  }
+
+  return text;
+
+}
+
 ipcMain.handle("import-pilots-excel",async () => {
 
     const result =
@@ -369,9 +414,9 @@ ipcMain.handle("import-pilots-excel",async () => {
           ).trim(),
 
         birthDate:
-          String(
-            row.getCell(7).value || ""
-          ).trim()
+  formatImportedBirthDate(
+    row.getCell(7).value
+  )
 
       });
 
@@ -722,9 +767,7 @@ function openTVWindow(){
 
   });
 
-
   tvWindow.maximize();
-
 
   tvWindow.loadFile(
     path.join(__dirname, "tv.html")
@@ -812,13 +855,37 @@ function buildPilotSheet(workbook,name,pilots,colorMap){
       licenceNumber:p.licenceNumber || "",
 
       birthDate:
-        p.birthDate
-          ? p.birthDate.split("-").reverse().join("/")
-          : ""
+  p.birthDate
+    ? (() => {
+
+        const parts =
+          p.birthDate.split("-");
+
+        if(parts.length !== 3){
+          return p.birthDate;
+        }
+
+        const year =
+          Number(parts[0]);
+
+        const month =
+          Number(parts[1]);
+
+        const day =
+          Number(parts[2]);
+
+        return new Date(
+          year,
+          month - 1,
+          day
+        );
+
+      })()
+    : ""
 
     });
     row.getCell(7).numFmt =
-  '# ##0.00 €';
+  'dd/mm/yyyy';
     row.eachCell(cell => {
 
   cell.border = {

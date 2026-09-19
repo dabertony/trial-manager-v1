@@ -45,24 +45,48 @@
 
     .tv-page {
 
-      position: absolute;
+  position: absolute;
 
-      inset: 0;
+  inset: 0;
 
-      width: 100%;
-      height: 100%;
+  width: 100%;
+  height: 100%;
 
-      box-sizing: border-box;
+  box-sizing: border-box;
 
-      background: white;
+  background: white;
 
-      overflow: hidden;
+  overflow: hidden;
 
-      padding: 15px;
+  padding: 15px;
 
-      display: none;
+  display: none;
 
-    }
+}
+
+
+/*
+ * Les gros classements peuvent défiler
+ * verticalement lorsqu'ils dépassent
+ * le nombre de pilotes prévu pour un
+ * affichage fixe.
+ */
+
+.tv-page.tv-scroll {
+
+  overflow-y: auto;
+
+  overflow-x: hidden;
+
+  scrollbar-width: none;
+
+}
+
+.tv-page.tv-scroll::-webkit-scrollbar {
+
+  display: none;
+
+}
 
 
     .tv-page.active {
@@ -173,6 +197,12 @@ let pendingPages = null;
 
 let tvTimer = null;
 
+/*
+ * Animation de défilement de la page TV.
+ */
+
+let tvScrollAnimation = null;
+
 
 /*
  * Durée d'une page :
@@ -222,6 +252,20 @@ function showTVPage(index){
   }
 
 
+  /*
+   * Arrête éventuellement le défilement
+   * de la page précédente.
+   */
+
+  if(tvScrollAnimation){
+
+    cancelAnimationFrame(tvScrollAnimation);
+
+    tvScrollAnimation = null;
+
+  }
+
+
   tvPages.forEach((page, i) => {
 
     page.classList.toggle(
@@ -233,6 +277,169 @@ function showTVPage(index){
 
 
   tvCurrentPage = index;
+
+
+  const page = tvPages[index];
+
+  if(!page){
+
+    return;
+
+  }
+
+
+  /*
+   * Retour en haut à chaque affichage.
+   */
+
+  page.scrollTop = 0;
+
+
+  /*
+   * Plus de 20 pilotes :
+   * défilement automatique.
+   */
+
+  if(page.dataset.tvScroll === "true"){
+
+    startTVScroll(page);
+
+  }
+
+}
+
+function startTVScroll(page){
+
+  const maxScroll =
+    page.scrollHeight - page.clientHeight;
+
+
+  /*
+   * Sécurité :
+   * si finalement tout tient,
+   * aucun défilement.
+   */
+
+  if(maxScroll <= 0){
+
+    return;
+
+  }
+
+
+  /*
+   * Pause en haut avant de commencer.
+   */
+
+  setTimeout(() => {
+
+    /*
+     * La page n'est peut-être plus
+     * celle affichée.
+     */
+
+    if(
+      !page.classList.contains("active") ||
+      tvPages[tvCurrentPage] !== page
+    ){
+
+      return;
+
+    }
+
+
+    const startTime =
+      performance.now();
+
+    const scrollDuration =
+      Math.max(
+        8000,
+        (maxScroll / 40) * 1000
+      );
+
+
+    function animateScroll(now){
+
+      if(
+        !page.classList.contains("active") ||
+        tvPages[tvCurrentPage] !== page
+      ){
+
+        return;
+
+      }
+
+
+      const elapsed =
+        now - startTime;
+
+
+      const progress =
+        Math.min(
+          elapsed / scrollDuration,
+          1
+        );
+
+
+      /*
+       * Défilement progressif et régulier.
+       */
+
+      page.scrollTop =
+        maxScroll * progress;
+
+
+      if(progress < 1){
+
+        tvScrollAnimation =
+          requestAnimationFrame(
+            animateScroll
+          );
+
+        return;
+
+      }
+
+
+      tvScrollAnimation = null;
+
+
+      /*
+       * Petite pause en bas avant
+       * de passer au classement suivant.
+       */
+
+      tvTimer = setTimeout(() => {
+
+        tvCurrentPage++;
+
+
+        if(
+          tvCurrentPage >= tvPages.length
+        ){
+
+          finishTVCycle();
+
+          return;
+
+        }
+
+
+        showTVPage(tvCurrentPage);
+
+        scheduleNextTVPage();
+
+      }, 3000);
+
+    }
+
+
+    tvScrollAnimation =
+      requestAnimationFrame(
+        animateScroll
+      );
+
+  }, 3000);
 
 }
 
@@ -255,13 +462,52 @@ function loadTVVersion(pages){
 
   pages.forEach(page => {
 
-    page.classList.add("tv-page");
+  page.classList.add("tv-page");
 
-    tv.appendChild(page);
 
-    tvPages.push(page);
+  /*
+   * Nombre de pilotes du tableau.
+   * La première ligne est l'en-tête.
+   */
 
-  });
+  const table =
+    page.querySelector("table");
+
+  const pilotCount =
+    table
+      ? Math.max(
+          0,
+          table.querySelectorAll("tr").length - 1
+        )
+      : 0;
+
+
+  /*
+   * Jusqu'à 20 pilotes :
+   * affichage fixe.
+   *
+   * Au-delà :
+   * défilement automatique.
+   */
+
+  if(pilotCount > 20){
+
+    page.classList.add("tv-scroll");
+
+    page.dataset.tvScroll = "true";
+
+  }else{
+
+    page.dataset.tvScroll = "false";
+
+  }
+
+
+  tv.appendChild(page);
+
+  tvPages.push(page);
+
+});
 
 
   tvCurrentPage = 0;
@@ -339,6 +585,30 @@ function scheduleNextTVPage(){
   }
 
 
+  const currentPage =
+    tvPages[tvCurrentPage];
+
+
+  /*
+   * Les gros tableaux gèrent eux-mêmes
+   * leur durée via le défilement.
+   */
+
+  if(
+    currentPage &&
+    currentPage.dataset.tvScroll === "true"
+  ){
+
+    return;
+
+  }
+
+
+  /*
+   * Tableau normal :
+   * 7 secondes d'affichage.
+   */
+
   tvTimer = setTimeout(() => {
 
     /*
@@ -355,16 +625,11 @@ function scheduleNextTVPage(){
     }
 
 
-    /*
-     * On passe à la page suivante.
-     */
-
     tvCurrentPage++;
 
 
     /*
-     * Sommes-nous arrivés à la fin
-     * de la version actuellement diffusée ?
+     * Fin du cycle.
      */
 
     if(tvCurrentPage >= tvPages.length){
@@ -388,7 +653,6 @@ function scheduleNextTVPage(){
   }, TV_PAGE_DURATION);
 
 }
-
 
 /* =====================================================
    DÉMARRAGE

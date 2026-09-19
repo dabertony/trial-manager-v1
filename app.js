@@ -3791,6 +3791,66 @@ home();
 
 }
 
+function getBirthDateSortValue(value){
+
+  if(!value){
+    return 0;
+  }
+
+  const text =
+    String(value).trim();
+
+  // Format interne : AAAA-MM-JJ
+  let match =
+    text.match(
+      /^(\d{4})-(\d{1,2})-(\d{1,2})$/
+    );
+
+  if(match){
+
+    const year =
+      Number(match[1]);
+
+    const month =
+      Number(match[2]);
+
+    const day =
+      Number(match[3]);
+
+    return (
+      year * 10000
+      + month * 100
+      + day
+    );
+  }
+
+  // Format français : JJ/MM/AAAA
+  match =
+    text.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+    );
+
+  if(match){
+
+    const day =
+      Number(match[1]);
+
+    const month =
+      Number(match[2]);
+
+    const year =
+      Number(match[3]);
+
+    return (
+      year * 10000
+      + month * 100
+      + day
+    );
+  }
+
+  return 0;
+}
+
 // ===== TRI =====
 
 function sortPilots(list){
@@ -3869,16 +3929,23 @@ function sortPilots(list){
 
   // ===== DATE DE NAISSANCE =====
 
-  if(column==="birthDate"){
+if(column==="birthDate"){
 
-    arr.sort((a,b)=>{
+  arr.sort((a,b)=>{
 
-      let da = a.birthDate || "";
-      let db = b.birthDate || "";
+    let da =
+      getBirthDateSortValue(
+        a.birthDate
+      );
 
-      return da.localeCompare(db) * dir;
-    });
-  }
+    let db =
+      getBirthDateSortValue(
+        b.birthDate
+      );
+
+    return (da - db) * dir;
+  });
+}
 
   // ===== CATEGORIE =====
 
@@ -4061,10 +4128,17 @@ function sortParticipants(list,c){
 
     arr.sort((a,b)=>{
 
-      let da = a.birthDate || "";
-      let db = b.birthDate || "";
+      let da =
+        getBirthDateSortValue(
+          a.birthDate
+        );
 
-      return da.localeCompare(db) * dir;
+      let db =
+        getBirthDateSortValue(
+          b.birthDate
+        );
+
+      return (da - db) * dir;
     });
   }
 
@@ -9796,24 +9870,47 @@ async function exportPilotsExcelPWA(){
               p.licenceNumber || "",
 
             birthDate:
-              p.birthDate
-                ? p.birthDate
-                    .split("-")
-                    .reverse()
-                    .join("/")
-                : ""
+  p.birthDate
+    ? (() => {
+
+        const parts =
+          p.birthDate.split("-");
+
+        if(parts.length !== 3){
+          return p.birthDate;
+        }
+
+        const year =
+          Number(parts[0]);
+
+        const month =
+          Number(parts[1]);
+
+        const day =
+          Number(parts[2]);
+
+        return new Date(
+          year,
+          month - 1,
+          day
+        );
+
+      })()
+    : ""
 
           });
 
 
         /*
-         * Format monétaire existant
-         *
-         * ON LE CONSERVE VOLONTAIREMENT
-         */
+ * Format date de naissance
+ */
 
-        row.getCell(7).numFmt =
-          '# ##0.00 €';
+if(p.birthDate){
+
+  row.getCell(7).numFmt =
+    "dd/mm/yyyy";
+
+}
 
 
         /*
