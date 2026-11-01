@@ -5,7 +5,6 @@
 body{
   font-family:Arial;
   margin:0;
-  background:#edf2f7;
 }
 
 header{
@@ -134,10 +133,6 @@ header{
   background:#cbd5e1 !important;
 }
 
-.container{
-  padding:10px 20px;
-}
-
 button{
   padding:14px 20px;
   margin:6px;
@@ -192,12 +187,6 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
   background-color:transparent !important;
 }
 
-.ab-btn{
-  float:right;
-  padding:4px 8px;
-  font-size:11px;
-}
-
 .card{
   background:white;
   padding:18px;
@@ -216,71 +205,9 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
   cursor:pointer;
 }
 
-.competition-card{
-  background:white;
-  padding:10px 12px;
-  margin:6px 0;
-  border-radius:10px;
-  border-left:5px solid #2563eb;
-  box-shadow:0 1px 4px rgba(0,0,0,0.08);
-  cursor:pointer;
-}
-
-.competition-card:hover{
-  background:#eef4ff;
-}
-
-.clickable-row{
-  cursor:pointer;
-  border:2px solid transparent;
-  transition:transform .12s, box-shadow .12s, border .12s;
-}
-
-.clickable-row:hover{
-  box-shadow:0 4px 10px rgba(0,0,0,.08);
-}
-
-.clickable-row:active{
-  transform:scale(.995);
-}
-
-
 /* =========================================================
    ===== COULEURS CATÉGORIES — SAISIE DES SCORES =========
    ========================================================= */
-
-.score-entry-page .cat-elite{
-  border-left:60px solid #facc15;
-}
-
-.score-entry-page .cat-n1{
-  border-left:60px solid #dc2626;
-}
-
-.score-entry-page .cat-n2{
-  border-left:60px solid #2563eb;
-}
-
-.score-entry-page .cat-n3{
-  border-left:60px solid #16a34a;
-}
-
-.score-entry-page .cat-n4{
-  border-left:60px solid #ffffff;
-}
-
-.score-entry-page .cat-n5{
-  border-left:60px solid #ea580c;
-}
-
-.score-entry-page .cat-f{
-  border-left:60px solid #ec4899;
-}
-
-.score-entry-page .cat-v{
-  border-left:60px solid #6b7280;
-}
-
 
 /* =========================================================
    ===== COMPÉTITIONS =====================================
@@ -300,22 +227,6 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
   align-items:center;
   gap:8px;
   flex-wrap:wrap;
-}
-
-.score-pilot{
-  text-align:center;
-  font-size:24px;
-  font-weight:700;
-  color:#1e293b;
-  margin-top:-8px;
-  margin-bottom:28px;
-  padding:10px;
-  background:white;
-  border-radius:12px;
-  box-shadow:0 2px 6px rgba(0,0,0,.08);
-  max-width:500px;
-  margin-left:auto;
-  margin-right:auto;
 }
 
 .comp-date{
@@ -348,7 +259,6 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
 
 }
 
-
 .comp-delete:hover{
 
   background:#ffe4e6 !important;
@@ -375,13 +285,11 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
 
 }
 
-
 .comp-edit:hover{
 
   background:#475569 !important;
 
 }
-
 
 .comp-close{
 
@@ -402,7 +310,6 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
   cursor:pointer;
 
 }
-
 
 .comp-close:hover{
 
@@ -441,7 +348,6 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
   white-space:nowrap;
 
 }
-
 
 /* Bouton Voir */
 
@@ -493,35 +399,6 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
    ===== SAISIE DES SCORES ================================
    ========================================================= */
 
-.score-btn{
-  margin:10px;
-  margin-bottom:12px;
-  background:#e5e7eb;
-  color:black;
-  border:1px solid #cbd5e1;
-  min-width:70px;
-  min-height:70px;
-  font-size:30px;
-  font-weight:bold;
-}
-
-.zone-block{
-  text-align:center;
-  margin:25px 0;
-}
-
-.score-tour{
-  text-align:center;
-  font-size:36px;
-  font-weight:bold;
-  margin-bottom:25px;
-}
-
-.zone-label{
-  font-size:32px;
-  font-weight:bold;
-}
-
 .score-actions{
 
   display:flex;
@@ -536,21 +413,82 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
 
 }
 
-
 .selected{
   background:#22c55e !important;
   color:white;
 }
 
-
 /* =========================================================
    ===== TITRES / STATUTS =================================
    ========================================================= */
 
-.section-title{
+.championship-ranking-heading{
+  margin-top:0;
+  margin-bottom:12px;
+  min-height:80px;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+
+.championship-ranking-heading .section-title{
+  max-width:calc(65% - 120px);
+}
+
+.championship-ranking-heading .ranking-event-label{
+  line-height:1.35;
+}
+
+.ranking-heading{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:18px;
+  width:100%;
+  min-height:0;
   margin-top:24px;
+  box-sizing:border-box;
+}
+
+.section-title{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  min-width:0;
+  max-width:calc(65% - 120px);
+  margin-top:0;
   font-size:20px;
   font-weight:bold;
+}
+
+.ranking-category-label{
+  display:inline-block;
+  padding:4px 9px;
+  border:1px solid #111827;
+  border-radius:4px;
+  line-height:1.2;
+  white-space:nowrap;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
+}
+
+.ranking-event-label{
+  min-width:0;
+}
+
+.ufolep-ranking-logo{
+  position:absolute;
+  left:auto;
+  right:2%;
+  top:58%;
+  display:block;
+  width:210px;
+  max-height:84px;
+  object-fit:contain;
+  transform:translateY(-50%);
+  z-index:1;
+  pointer-events:none;
 }
 
 .category-status{
@@ -570,7 +508,6 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
   background:#ecfdf5;
   color:#166534;
 }
-
 
 /* =========================================================
    ===== TABLEAUX ==========================================
@@ -601,18 +538,6 @@ th{
   vertical-align:middle;
   line-height:1.2;
   white-space:normal;
-}
-
-.col-name{
-  width:210px;
-}
-
-.col-club{
-  width:90px;
-}
-
-.col-cat{
-  width:90px;
 }
 
 .col-small{
@@ -648,13 +573,11 @@ th{
   background:#d7fcde;
 }
 
-
 /* =========================================================
    ===== NOTES IMPRESSION =================================
    ========================================================= */
 
 .print-note,
-.print-note2,
 .print-note3{
   margin-top:8px;
   color:#7f1d1d;
@@ -662,14 +585,9 @@ th{
   font-weight:bold;
 }
 
-
 /* =========================================================
    ===== IMPRESSION PDF ===================================
    ========================================================= */
-
-.print-header{
-  display:none;
-}
 
 .print-footer{
   display:flex;
@@ -685,6 +603,29 @@ th{
   page-break-after:always;
   break-after:page;
   margin-bottom:30px;
+}
+
+@media (max-width: 760px){
+  .ranking-heading{
+    flex-direction:column;
+    justify-content:center;
+    gap:8px;
+    min-height:0;
+  }
+  .section-title{
+    max-width:100%;
+    justify-content:center;
+    font-size:16px;
+    gap:5px;
+    text-align:center;
+  }
+  .ufolep-ranking-logo{
+    position:static;
+    width:124px;
+    max-height:54px;
+    transform:none;
+    align-self:center;
+  }
 }
 
 @media print{
@@ -731,16 +672,6 @@ th{
     display:none;
   }
 
-  .print-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:10px;
-    padding-bottom:8px;
-    border-bottom:2px solid black;
-    font-size:12px;
-  }
-
   .print-footer{
     position:fixed;
     bottom:5mm;
@@ -753,8 +684,37 @@ th{
     break-inside:avoid;
   }
 
-  .section-title{
+  .ranking-heading{
     margin-top:0;
+    gap:12px;
+    min-height:80px;
+    break-inside:avoid !important;
+    page-break-inside:avoid !important;
+    overflow:visible;
+  }
+
+  .championship-ranking-heading{
+    margin-top:0;
+    gap:12px;
+    min-height:80px;
+    break-inside:avoid !important;
+    page-break-inside:avoid !important;
+    overflow:visible;
+  }
+
+  .section-title{
+    max-width:calc(65% - 110px);
+    font-size:18px;
+  }
+
+  .ufolep-ranking-logo{
+    left:auto;
+    right:2%;
+    top:56%;
+    transform:translateY(-50%);
+    width:198px;
+    height:auto;
+    max-height:68px;
   }
 
   .topbar,
@@ -767,16 +727,9 @@ th{
   }
 }
 
-
 /* =========================================================
    ===== MENU COMPÉTITIONS ================================
    ========================================================= */
-
-.competition-panel{
-  max-width:900px;
-  margin:auto;
-  padding:20px;
-}
 
 .competition-menu{
   margin-top:16px;
@@ -871,6 +824,7 @@ body > button{
   padding:24px 26px;
   margin-bottom:20px;
   box-shadow:0 6px 18px rgba(15,23,42,.16);
+  text-align:left;
 }
 
 .home-header h1{
@@ -1063,7 +1017,6 @@ body > button{
   color:#64748b;
 }
 
-
 /* =========================================================
    ===== SAISIE DES SCORES — FOND =========================
    ========================================================= */
@@ -1082,7 +1035,6 @@ body > button{
     inset 2px 0 0 #0c111f,
     0 3px 8px rgba(0,0,0,.35);
 }
-
 
 /* Bandes catégories */
 
@@ -1118,7 +1070,6 @@ body > button{
   border-left:60px solid #6b7280 !important;
 }
 
-
 /* =========================================================
    ===== INTERFACE GESTION DES PILOTES =====================
    ========================================================= */
@@ -1135,7 +1086,6 @@ body > button{
       #e2e8f0 100%
     );
 }
-
 
 /* ===== EN-TÊTE ===== */
 
@@ -1173,7 +1123,6 @@ body > button{
   font-size:13px;
 }
 
-
 /* ===== RETOUR ===== */
 
 .pilots-back{
@@ -1185,7 +1134,6 @@ body > button{
 .pilots-back:hover{
   background:#475569 !important;
 }
-
 
 /* ===== FORMULAIRE ===== */
 
@@ -1211,15 +1159,47 @@ body > button{
 .pilots-form-grid{
   display:grid;
   grid-template-columns:
+    110px
+    minmax(180px,1.5fr)
+    minmax(145px,.95fr)
+    minmax(165px,1fr)
     120px
-    minmax(220px,2fr)
-    minmax(160px,1fr)
-    100px
     130px
-    140px
-    150px;
+    140px;
   gap:10px;
   align-items:end;
+}
+
+.pilot-extra-input{
+  min-width:0;
+  width:100%;
+  box-sizing:border-box;
+  padding:11px 12px;
+  font-size:15px;
+  border:1px solid #cbd5e1;
+  border-radius:6px;
+  background:#fff;
+}
+.pilot-extra-club{grid-column:3 / span 2;}
+.pilot-extra-category{
+  grid-column:4 / span 2;
+  max-width:245px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+.pilot-extra-category input[type="text"]{flex:1;min-width:0;width:100%;padding:11px 12px;font-size:15px;border:1px solid #cbd5e1;border-radius:6px;box-sizing:border-box;}
+.pilot-extra-category input[type="color"]{width:44px;min-width:44px;height:42px;padding:3px;}
+.pilot-color-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;}
+@media (max-width: 1100px){
+  .pilot-extra-club{grid-column:2 / span 2;}
+  .pilot-extra-category{grid-column:1 / span 3;}
+}
+@media (max-width: 700px){
+  .pilot-extra-club,.pilot-extra-category{grid-column:1;}
+  .pilot-extra-category{flex-wrap:wrap;}
+  .pilot-extra-category input[type="text"]{flex-basis:100%;}
 }
 
 .pilot-field{
@@ -1253,7 +1233,6 @@ body > button{
   box-shadow:0 0 0 3px rgba(37,99,235,.12);
 }
 
-
 /* ===== ACTIONS FORMULAIRE ===== */
 
 .pilots-form-actions{
@@ -1282,7 +1261,6 @@ body > button{
 .pilots-cancel:hover{
   background:#475569 !important;
 }
-
 
 /* ===== OUTILS ===== */
 
@@ -1325,7 +1303,6 @@ body > button{
   background:#ffe4e6 !important;
 }
 
-
 /* ===== TITRE LISTE ===== */
 
 .pilots-list-header{
@@ -1349,7 +1326,6 @@ body > button{
   font-size:12px;
   font-weight:700;
 }
-
 
 /* =========================================================
    ===== RECHERCHE PILOTES ================================
@@ -1389,6 +1365,21 @@ body > button{
   white-space:nowrap;
 }
 
+/* Recherche de doublons : lignes compactes, contrôle manuel uniquement */
+.pilot-duplicates-intro{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin:10px 0;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#f8fafc;color:#334155;font-size:13px;line-height:1.35;}
+.pilot-duplicates-intro strong{font-size:14px;color:#0f172a;white-space:nowrap;}
+.pilot-duplicates-list{display:grid;gap:6px;margin:10px 0;}
+.pilot-duplicate-card{display:flex;align-items:center;gap:12px;min-width:0;padding:8px 10px;border:1px solid #dbe2ea;border-radius:8px;background:#fff;}
+.pilot-duplicate-reasons{display:flex;flex:0 0 auto;flex-wrap:wrap;gap:4px;max-width:240px;}
+.pilot-duplicate-reasons span{display:inline-block;padding:3px 6px;border-radius:5px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;font-weight:700;line-height:1.25;}
+.pilot-duplicate-people{display:grid;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);align-items:center;gap:8px;flex:1;min-width:0;}
+.pilot-duplicate-person{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;min-width:0;overflow-wrap:anywhere;line-height:1.3;}
+.pilot-duplicate-person strong{font-size:13px;color:#0f172a;}
+.pilot-duplicate-person span{font-size:12px;color:#475569;}
+.pilot-duplicate-separator{text-align:center;color:#94a3b8;font-weight:800;}
+.pilot-duplicates-footer{display:flex;justify-content:center;margin:16px 0;}
+@media(max-width:900px){.pilot-duplicate-card{align-items:flex-start;flex-direction:column;gap:6px;}.pilot-duplicate-reasons{max-width:none;}.pilot-duplicate-people{width:100%;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);}}
+@media(max-width:560px){.pilot-duplicate-people{grid-template-columns:1fr;gap:5px;}.pilot-duplicate-separator{display:none;}.pilot-duplicate-person{padding:5px 7px;border-radius:5px;background:#f8fafc;}}
 
 /* =========================================================
    ===== TABLEAU DES PILOTES ===============================
@@ -1451,7 +1442,6 @@ body > button{
     140px;
 }
 
-
 /* =========================================================
    ===== LARGEURS COLONNES PILOTES =========================
    ========================================================= */
@@ -1488,7 +1478,6 @@ body > button{
   width:60px;
 }
 
-
 /* =========================================================
    ===== CATÉGORIES PILOTES ================================
    ========================================================= */
@@ -1507,14 +1496,12 @@ body > button{
   border-radius:5px;
 }
 
-
 /* Elite */
 
 .pilot-table .pilot-cat-elite{
   background:#facc15 !important;
   color:#000 !important;
 }
-
 
 /* N1 */
 
@@ -1523,14 +1510,12 @@ body > button{
   color:#fff !important;
 }
 
-
 /* N2 */
 
 .pilot-table .pilot-cat-n2{
   background:#2563eb !important;
   color:#fff !important;
 }
-
 
 /* N3 */
 
@@ -1539,14 +1524,12 @@ body > button{
   color:#fff !important;
 }
 
-
 /* N4 */
 
 .pilot-table .pilot-cat-n4{
   background:#ffffff !important;
   color:#000 !important;
 }
-
 
 /* N5 */
 
@@ -1555,7 +1538,6 @@ body > button{
   color:#fff !important;
 }
 
-
 /* Féminine */
 
 .pilot-table .pilot-cat-f{
@@ -1563,14 +1545,12 @@ body > button{
   color:#fff !important;
 }
 
-
 /* Vétéran */
 
 .pilot-table .pilot-cat-v{
   background:#6b7280 !important;
   color:#fff !important;
 }
-
 
 /* =========================================================
    ===== AUCUN SURVOL DANS LE TABLEAU PILOTES ==============
@@ -1586,13 +1566,11 @@ body > button{
   cursor:pointer;
 }
 
-
 /* On neutralise tout ancien hover éventuel */
 
 .pilot-table tbody tr:hover td{
   background:inherit !important;
 }
-
 
 /* Et les catégories gardent leurs couleurs */
 
@@ -1636,7 +1614,6 @@ body > button{
   color:#fff !important;
 }
 
-
 /* =========================================================
    ===== SÉLECTION D'UN PILOTE ==============================
    ========================================================= */
@@ -1657,7 +1634,6 @@ body > button{
   background:#bfdbfe !important;
   color:#0f172a !important;
 }
-
 
 /* ===== CATÉGORIE : PRIORITAIRE À LA SÉLECTION ===== */
 
@@ -1701,14 +1677,12 @@ body > button{
   color:#fff !important;
 }
 
-
 /* ===== ACTIONS : TOUJOURS BLANCHES ===== */
 
 .pilot-table tbody tr.pilot-selected td.col-actions{
   background:#ffffff !important;
   color:#000 !important;
 }
-
 
 /*
    Même si la souris passe sur la ligne sélectionnée,
@@ -1763,7 +1737,6 @@ body > button{
   background:#ffffff !important;
 }
 
-
 /* =========================================================
    ===== BOUTONS ACTIONS PILOTE ===========================
    ========================================================= */
@@ -1796,7 +1769,6 @@ body > button{
   color:#b91c1c !important;
 }
 
-
 /* =========================================================
    ===== MODE MODIFICATION ================================
    ========================================================= */
@@ -1815,7 +1787,6 @@ body > button{
   font-weight:700;
 }
 
-
 /* =========================================================
    ===== MESSAGE AUCUN RÉSULTAT ===========================
    ========================================================= */
@@ -1833,7 +1804,6 @@ body > button{
   margin-bottom:8px;
 }
 
-
 /* =========================================================
    ===== SAISIE — ÉLÉMENTS DE LIGNE ========================
    ========================================================= */
@@ -1847,58 +1817,6 @@ body > button{
   font-weight:bold;
   border:2px solid black;
 }
-
-.tour-line{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  flex-wrap:wrap;
-}
-
-.pilot-line{
-  margin-left:15px;
-  font-weight:bold;
-}
-
-.tour-chip{
-  display:inline-block;
-  padding:2px 8px;
-  margin-right:7px;
-  border-radius:6px;
-  background:#f3f4f6;
-  font-size:15px;
-  font-weight:600;
-  line-height:20px;
-  cursor:pointer;
-  user-select:none;
-  vertical-align:middle;
-  transition:background .15s;
-}
-
-.tour-chip:hover{
-  background:#e5e7eb;
-}
-
-.status-chip{
-  display:inline-block;
-  padding:2px 10px;
-  margin-left:8px;
-  margin-right:12px;
-  border-radius:6px;
-  background:#f3f4f6;
-  font-size:16px;
-  font-weight:600;
-  line-height:20px;
-  cursor:pointer;
-  user-select:none;
-  vertical-align:middle;
-  transition:background .15s;
-}
-
-.status-chip:hover{
-  background:#e5e7eb;
-}
-
 
 /* =========================================================
    ===== RESPONSIVE ========================================
@@ -2209,7 +2127,6 @@ body > button{
   background:#475569 !important;
 }
 
-
 /* ===== CARTE COMPÉTITION ===== */
 
 .info-competition-card{
@@ -2252,7 +2169,6 @@ body > button{
   font-size:13px;
 }
 
-
 /* ===== GRILLE DES CARTES ===== */
 
 .info-grid{
@@ -2260,7 +2176,6 @@ body > button{
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:12px;
 }
-
 
 /* ===== CARTES ===== */
 
@@ -2285,7 +2200,6 @@ body > button{
   color:#64748b;
 }
 
-
 /* ===== LIGNES SANS ICÔNE ===== */
 /* Participants / Abandons */
 
@@ -2303,7 +2217,6 @@ body > button{
   grid-template-columns:minmax(0,1fr) auto;
 }
 
-
 /* ===== LIGNES AVEC ICÔNE ===== */
 /* Départages / FEM / VET */
 
@@ -2319,7 +2232,6 @@ body > button{
 .info-status{
   text-align:center;
 }
-
 
 /* ===== LIGNES DES TOURS ===== */
 /* Icône + catégorie + fait/total + restant */
@@ -2337,7 +2249,6 @@ body > button{
   margin-left:0;
 }
 
-
 /* ===== SÉPARATEUR ===== */
 
 .info-divider{
@@ -2345,7 +2256,6 @@ body > button{
   margin:10px 0;
   background:#e2e8f0;
 }
-
 
 /* ===== TOTAL ===== */
 
@@ -2360,13 +2270,11 @@ body > button{
   color:#1e293b;
 }
 
-
 /* ===== CARTES DES TOURS ===== */
 
 .info-tour-card{
   grid-column:span 1;
 }
-
 
 /* ===== RESPONSIVE ===== */
 
@@ -2425,7 +2333,6 @@ body > button{
   background:#475569 !important;
 }
 
-
 /* COMPÉTITION */
 
 .export-competition-card{
@@ -2477,7 +2384,6 @@ body > button{
   font-size:13px;
 }
 
-
 /* SECTIONS */
 
 .export-section-title{
@@ -2487,10 +2393,6 @@ body > button{
   font-weight:800;
 
   color:#1e293b;
-}
-
-.export-pointage-title{
-  margin-top:28px;
 }
 
 /* =========================================================
@@ -2508,7 +2410,6 @@ body > button{
   background:#475569 !important;
 }
 
-
 .export-pdf-btn{
   background:#334155 !important;
   color:white !important;
@@ -2519,7 +2420,6 @@ body > button{
 .export-pdf-btn:hover{
   background:#475569 !important;
 }
-
 
 .export-return-btn{
   background:#e2e8f0 !important;
@@ -2574,7 +2474,6 @@ body > button{
   background:#475569 !important;
 }
 
-
 /* ===== AFFICHAGE TV ===== */
 
 .results-tv-btn{
@@ -2586,7 +2485,6 @@ body > button{
 .results-tv-btn:hover{
   background:#475569 !important;
 }
-
 
 /* ===== ARRÊTER TV ===== */
 
@@ -2600,7 +2498,6 @@ body > button{
   background:#ffe4e6 !important;
 }
 
-
 /* ===== RETOUR ===== */
 
 .results-return-btn{
@@ -2612,7 +2509,6 @@ body > button{
 .results-return-btn:hover{
   background:#cbd5e1 !important;
 }
-
 
 /* ===== CLIC ===== */
 
@@ -2638,7 +2534,6 @@ body > button{
   background:#dcfce7;
   border-color:#86efac;
 }
-
 
 /* ===== DÉVERROUILLER ===== */
 
@@ -2678,7 +2573,6 @@ body > button{
 
 }
 
-
 .validation-card-title{
 
   font-size:24px;
@@ -2691,7 +2585,6 @@ body > button{
 
 }
 
-
 .validation-card-message{
 
   font-size:16px;
@@ -2701,7 +2594,6 @@ body > button{
   color:#475569;
 
 }
-
 
 .validation-card-actions{
 
@@ -2722,7 +2614,6 @@ body > button{
 .score-entry-page{
   width:100%;
 }
-
 
 /* =========================================================
    BARRE OUTILS
@@ -2752,7 +2643,6 @@ body > button{
 
 }
 
-
 .score-entry-sort{
 
   display:flex;
@@ -2768,7 +2658,6 @@ body > button{
   font-weight:700;
 
 }
-
 
 .score-entry-sort select{
 
@@ -2790,7 +2679,6 @@ body > button{
 
 }
 
-
 .score-entry-legend{
 
   display:flex;
@@ -2806,7 +2694,6 @@ body > button{
   font-weight:600;
 
 }
-
 
 /* =========================================================
    CONTENEUR TABLE
@@ -2828,7 +2715,6 @@ body > button{
 
 }
 
-
 /* =========================================================
    TABLE
    ========================================================= */
@@ -2845,24 +2731,26 @@ body > button{
 
 }
 
-
 /* =========================================================
    EN-TÊTES
    ========================================================= */
 
 .score-entry-table thead th{
 
-  padding:6px 7px;
+  /* Même présentation que les en-têtes de la liste des pilotes */
+  padding:11px 9px;
 
-  background:#f8fafc;
+  background:#0f172a;
 
-  color:#475569;
+  color:#ffffff;
 
-  border-bottom:2px solid #e2e8f0;
+  border-bottom:2px solid #1e293b;
 
-  font-size:11px;
+  font-size:13px;
 
   font-weight:800;
+
+  text-align:center;
 
   text-transform:uppercase;
 
@@ -2871,7 +2759,6 @@ body > button{
   white-space:nowrap;
 
 }
-
 
 /* =========================================================
    CELLULES
@@ -2891,13 +2778,11 @@ body > button{
 
 }
 
-
 .score-entry-table tbody tr:last-child td{
 
   border-bottom:none;
 
 }
-
 
 /* =========================================================
    LARGEURS
@@ -2912,7 +2797,6 @@ body > button{
 
 }
 
-
 .score-col-name{
 
   width:180px;
@@ -2920,7 +2804,6 @@ body > button{
   text-align:left;
 
 }
-
 
 .score-col-club{
 
@@ -2930,7 +2813,6 @@ body > button{
 
 }
 
-
 .score-col-cat{
 
   width:85px;
@@ -2938,7 +2820,6 @@ body > button{
   text-align:center;
 
 }
-
 
 .score-col-tour,
 .score-tour-cell{
@@ -2949,6 +2830,22 @@ body > button{
 
 }
 
+.score-col-total,
+.score-pilot-total-cell{
+
+  width:44px;
+  min-width:44px;
+  max-width:44px;
+  padding-left:3px !important;
+  padding-right:3px !important;
+
+  text-align:center;
+
+  font-weight:900;
+
+  font-variant-numeric:tabular-nums;
+
+}
 
 .score-col-action,
 .score-action-cell{
@@ -2958,7 +2855,6 @@ body > button{
   text-align:center;
 
 }
-
 
 /* =========================================================
    PILOTE
@@ -2978,13 +2874,11 @@ body > button{
 
 }
 
-
 .score-name:hover{
 
   text-decoration:underline;
 
 }
-
 
 .score-club{
 
@@ -2998,13 +2892,11 @@ body > button{
 
 }
 
-
 .score-plate{
 
   font-weight:800;
 
 }
-
 
 /* =========================================================
    CATÉGORIE
@@ -3022,7 +2914,6 @@ body > button{
 
 }
 
-
 /* =========================================================
    VOYANTS DES TOURS
    ========================================================= */
@@ -3037,13 +2928,11 @@ body > button{
 
 }
 
-
 .score-tour-cell:hover{
 
   background:#f8fafc;
 
 }
-
 
 .score-tour-cell:active{
 
@@ -3051,23 +2940,47 @@ body > button{
 
 }
 
+.score-tour-indicator{
+
+  display:grid;
+  grid-template-columns:26px 16px;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-height:24px;
+  column-gap:0;
+
+}
 
 .score-status-icon{
 
   display:inline-flex;
-
   align-items:center;
-
   justify-content:center;
-
   width:26px;
-
   height:24px;
-
   font-size:16px;
 
 }
 
+.score-tour-points{
+
+  display:inline-block;
+  width:16px;
+  text-align:left;
+  white-space:nowrap;
+
+  color:#334155;
+
+  font-size:11px;
+
+  line-height:1.1;
+
+  font-weight:800;
+
+  font-variant-numeric:tabular-nums;
+
+}
 
 /* =========================================================
    AB
@@ -3103,7 +3016,6 @@ body > button{
   transform:none !important;
 }
 
-
 .score-ab-btn:hover{
 
   background:#f1f5f9 !important;
@@ -3116,7 +3028,6 @@ body > button{
 
 }
 
-
 .score-ab-btn:active{
 
   background:#e2e8f0 !important;
@@ -3126,7 +3037,6 @@ body > button{
   transform:scale(.97) !important;
 
 }
-
 
 /* Pilote déjà en abandon */
 
@@ -3140,7 +3050,6 @@ body > button{
 
 }
 
-
 .score-ab-active:hover{
 
   background:#fecaca !important;
@@ -3150,7 +3059,6 @@ body > button{
   border-color:#fca5a5 !important;
 
 }
-
 
 /* =========================================================
    PILOTE AB
@@ -3162,13 +3070,11 @@ body > button{
 
 }
 
-
 .pilot-ab-row .score-name{
 
   color:#991b1b;
 
 }
-
 
 /* =========================================================
    PETITS ÉCRANS
@@ -3184,13 +3090,11 @@ body > button{
 
   }
 
-
   .score-entry-legend{
 
     flex-wrap:wrap;
 
   }
-
 
   .score-col-club,
   .score-club{
@@ -3198,7 +3102,6 @@ body > button{
     display:none;
 
   }
-
 
   .score-col-name{
 
@@ -3215,7 +3118,6 @@ body > button{
 .score-detail-page{
   width:100%;
 }
-
 
 .score-pilot-header{
 
@@ -3241,7 +3143,6 @@ body > button{
 
 }
 
-
 .score-pilot-name{
 
   font-size:20px;
@@ -3251,7 +3152,6 @@ body > button{
   color:#1e293b;
 
 }
-
 
 .score-pilot-meta{
 
@@ -3273,7 +3173,6 @@ body > button{
 
 }
 
-
 .score-pilot-cat{
 
   display:inline-flex;
@@ -3291,7 +3190,6 @@ body > button{
   font-weight:800;
 
 }
-
 
 .score-pilot-ab{
 
@@ -3313,7 +3211,6 @@ body > button{
 
 }
 
-
 /* =========================================================
    LISTE DES TOURS
    ========================================================= */
@@ -3327,7 +3224,6 @@ body > button{
   gap:6px;
 
 }
-
 
 .score-detail-tour{
 
@@ -3361,7 +3257,6 @@ body > button{
 
 }
 
-
 .score-detail-tour:hover{
 
   background:#f8fafc;
@@ -3372,13 +3267,11 @@ body > button{
 
 }
 
-
 .score-detail-tour:active{
 
   transform:scale(.995);
 
 }
-
 
 .score-detail-tour-left{
 
@@ -3392,7 +3285,6 @@ body > button{
 
 }
 
-
 .score-detail-tour-number{
 
   width:34px;
@@ -3404,7 +3296,6 @@ body > button{
   color:#1e293b;
 
 }
-
 
 .score-detail-tour-status{
 
@@ -3422,13 +3313,11 @@ body > button{
 
 }
 
-
 .score-detail-icon{
 
   font-size:17px;
 
 }
-
 
 .score-detail-tour-result{
 
@@ -3441,7 +3330,6 @@ body > button{
   font-size:13px;
 
 }
-
 
 .score-detail-tour-arrow{
 
@@ -3459,6 +3347,48 @@ body > button{
 
 }
 
+.score-detail-pilot-total{
+
+  display:flex;
+
+  justify-content:flex-end;
+
+  align-items:center;
+
+  gap:18px;
+
+  margin-top:4px;
+
+  padding:12px 36px 12px 11px;
+
+  color:#1e293b;
+
+  font-size:14px;
+
+  border-top:2px solid #cbd5e1;
+
+}
+
+.score-detail-pilot-total span{
+
+  font-weight:700;
+
+  color:#475569;
+
+}
+
+.score-detail-pilot-total strong{
+
+  min-width:80px;
+
+  text-align:right;
+
+  font-size:15px;
+
+  font-weight:800;
+
+}
+
 
 .score-detail-footer{
 
@@ -3469,7 +3399,6 @@ body > button{
   margin-top:10px;
 
 }
-
 
 .score-detail-ab{
 
@@ -3491,13 +3420,11 @@ body > button{
 
 }
 
-
 .score-detail-ab:hover{
 
   background:#fecaca;
 
 }
-
 
 /* =========================================================
    FORMULAIRE DE SAISIE
@@ -3508,7 +3435,6 @@ body > button{
   width:100%;
 
 }
-
 
 .score-form-pilot{
 
@@ -3526,7 +3452,6 @@ body > button{
 
 }
 
-
 .score-form-pilot-name{
 
   font-size:20px;
@@ -3536,7 +3461,6 @@ body > button{
   color:#1e293b;
 
 }
-
 
 .score-form-pilot-meta{
 
@@ -3558,7 +3482,6 @@ body > button{
 
 }
 
-
 /* =========================================================
    ZONES
    ========================================================= */
@@ -3572,7 +3495,6 @@ body > button{
   gap:5px;
 
 }
-
 
 .score-zone-row{
 
@@ -3594,7 +3516,6 @@ body > button{
 
 }
 
-
 .score-zone-number{
 
   width:70px;
@@ -3607,7 +3528,6 @@ body > button{
 
 }
 
-
 .score-buttons{
 
   display:flex;
@@ -3617,7 +3537,6 @@ body > button{
   flex:1;
 
 }
-
 
 .score-btn{
 
@@ -3659,7 +3578,6 @@ body > button{
 
 }
 
-
 .score-btn:hover{
 
   background:#f1f5f9;
@@ -3668,13 +3586,11 @@ body > button{
 
 }
 
-
 .score-btn:active{
 
   transform:scale(.96);
 
 }
-
 
 .score-btn.selected{
 
@@ -3693,17 +3609,47 @@ body > button{
 }
 
 
-.score-zone-current{
+.score-tour-total{
 
-  width:55px;
+  display:flex;
 
-  text-align:right;
+  align-items:center;
 
-  color:#64748b;
+  flex-wrap:wrap;
 
-  font-size:12px;
+  gap:5px 12px;
 
-  font-weight:700;
+  margin-top:4px;
+
+  padding:12px 14px;
+
+  background:#eff6ff;
+
+  border:1px solid #bfdbfe;
+
+  border-radius:9px;
+
+}
+
+.score-tour-total-label{
+
+  color:#1e3a8a;
+
+  font-size:13px;
+
+  font-weight:800;
+
+}
+
+.score-tour-total-value{
+
+  color:#1d4ed8;
+
+  font-size:21px;
+
+  font-weight:900;
+
+  font-variant-numeric:tabular-nums;
 
 }
 
@@ -3742,7 +3688,6 @@ body > button{
 
 }
 
-
 .score-validate-btn{
 
   padding:8px 13px;
@@ -3765,7 +3710,6 @@ body > button{
 
 }
 
-
 .score-validate-btn:hover{
 
   background:#cbd5e1 !important;
@@ -3774,13 +3718,11 @@ body > button{
 
 }
 
-
 .score-validate-btn:active{
 
   transform:scale(.98);
 
 }
-
 
 .score-cancel-btn{
 
@@ -3804,7 +3746,6 @@ body > button{
 
 }
 
-
 .score-cancel-btn:hover{
 
   background:#f8fafc !important;
@@ -3812,7 +3753,6 @@ body > button{
   border-color:#94a3b8 !important;
 
 }
-
 
 /* =========================================================
    PETITS ÉCRANS
@@ -3826,19 +3766,11 @@ body > button{
 
   }
 
-
   .score-btn{
 
     width:38px;
 
     height:36px;
-
-  }
-
-
-  .score-zone-current{
-
-    display:none;
 
   }
 
@@ -3891,7 +3823,6 @@ body > button{
 
 }
 
-
 .export-mode-card{
 
   background:#ffffff;
@@ -3906,7 +3837,6 @@ body > button{
     0 2px 6px rgba(0,0,0,0.05);
 
 }
-
 
 .export-mode-header{
 
@@ -3923,7 +3853,6 @@ body > button{
   border-bottom:1px solid #e2e8f0;
 
 }
-
 
 .export-mode-icon{
 
@@ -3949,7 +3878,6 @@ body > button{
 
 }
 
-
 .export-mode-title{
 
   font-size:16px;
@@ -3960,7 +3888,6 @@ body > button{
 
 }
 
-
 .export-mode-subtitle{
 
   margin-top:3px;
@@ -3970,7 +3897,6 @@ body > button{
   color:#64748b;
 
 }
-
 
 .export-mode-content{
 
@@ -3984,7 +3910,6 @@ body > button{
 
 }
 
-
 /* On garde les cartes existantes
    à l'intérieur des deux colonnes */
 
@@ -3994,13 +3919,11 @@ body > button{
 
 }
 
-
 .export-mode-content .export-pointage-card{
 
   margin:0;
 
 }
-
 
 /* Sur petit écran :
    les deux colonnes passent l'une sous l'autre */
@@ -4013,10 +3936,6 @@ body > button{
 
   }
 
-}
-
-.home-header{
-  text-align:left;
 }
 
 .home-header-subtitle{
@@ -4043,7 +3962,6 @@ body > button{
   background:#f8fafc !important;
   color:#334155 !important;
 }
-
 
 .rules-modal-overlay{
   position:fixed;
@@ -4197,4 +4115,270 @@ body > button{
 .rules-modal-ok:hover{
   background:#f8fafc !important;
   color:#334155 !important;
+}
+/* Recherche partagée sur les écrans participants et saisie des scores */
+#participantSearch,
+#scoreEntrySearch{
+  flex:1;
+  min-width:80px;
+  border:none !important;
+  outline:none !important;
+  box-shadow:none !important;
+  margin:0 !important;
+  padding:8px 4px !important;
+  font-size:14px;
+  background:transparent;
+}
+
+.participants-search{
+  margin:8px 0 12px;
+}
+
+.score-entry-toolbar{
+  flex-wrap:wrap;
+}
+
+.score-entry-search{
+  flex:1 1 280px;
+  max-width:440px;
+  margin:0;
+  padding:4px 9px;
+  border-radius:8px;
+  box-shadow:none;
+  gap:7px;
+}
+
+.score-entry-search .pilots-search-icon{
+  font-size:16px;
+}
+
+@media(max-width:900px){
+  .score-entry-search{
+    width:100%;
+    max-width:none;
+    flex-basis:100%;
+  }
+}
+
+/* =========================================================
+   MODE SOMBRE GLOBAL — interface uniquement
+   Les couleurs de catégories et les exports restent préservés.
+   ========================================================= */
+.home-header-tools{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-left:auto;
+}
+.home-theme-toggle{
+  border:1px solid rgba(203,213,225,.7) !important;
+  background:#334155 !important;
+  color:#f8fafc !important;
+  border-radius:8px;
+  padding:7px 11px;
+  margin:0 !important;
+  font-size:13px;
+  font-weight:700;
+  white-space:nowrap;
+}
+.home-theme-toggle:hover{background:#475569 !important;}
+.home-header-subtitle{flex-wrap:wrap;}
+
+body.dark-mode{
+  color:#e5e7eb;
+  background:radial-gradient(circle at top left,#172033 0%,#111827 48%,#080d17 100%) !important;
+  color-scheme:dark;
+}
+body.dark-mode #app{color:#e5e7eb;}
+body.dark-mode .card,
+body.dark-mode .competition-card,
+body.dark-mode .home-action,
+body.dark-mode .home-empty,
+body.dark-mode .pilots-form-card,
+body.dark-mode .pilots-list-header,
+body.dark-mode .pilots-table-wrap,
+body.dark-mode .competition-form-card,
+body.dark-mode .competition-menu,
+body.dark-mode .menu-card,
+body.dark-mode .rules-modal,
+body.dark-mode .rules-modal-content,
+body.dark-mode .modal-content,
+body.dark-mode .modal-card,
+body.dark-mode .form-card,
+body.dark-mode .participants-search,
+body.dark-mode .score-entry-search,
+body.dark-mode .championship-jokers,
+body.dark-mode .ranking-panel,
+body.dark-mode .ranking-card,
+body.dark-mode .tie-break-card{
+  background-color:#1f2937 !important;
+  color:#e5e7eb !important;
+  border-color:#374151 !important;
+  box-shadow:0 2px 8px rgba(0,0,0,.22);
+}
+body.dark-mode .home-action.primary{
+  background:linear-gradient(135deg,#172b46,#1f2937) !important;
+  border-color:#31557e !important;
+}
+body.dark-mode .home-action.primary .home-action-icon{background:#263f60 !important;}
+body.dark-mode .home-action.danger{
+  background:linear-gradient(135deg,#3a2028,#1f2937) !important;
+  border-color:#7f3344 !important;
+}
+body.dark-mode .home-action.danger .home-action-icon{background:#512a35 !important;}
+body.dark-mode .home-action-title,
+body.dark-mode .home-empty-title,
+body.dark-mode .pilots-list-title,
+body.dark-mode .pilots-form-title,
+body.dark-mode .home-action-description,
+body.dark-mode .home-empty-text,
+body.dark-mode .comp-date,
+body.dark-mode .pilots-count,
+body.dark-mode .pilots-header-title span,
+body.dark-mode .home-action.danger .home-action-title{
+  color:#e5e7eb !important;
+}
+body.dark-mode .home-action-description,
+body.dark-mode .home-empty-text,
+body.dark-mode .comp-date{color:#aab7c8 !important;}
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea,
+body.dark-mode .pilot-field input,
+body.dark-mode .pilot-field select,
+body.dark-mode #participantSearch,
+body.dark-mode #scoreEntrySearch{
+  background-color:#111827 !important;
+  color:#f3f4f6 !important;
+  border-color:#4b5563 !important;
+}
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder{color:#9ca3af !important;}
+body.dark-mode table{background-color:#1f2937; color:#e5e7eb;}
+body.dark-mode table td:not([style*="background"]):not([class*="cat-"]){
+  background-color:#1f2937;
+  color:#e5e7eb;
+  border-color:#4b5563;
+}
+body.dark-mode table th:not([style*="background"]){
+  background-color:#111827;
+  color:#f9fafb;
+  border-color:#4b5563;
+}
+body.dark-mode hr{border-color:#374151;}
+body.dark-mode .home-action:hover,
+body.dark-mode .competition-card:hover,
+body.dark-mode .menu-card:hover{filter:brightness(1.12);}
+body.dark-mode .home-rules-btn{
+  background:#1f2937 !important;
+  color:#e5e7eb !important;
+  border-color:#64748b !important;
+}
+body.dark-mode .home-rules-btn:hover{background:#374151 !important;color:#fff !important;}
+body.dark-mode .status-provisoire{background:#422b18 !important;color:#fdba74 !important;}
+body.dark-mode .status-ok{background:#12372d !important;color:#86efac !important;}
+body.dark-mode .rules-points div{background:#111827 !important;color:#e5e7eb !important;}
+body.dark-mode .rules-points span{color:#cbd5e1 !important;}
+body.dark-mode .rules-modal-footer{border-color:#374151 !important;}
+body.dark-mode .rules-modal-ok{background:#1f2937 !important;color:#e5e7eb !important;border-color:#4b5563 !important;}
+body.dark-mode .pilots-edit-banner,
+body.dark-mode .pilots-no-result{background:#1f2937 !important;color:#e5e7eb !important;border-color:#374151 !important;}
+body.dark-mode .score-entry-page{background:#111827 !important;}
+body.dark-mode .score-entry-page .card{background:#1f2937 !important;color:#e5e7eb !important;}
+body.dark-mode .tie-btn{color:#c4b5fd !important;}
+
+/* Écran des exports : conserver un contraste net en mode sombre. */
+body.dark-mode .export-page,
+body.dark-mode .export-page .export-header-title h2,
+body.dark-mode .export-page .export-section-title{
+  color:#f3f4f6 !important;
+}
+body.dark-mode .export-page .export-header-title span,
+body.dark-mode .export-page .export-competition-meta,
+body.dark-mode .export-page .export-mode-subtitle,
+body.dark-mode .export-page .export-card-description{
+  color:#cbd5e1 !important;
+}
+body.dark-mode .export-page .export-competition-card{
+  background:linear-gradient(135deg,#172b46,#1f2937) !important;
+  border-color:#31557e !important;
+  box-shadow:0 3px 10px rgba(0,0,0,.24) !important;
+}
+body.dark-mode .export-page .export-competition-name,
+body.dark-mode .export-page .export-mode-title,
+body.dark-mode .export-page .export-card-title,
+body.dark-mode .export-page .export-card-content{
+  color:#f3f4f6 !important;
+}
+body.dark-mode .export-page .export-competition-icon,
+body.dark-mode .export-page .export-mode-icon{
+  background:#263f60 !important;
+  border-color:#3b5574 !important;
+}
+body.dark-mode .export-page .export-mode-card{
+  background:#1f2937 !important;
+  border-color:#374151 !important;
+  box-shadow:0 2px 8px rgba(0,0,0,.22) !important;
+}
+body.dark-mode .export-page .export-mode-header{
+  background:#172033 !important;
+  border-color:#374151 !important;
+}
+body.dark-mode .export-page .export-direct-card,
+body.dark-mode .export-page .export-pointage-card{
+  background:#111827 !important;
+  color:#e5e7eb !important;
+  border-color:#374151 !important;
+}
+body.dark-mode .export-page .export-pointage-card:hover{
+  background:#263449 !important;
+  border-color:#64748b !important;
+}
+body.dark-mode .export-page .export-preview-btn{
+  color:#bfdbfe !important;
+}
+
+@media(max-width:640px){
+  .home-header-tools{width:100%;margin-left:0;}
+  .home-theme-toggle{flex:1;}
+}
+
+/* Ne jamais assombrir les documents imprimés ou leurs aperçus. */
+@media print{
+  body.dark-mode{color:#000 !important;background:#fff !important;color-scheme:light;}
+}
+
+
+/* Détection des catégories liées à l'âge */
+.age-detection-list{display:grid;gap:8px;margin:12px 0;}
+.age-detection-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid #dbe2ea;border-radius:10px;background:#fff;flex-wrap:wrap;}
+.age-detection-person{display:flex;flex-direction:column;gap:4px;min-width:220px;flex:1;}
+.age-detection-person strong{font-size:14px;color:#0f172a;}
+.age-detection-person span{font-size:12px;color:#64748b;}
+.age-detection-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#334155;cursor:pointer;white-space:nowrap;}
+.age-detection-check input{width:17px;height:17px;accent-color:#d97706;}
+.age-detection-action{white-space:nowrap;}
+.age-detection-action:disabled{opacity:.45;cursor:not-allowed;}
+.age-detection-locked{flex-basis:100%;color:#92400e;font-size:11px;}
+.age-scratch-marker{display:inline-block;width:9px;height:9px;margin:0 7px 1px 0;border-radius:50%;background:#e99a32;vertical-align:middle;box-shadow:0 0 0 2px #fff,0 0 0 3px #e99a32;}
+
+/* Pagination des doubles pointages : ne modifie aucune dimension de cellule. */
+@media print{
+  .double-pointage thead{display:table-header-group;}
+  .double-pointage tbody{display:table-row-group;}
+  .double-pointage tr{break-inside:avoid;page-break-inside:avoid;}
+}
+
+
+/* En-tête des doubles pointages : ligne de thead répétée sur chaque page. */
+@media print {
+  .double-pointage-print-header-row > th { padding:0 !important; border:0 !important; }
+  .double-pointage-print-header { display:flex; align-items:center; justify-content:center; position:relative; box-sizing:border-box; width:100%; min-height:22mm; padding:1mm 42mm 1mm 2mm; background:#fff; color:#111; }
+  .double-pointage-print-heading { display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; gap:1mm; }
+  .double-pointage-print-title { display:block; width:100%; text-align:center; font-size:22pt; line-height:1.1; font-weight:800; color:#111; }
+  .double-pointage-print-date { display:block; text-align:center; font-size:13pt; line-height:1.1; font-weight:600; color:#111; }
+  .double-pointage-print-zone { position:absolute; right:2mm; top:50%; transform:translateY(-50%); display:flex; align-items:center; gap:2mm; font-size:14pt; font-weight:800; white-space:nowrap; color:#111; }
+  .double-pointage-zone-circle { display:inline-block; width:15mm; height:15mm; min-width:15mm; min-height:15mm; border:2px solid #111; border-radius:50%; box-sizing:border-box; background:#fff; }
+  .double-pointage-print-header-row { break-inside:avoid; page-break-inside:avoid; }
 }

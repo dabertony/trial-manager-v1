@@ -1,8 +1,55 @@
-console.log("APP JS LOAD", new Date().toISOString());
 const app = document.getElementById("app");
+
+// Message non bloquant pour les erreurs récupérables : il ne bloque pas l’application
+// et reste accessible au clavier et aux lecteurs d’écran.
+function showAppNotice(message, type = "error") {
+  const host = document.getElementById("app");
+  if (!host || typeof document.createElement !== "function") {
+    console.error(message);
+    return;
+  }
+  const previous = host.querySelector("[data-tm-notice]");
+  if (previous) previous.remove();
+  const notice = document.createElement("div");
+  notice.dataset.tmNotice = "true";
+  notice.setAttribute("role", type === "error" ? "alert" : "status");
+  notice.setAttribute("aria-live", type === "error" ? "assertive" : "polite");
+  notice.style.cssText = "margin:12px 0;padding:12px 14px;border-radius:8px;border:1px solid #b91c1c;background:#fef2f2;color:#7f1d1d;font-weight:600;line-height:1.45";
+  const text = document.createElement("span");
+  text.textContent = String(message || "Une erreur est survenue.");
+  notice.appendChild(text);
+  const close = document.createElement("button");
+  close.type = "button";
+  close.textContent = "Fermer";
+  close.setAttribute("aria-label", "Fermer le message d’erreur");
+  close.style.cssText = "float:right;margin-left:12px;cursor:pointer";
+  close.addEventListener("click", () => notice.remove());
+  notice.appendChild(close);
+  host.insertBefore(notice, host.firstChild);
+}
 
 let tvDisplayActive = false;
 let currentCompetitionIndex = null;
+
+// Thème d’affichage global : le choix est conservé sur cet appareil.
+function applySavedTheme() {
+  let dark = false;
+  try { dark = localStorage.getItem("tmTheme") === "dark"; } catch (_) {}
+  document.body.classList.toggle("dark-mode", dark);
+}
+
+function toggleAppTheme() {
+  const dark = !document.body.classList.contains("dark-mode");
+  document.body.classList.toggle("dark-mode", dark);
+  try { localStorage.setItem("tmTheme", dark ? "dark" : "light"); } catch (_) {}
+  const button = document.getElementById("themeToggleButton");
+  if (button) {
+    button.textContent = dark ? "☀️ Mode clair" : "🌙 Mode sombre";
+    button.setAttribute("aria-pressed", dark ? "true" : "false");
+  }
+}
+
+applySavedTheme();
 
 function render() {
 
@@ -49,15 +96,6 @@ function goPilots(){
 function goHome(){
 
   state.ui.currentScreen = "home";
-
-  render();
-}
-
-function cancelForm(){
-
-  if(window._formResolve){
-    window._formResolve({});
-  }
 
   render();
 }
@@ -162,7 +200,7 @@ function askForm(title, fields){
   });
 }
 
-let categories=[
+const BUILT_IN_CATEGORIES=[
   "Elite","Elite F","Elite V",
   "N1","N1 F","N1 V",
   "N2","N2 F","N2 V",
@@ -170,6 +208,47 @@ let categories=[
   "N4","N4 F","N4 V",
   "N5","N5 F","N5 V"
 ];
+
+// Catégories personnalisées enregistrées localement et réutilisables par tous les pilotes.
+if (!Array.isArray(state.customCategories)) state.customCategories=[];
+state.customCategories = state.customCategories.filter(c => c && typeof c.name === "string" && c.name.trim());
+let categories=[...BUILT_IN_CATEGORIES, ...state.customCategories.map(c => c.name)];
+
+function getCustomCategory(name){
+  const key=String(name || "").trim().toLocaleLowerCase("fr");
+  return (state.customCategories || []).find(c => String(c.name || "").trim().toLocaleLowerCase("fr")===key);
+}
+
+function getCustomCategoryStyle(name){
+  const custom=getCustomCategory(name);
+  if(!custom || !/^#[0-9a-f]{6}$/i.test(custom.color || "")) return "";
+  const hex=custom.color;
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  const brightness=(r*299+g*587+b*114)/1000;
+  return `background-color:${hex} !important;color:${brightness>155 ? "#111827" : "#ffffff"} !important;`;
+}
+
+function addCustomCategoryFromForm(){
+  const nameInput=document.getElementById("newCategoryName");
+  const colorInput=document.getElementById("newCategoryColor");
+  const name=format(nameInput?.value || "");
+  if(!name){
+    if(nameInput){ nameInput.style.border="2px solid #dc2626"; nameInput.focus(); }
+    return null;
+  }
+  const existing=categories.find(c => c.toLocaleLowerCase("fr")===name.toLocaleLowerCase("fr"));
+  if(existing){
+    if(nameInput){ nameInput.style.border="2px solid #dc2626"; nameInput.focus(); }
+    showAppNotice("Cette catégorie existe déjà. Sélectionne-la dans la liste.", "error");
+    return null;
+  }
+  const color=/^#[0-9a-f]{6}$/i.test(colorInput?.value || "") ? colorInput.value : "#8b5cf6";
+  const entry={name,color};
+  state.customCategories.push(entry);
+  categories.push(name);
+  save();
+  return name;
+}
 
 const RULES = {
   points: {
@@ -189,32 +268,6 @@ const RULES = {
   femaleRule: "filter_only"
 };
 
-const CATEGORY_COLORS={
-
-  "Elite":"FFF59D",
-  "Elite F":"F8BBD0",
-  "Elite V":"D1D5DB",
-
-  "N1":"EF9A9A",
-  "N1 F":"F8BBD0",
-  "N1 V":"D1D5DB",
-
-  "N2":"90CAF9",
-  "N2 F":"F8BBD0",
-  "N2 V":"D1D5DB",
-
-  "N3":"A5D6A7",
-  "N3 F":"F8BBD0",
-  "N3 V":"D1D5DB",
-
-  "N4":"FFFFFF",
-  "N4 F":"F8BBD0",
-  "N4 V":"D1D5DB",
-
-  "N5":"FFCC80",
-  "N5 F":"F8BBD0",
-  "N5 V":"D1D5DB"
-};
 const MAIN_GROUPS = [
 
   {
@@ -280,6 +333,7 @@ function save(){
 
   localStorage.setItem("pilots",JSON.stringify(state.pilots));
   localStorage.setItem("clubs",JSON.stringify(state.clubs));
+  localStorage.setItem("customCategories",JSON.stringify(state.customCategories || []));
   localStorage.setItem("competitions",JSON.stringify(state.competitions));
   localStorage.setItem("sortPilotsMode",state.sortPilotsMode);
   localStorage.setItem("sortParticipantsMode",state.sortParticipantsMode);
@@ -329,29 +383,6 @@ function formatDateForFile(date){
   return date;
 }
 
-function getCatClass(cat){
-
-  // FEMININES PRIORITAIRES
-  if(cat.endsWith("F")){
-    return "cat-f";
-  }
-
-  // VETERANS PRIORITAIRES
-  if(cat.endsWith("V")){
-    return "cat-v";
-  }
-
-  // CATEGORIES PRINCIPALES
-  if(cat==="Elite") return "cat-elite";
-  if(cat==="N1") return "cat-n1";
-  if(cat==="N2") return "cat-n2";
-  if(cat==="N3") return "cat-n3";
-  if(cat==="N4") return "cat-n4";
-  if(cat==="N5") return "cat-n5";
-
-  return "";
-}
-
 function getPilotTableCatClass(cat){
 
   if(cat.endsWith("F")){
@@ -374,6 +405,102 @@ function getPilotTableCatClass(cat){
 
 function getPilotById(id){
   return state.pilots.find(p=>p.id===id);
+}
+
+// Détection réglementaire fondée sur la saison UFOLEP au jour du clic.
+function getUfolepSeasonContext(date = new Date()){
+  const month = date.getMonth() + 1;
+  const seasonStartYear = month >= 9 ? date.getFullYear() : date.getFullYear() - 1;
+  return {
+    seasonStartYear,
+    seasonEndYear: seasonStartYear + 1,
+    n5BirthYearExclusive: seasonStartYear - 10,
+    veteranBirthYearInclusive: seasonStartYear - 30,
+    label: `${seasonStartYear}-${seasonStartYear + 1}`
+  };
+}
+function pilotBirthYear(p){
+  const raw = String(p?.birthDate || '').trim();
+  const iso = raw.match(/^(\d{4})-/) || raw.match(/^(\d{4})$/);
+  if (iso) return Number(iso[1]);
+  const fr = raw.match(/^\d{1,2}\/\d{1,2}\/(\d{4})$/);
+  return fr ? Number(fr[1]) : null;
+}
+function isAgeScratchOnlyPilot(p){
+  return !!p?.ageScratchOnly && ['N5','N5 F','N5 V'].includes(String(p.cat || '').trim());
+}
+function isUfolepRankingEligible(p){
+  return p?.lic === 'UFOLEP' && !isAgeScratchOnlyPilot(p);
+}
+function getAgeDetectionCandidates(kind, date = new Date()){
+  const season = getUfolepSeasonContext(date);
+  return (state.pilots || []).filter(p => {
+    const year = pilotBirthYear(p);
+    if (year === null) return false;
+    const cat = String(p.cat || '').trim();
+    if (kind === 'n5') return ['N5','N5 F','N5 V'].includes(cat) && year < season.n5BirthYearExclusive;
+    return ['N2','N3','N4'].includes(cat) && year <= season.veteranBirthYearInclusive;
+  }).sort((a,b) => String(a.name || '').localeCompare(String(b.name || ''), 'fr'));
+}
+function showAgePilotDetection(kind){
+  const season = getUfolepSeasonContext();
+  const candidates = getAgeDetectionCandidates(kind);
+  const isN5 = kind === 'n5';
+  const title = isN5 ? 'Détection des N5 trop âgés' : 'Détection des pilotes pouvant passer vétérans';
+  const seasonDates = `Du 1er septembre ${season.seasonStartYear} au 31 août ${season.seasonEndYear}.`;
+  const rule = isN5
+    ? `Pilotes N5, N5F et N5V nés avant le 1er janvier ${season.n5BirthYearExclusive}.`
+    : `Pilotes N2, N3 et N4 nés en ${season.veteranBirthYearInclusive} ou avant (avant le 1er janvier ${season.veteranBirthYearInclusive + 1}). Les N1 et Élite ne sont pas concernés.`;
+  let html = `<div class="pilots-page"><div class="pilots-header"><div class="pilots-header-title"><h2>🔎 ${title}</h2><span>Saison UFOLEP ${season.label}</span></div><button class="pilots-back" onclick="showPilots()">← Retour à la liste</button></div>`;
+  html += `<div class="pilot-duplicates-intro"><strong>${candidates.length} pilote${candidates.length===1?'':'s'} détecté${candidates.length===1?'':'s'}</strong><span><strong>Période de référence :</strong> ${seasonDates} ${rule} Détection recalculée sur toute la liste à chaque clic.</span></div>`;
+  if (!candidates.length) html += `<div class="card">Aucun pilote ne correspond aux critères de cette détection.</div>`;
+  else {
+    html += `<div class="age-detection-list">`;
+    candidates.forEach(p => {
+      const year = pilotBirthYear(p);
+      const used = state.competitions.some(c => Array.isArray(c.participants) && c.participants.includes(p.id));
+      html += `<article class="age-detection-row"><div class="age-detection-person"><strong>${escapeHtml(p.name || 'Nom non renseigné')}</strong><span>Plaque : ${escapeHtml(p.plaque || '—')} · ${escapeHtml(p.cat)} · ${escapeHtml(p.lic || '—')} · Né(e) en ${year}</span></div>`;
+      if (isN5) {
+        html += `<label class="age-detection-check"><input type="checkbox" ${p.ageScratchOnly ? 'checked' : ''} onchange="setAgeScratchOnly('${p.id}', this.checked)"><span>Scratch uniquement</span></label>`;
+      } else {
+        html += `<button class="pilots-save age-detection-action" ${used ? 'disabled title="Catégorie verrouillée car ce pilote figure déjà dans une compétition"' : ''} onclick="promotePilotToVeteran('${p.id}')">Passer en ${escapeHtml(p.cat)}V</button>`;
+        if (used) html += `<small class="age-detection-locked">Catégorie verrouillée : pilote déjà engagé dans une compétition.</small>`;
+      }
+      html += `</article>`;
+    });
+    html += `</div>`;
+  }
+  html += `<div class="pilot-duplicates-footer"><button class="pilots-back" onclick="showPilots()">← Retour à la liste des pilotes</button></div></div>`;
+  app.innerHTML = html;
+}
+function setAgeScratchOnly(id, checked){
+  const p = getPilotById(id);
+  if (!p || !['N5','N5 F','N5 V'].includes(String(p.cat || '').trim())) return;
+  p.ageScratchOnly = !!checked;
+  save();
+  showAgePilotDetection('n5');
+}
+function promotePilotToVeteran(id){
+  const p = getPilotById(id);
+  if (!p || !['N2','N3','N4'].includes(String(p.cat || '').trim())) return;
+  const used = state.competitions.some(c => Array.isArray(c.participants) && c.participants.includes(id));
+  if (used) return;
+  p.cat = `${p.cat} V`;
+  p.ageScratchOnly = false;
+  save();
+  showAgePilotDetection('veteran');
+}
+
+// Build the participant records used by printed pointage sheets, preserving
+// any competition-specific plate number override.
+function getCompetitionParticipantsWithPlates(c){
+  return c.participants
+    .map(id => getPilotById(id))
+    .filter(p => p)
+    .map(p => ({
+      ...p,
+      plaque: c.participantPlates?.[p.id] ?? p.plaque
+    }));
 }
 
 function getPilotStatus(c,id){
@@ -438,14 +565,14 @@ const Engine = {
   rank(list) {
 
     const sorted = Engine.sortScratch(list);
-    const ufoOnly = sorted.filter(p => p.lic === "UFOLEP");
+    const ufoOnly = sorted.filter(p => p.lic === "UFOLEP" && !p.ageScratchOnly);
 
     return sorted.map((p, index) => {
 
       let ufoRank = "-";
       let ufoPoints = 0;
 
-      if (p.lic === "UFOLEP") {
+      if (p.lic === "UFOLEP" && !p.ageScratchOnly) {
 
         const pos = ufoOnly.findIndex(x => x.id === p.id) + 1;
 
@@ -475,6 +602,100 @@ const Engine = {
     }));
   }
 };
+
+// Shared helper for sorting participant plates. The fallback remains configurable
+// because the carton export historically uses 0 while the double-score sheets use 99999.
+function getTrialManagerPlateNumber(p, fallback = 99999) {
+  return parseInt(String(p.plaque || "").replace(/[^\d]/g, ""), 10) || fallback;
+}
+
+// Shared category normalization for the three double-pointage screens.
+// Keep the existing prefix rules and leave unrecognized categories unchanged.
+// Référentiels partagés par les exports Excel des pilotes et des participants.
+// Les référentiels sont gelés pour conserver un ordre et des couleurs identiques.
+const TRIAL_MANAGER_CATEGORY_ORDER = Object.freeze([
+  "Elite", "Elite F", "Elite V",
+  "N1", "N1 F", "N1 V",
+  "N2", "N2 F", "N2 V",
+  "N3", "N3 F", "N3 V",
+  "N4", "N4 F", "N4 V",
+  "N5", "N5 F", "N5 V"
+]);
+
+// Precompute longest-first matching once instead of sorting the category list
+// every time a pilot row is rendered.
+const TRIAL_MANAGER_CATEGORY_COLOR_MATCH_ORDER = Object.freeze(
+  [...TRIAL_MANAGER_CATEGORY_ORDER].sort((a, b) => b.length - a.length)
+);
+
+const TRIAL_MANAGER_CATEGORY_COLORS = Object.freeze({
+  "Elite": "FACC15",
+  "Elite F": "EC4899", "Elite V": "6B7280",
+  "N1": "DC2626", "N1 F": "EC4899", "N1 V": "6B7280",
+  "N2": "2563EB", "N2 F": "EC4899", "N2 V": "6B7280",
+  "N3": "16A34A", "N3 F": "EC4899", "N3 V": "6B7280",
+  "N4": "FFFFFF", "N4 F": "EC4899", "N4 V": "6B7280",
+  "N5": "EA580C", "N5 F": "EC4899", "N5 V": "6B7280"
+});
+
+function getDoublePointageMainCategory(cat) {
+  if (cat.startsWith("Elite")) return "Elite";
+  if (cat.startsWith("N1")) return "N1";
+  if (cat.startsWith("N2")) return "N2";
+  if (cat.startsWith("N3")) return "N3";
+  if (cat.startsWith("N4")) return "N4";
+  if (cat.startsWith("N5")) return "N5";
+  return cat;
+}
+
+// Frozen shared category orders for double-pointage views and their carton export.
+const TRIAL_MANAGER_DOUBLE_POINTAGE_MORNING_ORDER = Object.freeze(["N4", "N5"]);
+const TRIAL_MANAGER_DOUBLE_POINTAGE_AFTERNOON_ORDER = Object.freeze(["Elite", "N1", "N2", "N3"]);
+const TRIAL_MANAGER_DOUBLE_POINTAGE_ALL_ORDER = Object.freeze(["Elite", "N1", "N2", "N3", "N4", "N5"]);
+
+// Les catégories personnalisées sont ajoutées à la fin des doubles pointages
+// du matin et de la journée, sans modifier l'ordre historique des catégories.
+function getTrialManagerCustomCategoryNames() {
+  return (Array.isArray(state.customCategories) ? state.customCategories : [])
+    .map(category => String(category?.name || "").trim())
+    .filter((name, index, names) => name && names.findIndex(other => other.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr")) === index);
+}
+
+function getTrialManagerDoublePointageMorningOrder() {
+  return [...TRIAL_MANAGER_DOUBLE_POINTAGE_MORNING_ORDER, ...getTrialManagerCustomCategoryNames()];
+}
+
+function getTrialManagerDoublePointageAllOrder() {
+  return [...TRIAL_MANAGER_DOUBLE_POINTAGE_ALL_ORDER, ...getTrialManagerCustomCategoryNames()];
+}
+
+function getTrialManagerCategoryColorMap() {
+  const colors = { ...TRIAL_MANAGER_CATEGORY_COLORS };
+  getTrialManagerCustomCategoryNames().forEach(name => {
+    const category = (state.customCategories || []).find(item => String(item?.name || "").trim().toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr"));
+    const hex = String(category?.color || "").replace(/^#/, "");
+    if (/^[0-9a-f]{6}$/i.test(hex)) colors[name] = hex.toUpperCase();
+  });
+  return colors;
+}
+
+function getTrialManagerCategoryOrder() {
+  return [...TRIAL_MANAGER_CATEGORY_ORDER, ...getTrialManagerCustomCategoryNames()];
+}
+
+// Shared day-session membership: keep dashboards, participant sorting, and
+// carton exports aligned when categories are extended in the future.
+function isTrialManagerMorningCategory(cat) {
+  return getTrialManagerDoublePointageMorningOrder().includes(
+    getDoublePointageMainCategory(cat)
+  );
+}
+
+function isTrialManagerAfternoonCategory(cat) {
+  return TRIAL_MANAGER_DOUBLE_POINTAGE_AFTERNOON_ORDER.includes(
+    getDoublePointageMainCategory(cat)
+  );
+}
 
 function buildOrderedRanking(list, categoryOrder = null) {
 
@@ -506,14 +727,14 @@ function buildOrderedRanking(list, categoryOrder = null) {
   }
 
   // ===== RANKS =====
-  const ufoOnly = sorted.filter(p => p.lic === "UFOLEP");
+  const ufoOnly = sorted.filter(isUfolepRankingEligible);
 
   return sorted.map((p, index) => {
 
     let ufoRank = "-";
     let ufoPoints = 0;
 
-    if(p.lic === "UFOLEP"){
+    if(isUfolepRankingEligible(p)){
 
       const pos =
         ufoOnly.findIndex(x => x.id === p.id) + 1;
@@ -555,110 +776,6 @@ const categoryOrderVeteran = {
 
 // ===== TIEBREAK ENGINE =====
 
-function applyTieBreaks(list,c,groupName){
-
-  let unresolved = false;
-
-  let groups = {};
-
-  list.forEach(p=>{
-
-    let key = equalityKey(p);
-
-    if(!groups[key]){
-      groups[key] = [];
-    }
-
-    groups[key].push(p);
-  });
-
-  let final = [];
-
-  Object.values(groups).forEach(group=>{
-
-    // seul
-
-    if(group.length === 1){
-
-      final.push(group[0]);
-      return;
-    }
-
-    // incomplet ou AB
-
-    let validGroup = group.every(p=>
-      p.completed
-      &&
-      p.status !== "AB"
-    );
-
-    if(!validGroup){
-
-      group.forEach(p=>{
-        final.push(p);
-      });
-
-      return;
-    }
-
-    // clé départage
-
-    let ids = group
-      .map(p=>p.id)
-      .sort();
-
-    let tieKey =
-      groupName
-      + "-"
-      + ids.join("-");
-
-    let saved =
-      c.tiebreaks[tieKey];
-
-    // départage existant
-
-    if(saved){
-
-      saved.forEach(id=>{
-
-        let found = group.find(
-          p=>p.id===id
-        );
-
-        if(found){
-
-          found.tiebreak = true;
-          found.tieKey = tieKey;
-
-          final.push(found);
-        }
-      });
-    }
-
-    // départage absent
-
-    else{
-
-      unresolved = true;
-
-      group.forEach(p=>{
-
-        p.pendingTie = true;
-        p.tieKey = tieKey;
-
-        final.push(p);
-      });
-    }
-  });
-
-  return {
-    list: final,
-    unresolved
-  };
-}
-
-// ===== HOME =====
-
 function home(){
 
   /* =========================================
@@ -670,7 +787,6 @@ function home(){
 
   const finishedCompetitions =
     state.competitions.filter(c => c.locked);
-
 
   let html=`
 
@@ -686,23 +802,27 @@ function home(){
       Gestion des pilotes • Compétitions • Classements
     </span>
 
-    <button
-      class="home-rules-btn"
-      onclick="event.stopPropagation(); showRules();"
-    >
-      ⓘ Règles
-    </button>
+    <div class="home-header-tools">
+      <button
+        class="home-theme-toggle"
+        id="themeToggleButton"
+        type="button"
+        aria-pressed="${document.body.classList.contains("dark-mode") ? "true" : "false"}"
+        onclick="event.stopPropagation(); toggleAppTheme();"
+      >
+        ${document.body.classList.contains("dark-mode") ? "☀️ Mode clair" : "🌙 Mode sombre"}
+      </button>
+      <button
+        class="home-rules-btn"
+        onclick="event.stopPropagation(); showRules();"
+      >
+        ⓘ Règles
+      </button>
+    </div>
 
   </div>
 
 </div>
-
-  <p>
-    Gestion des pilotes • Compétitions • Classements
-  </p>
-
-</div>
-
 
   <!-- ============================= -->
   <!-- ACTIONS PRINCIPALES -->
@@ -932,9 +1052,7 @@ function home(){
 
     </div>
 
-
   </div>
-
 
   <!-- ============================= -->
   <!-- COMPÉTITIONS EN COURS -->
@@ -1015,7 +1133,6 @@ function home(){
 
           </div>
 
-
           <div class="comp-date">
 
             📅
@@ -1032,7 +1149,6 @@ function home(){
           </div>
 
         </div>
-
 
         <div
           style="
@@ -1053,7 +1169,6 @@ function home(){
   ⚙ Modifier infos
 
 </button>
-
 
 <button
   class="comp-delete"
@@ -1089,14 +1204,12 @@ function home(){
   class="competition-menu"
 >
 
-
         <div
   class="menu-card"
   onclick="manageParticipants(${i})"
 >
   👥 PARTICIPANTS
 </div>
-
 
 <div
   class="menu-card"
@@ -1105,14 +1218,12 @@ function home(){
   📄 EXPORTS
 </div>
 
-
 <div
   class="menu-card"
   onclick="selectPilot(${i})"
 >
   📝 SAISIE DES SCORES
 </div>
-
 
 <div
   class="menu-card"
@@ -1121,7 +1232,6 @@ function home(){
   ℹ️ INFOS COMPÉTITION
 </div>
 
-
 <div
   class="menu-card"
   onclick="showResults(${i})"
@@ -1129,14 +1239,12 @@ function home(){
   🏆 CLASSEMENTS
 </div>
 
-
 <div
   class="menu-card menu-card-validation"
   onclick="lockCompetition(${i})"
 >
   ✔ VALIDER LA COMPÉTITION
 </div>
-
 
         <div
           style="
@@ -1160,7 +1268,6 @@ function home(){
 </button>
 
         </div>
-
 
       </div>
 
@@ -1278,7 +1385,6 @@ function home(){
 
           </div>
 
-
           <div class="comp-date">
 
             📅
@@ -1295,7 +1401,6 @@ function home(){
           </div>
 
         </div>
-
 
 <div>
 
@@ -1347,14 +1452,12 @@ function home(){
 
       <div class="competition-menu">
 
-
         <div
           class="menu-card"
           onclick="selectPilot(${i})"
         >
           📝 SAISIE DES SCORES
         </div>
-
 
         <div
           class="menu-card"
@@ -1363,14 +1466,12 @@ function home(){
           👥 PARTICIPANTS
         </div>
 
-
         <div
           class="menu-card"
           onclick="showResults(${i})"
         >
           🏆 CLASSEMENTS
         </div>
-
 
         <div
           class="menu-card"
@@ -1379,7 +1480,6 @@ function home(){
           📄 EXPORTS
         </div>
 
-
         <div
   class="menu-card menu-card-unlock"
   onclick="unlockCompetition(${i})"
@@ -1387,14 +1487,12 @@ function home(){
   🔓 DÉVERROUILLER
 </div>
 
-
         <div
           class="menu-card"
           onclick="showCompetitionInfo(${i})"
         >
           ℹ️ INFOS COMPÉTITION
         </div>
-
 
         <div
           style="
@@ -1418,7 +1516,6 @@ function home(){
 </button>
 
         </div>
-
 
       </div>
 
@@ -1514,9 +1611,7 @@ function showRules(){
 
       </div>
 
-
       <div class="rules-modal-content">
-
 
         <section class="rules-section">
 
@@ -1549,8 +1644,68 @@ function showRules(){
 
           </p>
 
+          <p class="rules-note">
+            Il est également possible d’ajouter des
+            <strong>catégories personnalisées</strong>.
+            Chacune dispose de son propre classement et
+            fonctionne avec le même système de pénalités
+            que les catégories historiques de l’UFOLEP Trial.
+            Leur création ne leur attribue pas automatiquement
+            le statut de catégorie officielle UFOLEP ni des points
+            au championnat UFOLEP.
+          </p>
+
         </section>
 
+        <section class="rules-section">
+
+          <h3>
+            🎂 Détection liée à l’âge et saison sportive
+          </h3>
+
+          <p>
+            La saison sportive va toujours du
+            <strong>1er septembre au 31 août</strong> de l’année suivante.
+            La détection utilise automatiquement la saison en cours
+            à la date où elle est lancée.
+          </p>
+
+          <p>
+            <strong>Exemple pour la saison 2026-2027 :</strong>
+            du 1er septembre 2026 au 31 août 2027.
+            Pour les N5, N5F et N5V, les pilotes nés avant le
+            <strong>1er janvier 2016</strong> sont détectés.
+            Le seuil évolue chaque saison : pour 2027-2028,
+            il passera au 1er janvier 2017.
+          </p>
+
+          <p>
+            Pour les futurs vétérans, la détection concerne les
+            pilotes N2, N3 et N4 âgés d’au moins 30 ans au cours
+            de la saison : pour 2026-2027, les pilotes nés en
+            <strong>1996 ou avant</strong> sont concernés. Les N1 et
+            Élite ne sont pas concernés par cette détection.
+          </p>
+
+          <p>
+            Pour un pilote N5 détecté, cocher
+            <strong>« Scratch uniquement »</strong> le maintient dans
+            son tableau de catégorie et dans les classements scratch
+            concernés, mais lui retire les points UFOLEP et l’exclut
+            du championnat UFOLEP. Une N5F reste également présente
+            dans le classement féminin scratch.
+          </p>
+
+          <p>
+            Les pilotes N5 et N5F titulaires d’une licence
+            <strong>FFC ou NL</strong> restent eux aussi classés en
+            scratch, sans points UFOLEP. Pour les pilotes UFOLEP
+            détectés hors du seuil d’âge, la case « Scratch uniquement »
+            applique cette même exclusion des points sans changer
+            leur catégorie.
+          </p>
+
+        </section>
 
         <section class="rules-section">
 
@@ -1603,7 +1758,6 @@ function showRules(){
           </p>
 
         </section>
-
 
         <section class="rules-section">
 
@@ -1658,7 +1812,6 @@ function showRules(){
 
         </section>
 
-
         <section class="rules-section">
 
   <h3>
@@ -1701,7 +1854,6 @@ function showRules(){
 
 </section>
 
-
         <section class="rules-section">
 
           <h3>
@@ -1720,7 +1872,6 @@ function showRules(){
           </p>
 
         </section>
-
 
         <section class="rules-section">
 
@@ -1748,9 +1899,7 @@ function showRules(){
 
 </div>
 
-
       </div>
-
 
       <div class="rules-modal-footer">
 
@@ -1803,6 +1952,19 @@ function showCompetitionInfo(i){
     "N5"
   ];
 
+  // Catégories personnalisées affichées dans les infos compétition, après
+  // les catégories officielles. Les noms sont uniques sans tenir compte de la casse.
+  const customInfoCategories = [];
+  const knownInfoCategories = new Set(BUILT_IN_CATEGORIES.map(name => name.toLocaleLowerCase("fr")));
+  (state.customCategories || []).forEach(category => {
+    const name = String(category?.name || "").trim();
+    const key = name.toLocaleLowerCase("fr");
+    if (name && !knownInfoCategories.has(key)) {
+      knownInfoCategories.add(key);
+      customInfoCategories.push(name);
+    }
+  });
+
   let stats = buildStats(c);
 
   let html = `
@@ -1828,7 +1990,6 @@ function showCompetitionInfo(i){
       </button>
 
     </div>
-
 
     <!-- ============================= -->
     <!-- IDENTITÉ COMPÉTITION -->
@@ -1869,7 +2030,6 @@ function showCompetitionInfo(i){
 
     </div>
 
-
     <div class="info-grid">
 
   `;
@@ -1902,7 +2062,7 @@ function showCompetitionInfo(i){
 
       let p = getPilotById(id);
 
-      return p && p.cat.startsWith(level);
+      return p && BUILT_IN_CATEGORIES.includes(p.cat) && p.cat.startsWith(level);
 
     }).length;
 
@@ -1922,11 +2082,25 @@ function showCompetitionInfo(i){
 
   });
 
+  customInfoCategories.forEach(categoryName => {
+    const count = c.participants.filter(id => {
+      const pilot = getPilotById(id);
+      return pilot && String(pilot.cat || "").trim().toLocaleLowerCase("fr") === categoryName.toLocaleLowerCase("fr");
+    }).length;
+
+    html += `
+      <div class="info-line">
+        <span class="info-label">${escapeHtml(categoryName)}</span>
+        <b>${count}</b>
+      </div>
+    `;
+  });
+
   totalF = c.participants.filter(id=>{
 
     let p = getPilotById(id);
 
-    return p && p.cat.includes(" F");
+    return p && BUILT_IN_CATEGORIES.includes(p.cat) && p.cat.includes(" F");
 
   }).length;
 
@@ -1934,7 +2108,7 @@ function showCompetitionInfo(i){
 
     let p = getPilotById(id);
 
-    return p && p.cat.includes(" V");
+    return p && BUILT_IN_CATEGORIES.includes(p.cat) && p.cat.includes(" V");
 
   }).length;
 
@@ -2002,6 +2176,7 @@ function showCompetitionInfo(i){
       let p = getPilotById(id);
 
       return p
+        && BUILT_IN_CATEGORIES.includes(p.cat)
         && p.cat.startsWith(level)
         && c.status[id] === "AB";
 
@@ -2023,6 +2198,23 @@ function showCompetitionInfo(i){
 
     `;
 
+  });
+
+  customInfoCategories.forEach(categoryName => {
+    const count = c.participants.filter(id => {
+      const pilot = getPilotById(id);
+      return pilot
+        && String(pilot.cat || "").trim().toLocaleLowerCase("fr") === categoryName.toLocaleLowerCase("fr")
+        && c.status[id] === "AB";
+    }).length;
+
+    totalAB += count;
+    html += `
+      <div class="info-line">
+        <span class="info-label">${escapeHtml(categoryName)}</span>
+        <b>${count}</b>
+      </div>
+    `;
   });
 
   html += `
@@ -2151,7 +2343,6 @@ function showCompetitionInfo(i){
     `;
 
   });
-
 
   // ===== FEMININ =====
 
@@ -2324,8 +2515,43 @@ function showCompetitionInfo(i){
 
       </div>
 
-    </div>
+  `;
 
+  // Départages des catégories personnalisées, après VET.
+  customInfoCategories.forEach(categoryName => {
+    const categoryStats = stats.filter(p =>
+      String(p.cat || "").trim().toLocaleLowerCase("fr") === categoryName.toLocaleLowerCase("fr")
+    );
+    const groups = {};
+    categoryStats.forEach(p => {
+      const key = equalityKey(p);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    });
+
+    let totalTieGroups = 0;
+    let resolvedTieGroups = 0;
+    Object.values(groups).forEach(group => {
+      if (group.length <= 1 || !group.every(p => p.completed && p.status !== "AB")) return;
+      totalTieGroups++;
+      const ids = group.map(p => p.id).sort();
+      const tieKey = categoryName + "-" + ids.join("-");
+      if (c.tiebreaks[tieKey]) resolvedTieGroups++;
+    });
+
+    const icon = totalTieGroups === 0 || resolvedTieGroups === totalTieGroups ? "🟩" : "🟨";
+    const value = totalTieGroups === 0 ? "Aucun" : `${resolvedTieGroups}/${totalTieGroups}`;
+    html += `
+      <div class="info-line">
+        <span class="info-status">${icon}</span>
+        <span class="info-label">${escapeHtml(categoryName)}</span>
+        <b>${value}</b>
+      </div>
+    `;
+  });
+
+  html += `
+    </div>
   `;
 
 
@@ -2359,10 +2585,7 @@ function showCompetitionInfo(i){
       let p = getPilotById(id);
 
       return p &&
-        (
-          p.cat.startsWith("N4") ||
-          p.cat.startsWith("N5")
-        );
+        isTrialManagerMorningCategory(p.cat);
 
     });
 
@@ -2391,12 +2614,7 @@ function showCompetitionInfo(i){
       let p = getPilotById(id);
 
       return p &&
-        (
-          p.cat.startsWith("Elite") ||
-          p.cat.startsWith("N1") ||
-          p.cat.startsWith("N2") ||
-          p.cat.startsWith("N3")
-        );
+        isTrialManagerAfternoonCategory(p.cat);
 
     });
 
@@ -2451,6 +2669,7 @@ function showCompetitionInfo(i){
         let p = getPilotById(id);
 
         return p &&
+          BUILT_IN_CATEGORIES.includes(p.cat) &&
           p.cat.startsWith(level);
 
       });
@@ -2538,6 +2757,7 @@ function showCompetitionInfo(i){
         let p = getPilotById(id);
 
         return p &&
+          BUILT_IN_CATEGORIES.includes(p.cat) &&
           p.cat.startsWith(level);
 
       });
@@ -2591,6 +2811,41 @@ function showCompetitionInfo(i){
 
     });
 
+    // AUTRE regroupe les pilotes qui ne relèvent ni du matin ni de l'après-midi.
+    const otherPilots = c.participants.filter(id => {
+      const pilot = getPilotById(id);
+      const isCustom = pilot && customInfoCategories.some(name => name.toLocaleLowerCase("fr") === String(pilot.cat || "").trim().toLocaleLowerCase("fr"));
+      return pilot && (isCustom || (!isTrialManagerMorningCategory(pilot.cat) && !isTrialManagerAfternoonCategory(pilot.cat)));
+    });
+    const otherTotal = otherPilots.length;
+    const otherDone = otherPilots.filter(id => c.status[id] === "AB" || !!c.scores[id + "-" + t]).length;
+    const otherMissing = otherTotal - otherDone;
+    html += `
+      <div class="info-line">
+        <span class="info-label">➕ Autre</span>
+        <b>Reste ${otherMissing} / ${otherTotal} pilotes à saisir</b>
+      </div>
+    `;
+
+    // Détail des catégories personnalisées en bas de chaque fiche de tour.
+    customInfoCategories.forEach(categoryName => {
+      const pilots = c.participants.filter(id => {
+        const pilot = getPilotById(id);
+        return pilot && String(pilot.cat || "").trim().toLocaleLowerCase("fr") === categoryName.toLocaleLowerCase("fr");
+      });
+      const total = pilots.length;
+      const done = pilots.filter(id => c.status[id] === "AB" || !!c.scores[id + "-" + t]).length;
+      const missing = total - done;
+      const icon = done === total ? "🟩" : done > 0 ? "🟨" : "🟥";
+      html += `
+        <div class="info-line">
+          <span class="info-status">${icon}</span>
+          <span class="info-label">${escapeHtml(categoryName)}</span>
+          <b>${done}/${total}</b>
+          ${missing > 0 ? `<span class="info-missing">(${missing})</span>` : ""}
+        </div>
+      `;
+    });
 
     html += `
 
@@ -2613,6 +2868,112 @@ function showCompetitionInfo(i){
 }
 
 // ===== PILOTES =====
+
+
+function escapeHtml(value){
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+function escapeHtmlAttribute(value){ return escapeHtml(value); }
+
+function normalizePilotDuplicateText(value){
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("fr")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function pilotDuplicatePlate(pilot){
+  const value = pilot?.plaque ?? pilot?.plate ?? pilot?.plateNumber ?? "";
+  return String(value).trim().toLocaleUpperCase("fr").replace(/[^A-Z0-9]/g, "");
+}
+
+function pilotDuplicateName(pilot){
+  return normalizePilotDuplicateText(pilot?.name ?? pilot?.nom ?? "");
+}
+
+function pilotNamesAreNear(a, b){
+  if (!a || !b || a === b || Math.min(a.length, b.length) < 7) return false;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let previous = Array.from({length:b.length + 1}, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    let rowMin = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(current[j - 1] + 1, previous[j] + 1, previous[j - 1] + cost);
+      rowMin = Math.min(rowMin, current[j]);
+    }
+    if (rowMin > 1) return false;
+    previous = current;
+  }
+  return previous[b.length] <= 1;
+}
+
+function findPilotDuplicateGroups(pilots){
+  const pairs = [];
+  for (let i = 0; i < pilots.length; i++) {
+    for (let j = i + 1; j < pilots.length; j++) {
+      const a = pilots[i], b = pilots[j];
+      const reasons = [];
+      const plateA = pilotDuplicatePlate(a), plateB = pilotDuplicatePlate(b);
+      const nameA = pilotDuplicateName(a), nameB = pilotDuplicateName(b);
+      if (plateA && plateA === plateB) reasons.push("Même numéro de plaque");
+      if (nameA && nameA === nameB) reasons.push("Même nom et prénom (accents/écriture normalisés)");
+      else if (pilotNamesAreNear(nameA, nameB)) reasons.push("Noms très proches (possible faute de frappe)");
+      if (reasons.length) {
+        pairs.push({a, b, reasons, differentCategories: String(a.cat || "") !== String(b.cat || "")});
+      }
+    }
+  }
+  return pairs;
+}
+
+function showPilotDuplicates(){
+  state.ui.currentScreen = "pilots";
+  const pairs = findPilotDuplicateGroups(Array.isArray(state.pilots) ? state.pilots : []);
+  let html = `
+    <div class="pilots-page">
+      <div class="pilots-header">
+        <div class="pilots-header-title">
+          <h2>🔎 Vérification des doublons</h2>
+          <span>Recherche indicative dans toute la liste des pilotes</span>
+        </div>
+        <button class="pilots-back" onclick="showPilots()">← Retour à la liste</button>
+      </div>
+      <div class="pilot-duplicates-intro">
+        <strong>${pairs.length ? `${pairs.length} paire${pairs.length > 1 ? "s" : ""} à vérifier` : "Aucune paire suspecte trouvée"}</strong>
+        <span>Comparaison des plaques, des noms et des catégories. Rien n’est modifié automatiquement : vérification et corrections manuelles.</span>
+      </div>
+  `;
+  if (!pairs.length) {
+    html += `<div class="card">✅ Aucun doublon potentiel repéré avec ces critères.</div>`;
+  } else {
+    html += `<div class="pilot-duplicates-list">`;
+    pairs.forEach((pair) => {
+      const a = pair.a, b = pair.b;
+      const label = p => escapeHtml(p.name || p.nom || "Nom non renseigné");
+      const plate = p => escapeHtml(p.plaque ?? p.plate ?? p.plateNumber ?? "—") || "—";
+      const category = p => escapeHtml(p.cat || "—");
+      const sameNameDifferentCategory = pair.reasons.some(r => r.startsWith("Même nom")) && pair.differentCategories;
+      const categoryReason = pair.differentCategories
+        ? (sameNameDifferentCategory ? "Même nom, catégories différentes" : "Catégories différentes")
+        : "";
+      html += `
+        <section class="pilot-duplicate-card">
+          <div class="pilot-duplicate-reasons">${pair.reasons.filter(r => !(r === "Même nom et prénom (accents/écriture normalisés)" && sameNameDifferentCategory)).map(r => `<span>${escapeHtml(r === "Même nom et prénom (accents/écriture normalisés)" ? "Même nom" : r)}</span>`).join("")}${categoryReason ? `<span>${categoryReason}</span>` : ""}</div>
+          <div class="pilot-duplicate-people">
+            <div class="pilot-duplicate-person"><strong>${label(a)}</strong><span>Plaque : ${plate(a)} · Catégorie : ${category(a)}</span></div>
+            <div class="pilot-duplicate-separator" aria-hidden="true">↔</div>
+            <div class="pilot-duplicate-person"><strong>${label(b)}</strong><span>Plaque : ${plate(b)} · Catégorie : ${category(b)}</span></div>
+          </div>
+        </section>`;
+    });
+    html += `</div>`;
+  }
+  html += `<div class="pilot-duplicates-footer"><button class="pilots-back" onclick="showPilots()">← Retour à la liste des pilotes</button></div></div>`;
+  app.innerHTML = html;
+}
 
 function showPilots(){
 
@@ -2639,7 +3000,6 @@ function showPilots(){
 
   <div class="pilots-page">
 
-
     <!-- ===== EN-TÊTE ===== -->
 
     <div class="pilots-header">
@@ -2656,7 +3016,6 @@ function showPilots(){
 
       </div>
 
-
       <button
         class="pilots-back"
         onclick="returnCompetitionMenu()">
@@ -2667,11 +3026,9 @@ function showPilots(){
 
     </div>
 
-
     <!-- ===== FORMULAIRE ===== -->
 
     <div class="pilots-form-card">
-
 
       ${
         editingPilotId
@@ -2703,7 +3060,6 @@ function showPilots(){
         : ""
       }
 
-
       <div class="pilots-form-title">
 
         ${
@@ -2714,9 +3070,7 @@ function showPilots(){
 
       </div>
 
-
       <div class="pilots-form-grid">
-
 
         <div class="pilot-field">
 
@@ -2730,7 +3084,6 @@ function showPilots(){
 
         </div>
 
-
         <div class="pilot-field">
 
           <label>
@@ -2742,7 +3095,6 @@ function showPilots(){
             placeholder="Nom du pilote">
 
         </div>
-
 
         <div class="pilot-field">
 
@@ -2770,7 +3122,6 @@ function showPilots(){
 
         </div>
 
-
         <div class="pilot-field">
 
           <label>
@@ -2779,6 +3130,7 @@ function showPilots(){
 
           <select
             id="cat"
+            onchange="toggleCategory()"
             ${
               editingPilotId && pilotUsed
                 ? "disabled"
@@ -2791,13 +3143,14 @@ function showPilots(){
             </option>
 
             ${categories.map(c =>
-              `<option>${c}</option>`
+              `<option value="${escapeHtmlAttribute(c)}" ${editingPilot && editingPilot.cat===c ? "selected" : ""}>${escapeHtml(c)}</option>`
             ).join("")}
+
+            <option value="__NEW_CATEGORY__">AUTRE…</option>
 
           </select>
 
         </div>
-
 
         <div class="pilot-field">
 
@@ -2823,7 +3176,6 @@ function showPilots(){
 
         </div>
 
-
         <div class="pilot-field">
 
           <label>
@@ -2835,7 +3187,6 @@ function showPilots(){
             placeholder="N° licence">
 
         </div>
-
 
         <div class="pilot-field">
 
@@ -2849,18 +3200,22 @@ function showPilots(){
 
         </div>
 
-
         <input
           id="newClub"
-          placeholder="Nouveau club"
+          class="pilot-extra-input pilot-extra-club"
+          placeholder="Nom complet du nouveau club"
+          aria-label="Nom complet du nouveau club"
           style="display:none">
 
+        <div id="newCategoryFields" class="pilot-extra-category" style="display:none">
+          <input id="newCategoryName" type="text" placeholder="Nom de la nouvelle catégorie" aria-label="Nom de la nouvelle catégorie" maxlength="40">
+          <label class="pilot-color-label" for="newCategoryColor">Couleur</label>
+          <input id="newCategoryColor" type="color" value="#8b5cf6" aria-label="Couleur de la catégorie">
+        </div>
 
       </div>
 
-
       <div class="pilots-form-actions">
-
 
         ${
           editingPilotId
@@ -2901,16 +3256,13 @@ function showPilots(){
           `
         }
 
-
       </div>
 
     </div>
 
-
     <!-- ===== OUTILS ===== -->
 
     <div class="pilots-tools">
-
 
       <div class="pilots-tools-left">
 
@@ -2922,7 +3274,6 @@ function showPilots(){
 
         </button>
 
-
         <button
           class="pilots-tool"
           onclick="exportPilotsExcel()">
@@ -2931,8 +3282,18 @@ function showPilots(){
 
         </button>
 
-      </div>
+        <button
+          class="pilots-tool pilots-duplicates-tool"
+          onclick="showPilotDuplicates()">
 
+          🔎 Vérifier les doublons
+
+        </button>
+
+        <button class="pilots-tool" onclick="showAgePilotDetection('n5')">🎯 Détecter les N5 trop âgés</button>
+        <button class="pilots-tool" onclick="showAgePilotDetection('veteran')">🏆 Détecter les futurs vétérans</button>
+
+      </div>
 
       <div class="pilots-tools-right">
 
@@ -2950,9 +3311,7 @@ function showPilots(){
 
       </div>
 
-
     </div>
-
 
     <!-- ===== RECHERCHE ===== -->
 
@@ -2980,7 +3339,6 @@ function showPilots(){
 
     </div>
 
-
     <!-- ===== LISTE ===== -->
 
     <div class="pilots-list-header">
@@ -3000,9 +3358,7 @@ function showPilots(){
 
     </div>
 
-
     <div class="pilots-table-wrap">
-
 
       <table class="pilot-table">
 
@@ -3098,6 +3454,7 @@ function showPilots(){
         </td>
 
         <td>
+          ${isAgeScratchOnlyPilot(p) ? '<span class="age-scratch-marker" title="Scratch uniquement" aria-label="Scratch uniquement"></span>' : ''}
           <strong>
             ${p.name}
           </strong>
@@ -3108,7 +3465,7 @@ function showPilots(){
         </td>
 
         <td
-          class="pilot-cat ${getPilotTableCatClass(p.cat)}">
+          class="pilot-cat ${getPilotTableCatClass(p.cat)}" style="${getCustomCategoryStyle(p.cat)}">
 
           ${p.cat}
 
@@ -3198,7 +3555,6 @@ function showPilots(){
       </div>
 
     </div>
-
 
   </div>
 
@@ -3299,7 +3655,6 @@ function filterPilotList(value){
 
   }
 
-
   let noResult =
     document.getElementById(
       "pilotNoResult"
@@ -3339,11 +3694,17 @@ function selectPilotRow(id){
 }
 
 function toggleClub(){
+  const input=document.getElementById("newClub");
+  if(!input) return;
+  input.style.display=document.getElementById("club").value==="NEW" ? "block" : "none";
+}
 
-  document.getElementById("newClub").style.display=
-    document.getElementById("club").value==="NEW"
-    ? "block"
-    : "none";
+function toggleCategory(){
+  const fields=document.getElementById("newCategoryFields");
+  const select=document.getElementById("cat");
+  if(!fields || !select) return;
+  fields.style.display=select.value==="__NEW_CATEGORY__" ? "flex" : "none";
+  if(select.value==="__NEW_CATEGORY__") document.getElementById("newCategoryName")?.focus();
 }
 
 function addPilot(){
@@ -3378,7 +3739,6 @@ clubSel==="NEW"
 ? newClub
 : clubSel;
 
-
 if(!name){
 
 input.style.border=
@@ -3389,7 +3749,6 @@ input.focus();
 return;
 
 }
-
 
 if(clubSel==="NEW" && !newClub){
 
@@ -3405,6 +3764,10 @@ return;
 
 }
 
+if(cat==="__NEW_CATEGORY__"){
+  cat=addCustomCategoryFromForm();
+  if(!cat) return;
+}
 
 if(club && !state.clubs.includes(club)){
 
@@ -3457,35 +3820,8 @@ showPilots();
 }
 
 // ===== COMPETITIONS =====
-
-async function newCompetition(){
-
-  console.log("newCompetition lancé");
-
-  let data = await askForm("Nouvelle compétition", [
-    { key: "name", label: "Nom" },
-    { key: "date", label: "Date", type:"date" },
-    { key: "zones", label: "Nombre de zones", type:"number" },
-    { key: "tours", label: "Nombre de tours", type:"number" }
-  ]);
-
-  state.competitions.push({
-    name: format(data.name),
-    date: data.date,
-    zones: parseInt(data.zones),
-    tours: parseInt(data.tours),
-    participants: [],
-    participantPlates: {},
-    scores: {},
-    status: {},
-    tiebreaks: {},
-    locked: false
-  });
-
-  save();
-  home();
-}
-
+// La création passe par showNewCompetition() et saveNewCompetition().
+// L'ancien formulaire askForm() était inutilisé et dupliquait ce parcours.
 function saveNewCompetition(){
 
   let name =
@@ -3797,58 +4133,116 @@ function getBirthDateSortValue(value){
     return 0;
   }
 
-  const text =
-    String(value).trim();
+  const text = String(value).trim();
+  let year, month, day;
 
-  // Format interne : AAAA-MM-JJ
-  let match =
-    text.match(
-      /^(\d{4})-(\d{1,2})-(\d{1,2})$/
-    );
+  // Formats acceptés : AAAA-MM-JJ et JJ/MM/AAAA.
+  let match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
 
   if(match){
+    year = Number(match[1]);
+    month = Number(match[2]);
+    day = Number(match[3]);
+  } else {
+    match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(!match){
+      return 0;
+    }
 
-    const year =
-      Number(match[1]);
-
-    const month =
-      Number(match[2]);
-
-    const day =
-      Number(match[3]);
-
-    return (
-      year * 10000
-      + month * 100
-      + day
-    );
+    day = Number(match[1]);
+    month = Number(match[2]);
+    year = Number(match[3]);
   }
 
-  // Format français : JJ/MM/AAAA
-  match =
-    text.match(
-      /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
-    );
-
-  if(match){
-
-    const day =
-      Number(match[1]);
-
-    const month =
-      Number(match[2]);
-
-    const year =
-      Number(match[3]);
-
-    return (
-      year * 10000
-      + month * 100
-      + day
-    );
+  // Refuse les dates impossibles au lieu de les classer comme valides.
+  if(year < 1 || month < 1 || month > 12 || day < 1 || day > 31){
+    return 0;
   }
 
-  return 0;
+  const calendarDate = new Date(0);
+  calendarDate.setUTCHours(0, 0, 0, 0);
+  calendarDate.setUTCFullYear(year, month - 1, day);
+
+  if(
+    calendarDate.getUTCFullYear() !== year ||
+    calendarDate.getUTCMonth() !== month - 1 ||
+    calendarDate.getUTCDate() !== day
+  ){
+    return 0;
+  }
+
+  return year * 10000 + month * 100 + day;
+}
+
+// Comparateur partagé pour le tri des dates de naissance, avec gestion identique
+// des dates françaises, ISO et des valeurs invalides dans les deux listes.
+function compareBirthDates(a, b, direction = 1){
+  return applySortDirection(
+    getBirthDateSortValue(a && a.birthDate) -
+    getBirthDateSortValue(b && b.birthDate),
+    direction
+  );
+}
+
+// Comparateur partagé pour le nom, utilisé dans les listes pilotes et participants.
+function comparePilotNames(a, b, direction = 1){
+  return applySortDirection(
+    String(a && a.name || "").localeCompare(String(b && b.name || "")),
+    direction
+  );
+}
+
+// Comparateur partagé des numéros de plaque : le mode numeric évite que 10
+// soit placé avant 2, tout en conservant le sens du tri demandé.
+function comparePlateNumbers(a, b, direction = 1){
+  const diff = String(a || "").localeCompare(
+    String(b || ""),
+    undefined,
+    { numeric: true }
+  );
+  return applySortDirection(diff, direction);
+}
+
+// Normalise le sens des tris : seule la valeur -1 inverse l'ordre.
+function getSortDirection(value){
+  return value === "desc" ? -1 : 1;
+}
+
+// Applique uniformément le sens choisi au résultat d'une comparaison.
+function applySortDirection(diff, direction = 1){
+  return diff * (direction === -1 ? -1 : 1);
+}
+
+// Comparateur partagé du statut d'inscription dans une compétition.
+function compareParticipantSelection(a, b, competition, direction = 1){
+  const selectedA = competition.participants.includes(a.id) ? 1 : 0;
+  const selectedB = competition.participants.includes(b.id) ? 1 : 0;
+  return applySortDirection(selectedA - selectedB, direction);
+}
+
+// Prépare le groupe de tri d'un pilote dans la liste des participants.
+// L'ordre historique est conservé : inscrit, non-inscrit avec plaque, sans plaque.
+function getParticipantPlateSortData(participant, competition){
+  const selected = competition.participants.includes(participant.id);
+  const plate = competition.participantPlates?.[participant.id] ?? participant.plaque ?? "";
+  return {
+    selected,
+    plate,
+    group: selected ? 0 : plate ? 1 : 2
+  };
+}
+
+// Comparateur partagé pour club et licence, avec le nom comme départage stable.
+function comparePilotTextField(a, b, field, direction = 1){
+  const diff = String(a && a[field] || "").localeCompare(String(b && b[field] || ""));
+  return diff !== 0 ? applySortDirection(diff, direction) : comparePilotNames(a, b, direction);
+}
+
+// Comparateur partagé pour les catégories, avec le nom comme départage stable.
+function comparePilotCategories(a, b, direction = 1){
+  const ai=categories.indexOf(a && a.cat), bi=categories.indexOf(b && b.cat);
+  const diff = (ai<0?9999:ai) - (bi<0?9999:bi);
+  return diff !== 0 ? applySortDirection(diff, direction) : comparePilotNames(a, b, direction);
 }
 
 // ===== TRI =====
@@ -3860,18 +4254,13 @@ function sortPilots(list){
   let column =
     state.sortPilotsColumn || "name";
 
-  let dir =
-    state.sortPilotsDirection === "desc"
-    ? -1
-    : 1;
+  let dir = getSortDirection(state.sortPilotsDirection);
 
   // ===== NOM =====
 
   if(column==="name"){
 
-    arr.sort((a,b)=>
-      a.name.localeCompare(b.name) * dir
-    );
+    arr.sort((a,b)=>comparePilotNames(a, b, dir));
   }
 
   // ===== PLAQUE =====
@@ -3880,14 +4269,7 @@ function sortPilots(list){
 
     arr.sort((a,b)=>{
 
-      let pa = a.plaque || "";
-      let pb = b.plaque || "";
-
-      return pa.localeCompare(
-        pb,
-        undefined,
-        {numeric:true}
-      ) * dir;
+      return comparePlateNumbers(a && a.plaque, b && b.plaque, dir);
     });
   }
 
@@ -3895,74 +4277,28 @@ function sortPilots(list){
 
   if(column==="club"){
 
-    arr.sort((a,b)=>{
-
-      let diff =
-        (a.club || "")
-        .localeCompare(b.club || "");
-
-      if(diff!==0){
-        return diff * dir;
-      }
-
-      return a.name.localeCompare(b.name);
-    });
+    arr.sort((a,b)=>comparePilotTextField(a, b, "club", dir));
   }
 
   // ===== LICENCE =====
 
   if(column==="lic"){
 
-    arr.sort((a,b)=>{
-
-      let diff =
-        (a.lic || "")
-        .localeCompare(b.lic || "");
-
-      if(diff!==0){
-        return diff * dir;
-      }
-
-      return a.name.localeCompare(b.name);
-    });
+    arr.sort((a,b)=>comparePilotTextField(a, b, "lic", dir));
   }
 
   // ===== DATE DE NAISSANCE =====
 
 if(column==="birthDate"){
 
-  arr.sort((a,b)=>{
-
-    let da =
-      getBirthDateSortValue(
-        a.birthDate
-      );
-
-    let db =
-      getBirthDateSortValue(
-        b.birthDate
-      );
-
-    return (da - db) * dir;
-  });
+  arr.sort((a,b)=>compareBirthDates(a, b, dir));
 }
 
   // ===== CATEGORIE =====
 
   if(column==="cat"){
 
-    arr.sort((a,b)=>{
-
-      let diff =
-        categories.indexOf(a.cat)
-        - categories.indexOf(b.cat);
-
-      if(diff!==0){
-        return diff * dir;
-      }
-
-      return a.name.localeCompare(b.name);
-    });
+    arr.sort((a,b)=>comparePilotCategories(a, b, dir));
   }
 
   return arr;
@@ -3977,38 +4313,20 @@ function sortParticipants(list,c){
   let column =
     state.sortParticipantsColumn || "name";
 
-  let dir =
-    state.sortParticipantsDirection === "desc"
-    ? -1
-    : 1;
+  let dir = getSortDirection(state.sortParticipantsDirection);
 
   // ===== SELECTION =====
 
   if(column==="selected"){
 
-    arr.sort((a,b)=>{
-
-      let sa =
-        c.participants.includes(a.id)
-        ? 1
-        : 0;
-
-      let sb =
-        c.participants.includes(b.id)
-        ? 1
-        : 0;
-
-      return (sa - sb) * dir;
-    });
+    arr.sort((a,b)=>compareParticipantSelection(a, b, c, dir));
   }
 
   // ===== NOM =====
 
   if(column==="name"){
 
-    arr.sort((a,b)=>
-      a.name.localeCompare(b.name) * dir
-    );
+    arr.sort((a,b)=>comparePilotNames(a, b, dir));
   }
 
   // ===== PLAQUE =====
@@ -4017,52 +4335,14 @@ function sortParticipants(list,c){
 
   arr.sort((a,b)=>{
 
-    const aSelected = c.participants.includes(a.id);
-    const bSelected = c.participants.includes(b.id);
+    const aData = getParticipantPlateSortData(a, c);
+    const bData = getParticipantPlateSortData(b, c);
 
-    // Plaques utilisées dans cette compétition
-    const pa =
-      c.participantPlates?.[a.id]
-      ??
-      a.plaque
-      ??
-      "";
-
-    const pb =
-      c.participantPlates?.[b.id]
-      ??
-      b.plaque
-      ??
-      "";
-
-    // Groupe :
-    // 0 = participant
-    // 1 = non participant avec plaque
-    // 2 = non participant sans plaque
-
-    const ga =
-      aSelected
-        ? 0
-        : pa
-          ? 1
-          : 2;
-
-    const gb =
-      bSelected
-        ? 0
-        : pb
-          ? 1
-          : 2;
-
-    if(ga !== gb){
-      return (ga - gb) * dir;
+    if(aData.group !== bData.group){
+      return applySortDirection(aData.group - bData.group, dir);
     }
 
-    return pa.localeCompare(
-      pb,
-      undefined,
-      {numeric:true}
-    ) * dir;
+    return comparePlateNumbers(aData.plate, bData.plate, dir);
 
   });
 
@@ -4072,78 +4352,35 @@ function sortParticipants(list,c){
 
   if(column==="club"){
 
-    arr.sort((a,b)=>{
-
-      let diff =
-        (a.club || "")
-        .localeCompare(b.club || "");
-
-      if(diff!==0){
-        return diff * dir;
-      }
-
-      return a.name.localeCompare(b.name);
-    });
+    arr.sort((a,b)=>comparePilotTextField(a, b, "club", dir));
   }
 
   // ===== LICENCE =====
 
   if(column==="lic"){
 
-    arr.sort((a,b)=>{
-
-      let diff =
-        (a.lic || "")
-        .localeCompare(b.lic || "");
-
-      if(diff!==0){
-        return diff * dir;
-      }
-
-      return a.name.localeCompare(b.name);
-    });
+    arr.sort((a,b)=>comparePilotTextField(a, b, "lic", dir));
   }
 
   // ===== CATEGORIE =====
 
   if(column==="cat"){
 
-    arr.sort((a,b)=>{
-
-      let diff =
-        categories.indexOf(a.cat)
-        - categories.indexOf(b.cat);
-
-      if(diff!==0){
-        return diff * dir;
-      }
-
-      return a.name.localeCompare(b.name);
-    });
+    arr.sort((a,b)=>comparePilotCategories(a, b, dir));
   }
 
   // ===== DATE DE NAISSANCE =====
 
   if(column==="birthDate"){
 
-    arr.sort((a,b)=>{
-
-      let da =
-        getBirthDateSortValue(
-          a.birthDate
-        );
-
-      let db =
-        getBirthDateSortValue(
-          b.birthDate
-        );
-
-      return (da - db) * dir;
-    });
+    arr.sort((a,b)=>compareBirthDates(a, b, dir));
   }
 
   return arr;
 }
+
+let participantSearchValue = "";
+let scoreEntrySearchValue = "";
 
 function manageParticipants(i){
 
@@ -4206,6 +4443,18 @@ function manageParticipants(i){
 
   </div>
 
+</div>
+
+<div class="pilots-search participants-search">
+  <span class="pilots-search-icon">🔎</span>
+  <input
+    id="participantSearch"
+    type="search"
+    placeholder="Rechercher un pilote, une plaque ou un club..."
+    autocomplete="off"
+    oninput="filterParticipantList(this.value)"
+  >
+  <span id="participantSearchCount" class="pilots-search-count"></span>
 </div>
 `;
 html += `
@@ -4275,6 +4524,10 @@ list.forEach((p)=>{
   html += `
 
 <tr
+  class="participant-select-row"
+  data-name="${String(p.name || "").toLowerCase().replace(/&/g,"&amp;").replace(/"/g,"&quot;")}"
+  data-plaque="${String(c.participantPlates[p.id] ?? p.plaque ?? "").toLowerCase().replace(/&/g,"&amp;").replace(/"/g,"&quot;")}"
+  data-club="${String(p.club || "").toLowerCase().replace(/&/g,"&amp;").replace(/"/g,"&quot;")}"
   onclick="toggleP(${i},'${p.id}')"
   style="cursor:pointer"
 >
@@ -4351,7 +4604,7 @@ this.value
     ${p.club || ""}
   </td>
 
-  <td class="pilot-cat ${getPilotTableCatClass(p.cat)}">
+  <td class="pilot-cat ${getPilotTableCatClass(p.cat)}" style="${getCustomCategoryStyle(p.cat)}">
     ${p.cat}
   </td>
 
@@ -4380,6 +4633,28 @@ html += `
 `;
 
   app.innerHTML=html;
+  const participantSearch = document.getElementById("participantSearch");
+  if(participantSearch){
+    participantSearch.value = participantSearchValue;
+    filterParticipantList(participantSearchValue);
+  }
+}
+
+function filterParticipantList(value){
+  participantSearchValue = value || "";
+  const search = participantSearchValue.trim().toLowerCase();
+  const rows = document.querySelectorAll(".participant-select-row");
+  let visible = 0;
+  rows.forEach(row => {
+    const match = !search ||
+      (row.dataset.name || "").includes(search) ||
+      (row.dataset.plaque || "").includes(search) ||
+      (row.dataset.club || "").includes(search);
+    row.style.display = match ? "" : "none";
+    if(match) visible++;
+  });
+  const count = document.getElementById("participantSearchCount");
+  if(count) count.textContent = `${visible} pilote${visible > 1 ? "s" : ""}`;
 }
 
 function toggleParticipantPlateEdit(){
@@ -4456,17 +4731,14 @@ function selectPilot(i){
     return;
   }
 
-
   let list = c.participants
     .map(id => getPilotById(id))
     .filter(p => p);
-
 
   list = sortEntryPilots(
     list,
     state.sortEntryMode
   );
-
 
   /* =========================================
      TOPBAR
@@ -4555,6 +4827,18 @@ function selectPilot(i){
     </div>
 
 
+    <div class="score-entry-search pilots-search">
+      <span class="pilots-search-icon">🔎</span>
+      <input
+        id="scoreEntrySearch"
+        type="search"
+        placeholder="Rechercher un pilote, une plaque ou un club..."
+        autocomplete="off"
+        oninput="filterScoreEntryList(this.value)"
+      >
+      <span id="scoreEntrySearchCount" class="pilots-search-count"></span>
+    </div>
+
     <div class="score-entry-legend">
 
       <span>❌ Non saisi</span>
@@ -4593,7 +4877,6 @@ function selectPilot(i){
 
 `;
 
-
   /* =========================================
      COLONNES DES TOURS
      ========================================= */
@@ -4610,8 +4893,11 @@ function selectPilot(i){
 
   }
 
-
   html += `
+
+          <th class="score-col-total">
+            Total
+          </th>
 
           <th class="score-col-action">
             Action
@@ -4625,7 +4911,6 @@ function selectPilot(i){
 
   `;
 
-
   /* =========================================
      PILOTES
      ========================================= */
@@ -4635,7 +4920,6 @@ function selectPilot(i){
     let isAB =
       c.status[p.id] === "AB";
 
-
     let plaque =
       c.participantPlates?.[p.id]
       ??
@@ -4643,14 +4927,13 @@ function selectPilot(i){
       ??
       "";
 
-
     html += `
 
         <tr
-          class="
-            score-entry-row
-            ${isAB ? "pilot-ab-row" : ""}
-          "
+          class="score-entry-row ${isAB ? "pilot-ab-row" : ""}"
+          data-name="${String(p.name || "").toLowerCase().replace(/&/g,"&amp;").replace(/"/g,"&quot;")}"
+          data-plaque="${String(plaque).toLowerCase().replace(/&/g,"&amp;").replace(/"/g,"&quot;")}"
+          data-club="${String(p.club || "").toLowerCase().replace(/&/g,"&amp;").replace(/"/g,"&quot;")}"
         >
 
           <td class="score-plate">
@@ -4682,16 +4965,16 @@ function selectPilot(i){
 
     `;
 
-
     /* =========================================
-       TOURS
+       TOURS + TOTAL DES TOURS VALIDÉS
        ========================================= */
+
+    let pilotScoreTotal = 0;
 
     for(let t=1; t<=c.tours; t++){
 
       let score =
   c.scores[p.id + "-" + t];
-
 
 // Un pilote a commencé dès qu'au moins
 // un tour possède une saisie, même partielle.
@@ -4703,9 +4986,8 @@ let pilotStarted =
 
     });
 
-
 let icon = "❌";
-
+let tourPoints = null;
 
 if(isAB){
 
@@ -4722,6 +5004,8 @@ else if(score){
   else{
 
     icon = "🟢";
+    tourPoints = score.reduce((sum, value) => sum + (typeof value === "number" ? value : 0), 0);
+    pilotScoreTotal += tourPoints;
 
   }
 
@@ -4731,7 +5015,6 @@ else if(pilotStarted){
   icon = "🟡";
 
 }
-
 
       html += `
 
@@ -4743,8 +5026,9 @@ else if(pilotStarted){
             "
           >
 
-            <span class="score-status-icon">
-              ${icon}
+            <span class="score-tour-indicator">
+              <span class="score-status-icon">${icon}</span>
+              <span class="score-tour-points">${tourPoints !== null ? tourPoints : ""}</span>
             </span>
 
           </td>
@@ -4753,6 +5037,13 @@ else if(pilotStarted){
 
     }
 
+    html += `
+
+          <td class="score-pilot-total-cell">
+            ${isAB ? "AB" : pilotScoreTotal}
+          </td>
+
+    `;
 
     /* =========================================
        ACTION AB
@@ -4802,7 +5093,6 @@ else if(pilotStarted){
 
   });
 
-
   html += `
 
       </tbody>
@@ -4815,45 +5105,30 @@ else if(pilotStarted){
 
   `;
 
-
   app.innerHTML = html;
+  const scoreSearch = document.getElementById("scoreEntrySearch");
+  if(scoreSearch){
+    scoreSearch.value = scoreEntrySearchValue;
+    filterScoreEntryList(scoreEntrySearchValue);
+  }
 
 }
 
-function getStatusLabel(c,id){
-
-    if(getPilotStatus(c,id)==="AB"){
-
-        return "🟥 Abandon";
-
-    }
-
-    let complete = 0;
-
-    for(let t=1;t<=c.tours;t++){
-
-        if(c.scores[id+"-"+t]){
-
-            complete++;
-
-        }
-
-    }
-
-    if(complete===0){
-
-        return "❌ Aucun tour";
-
-    }
-
-    if(complete<c.tours){
-
-        return "🟡 En cours";
-
-    }
-
-    return "✅ Terminée";
-
+function filterScoreEntryList(value){
+  scoreEntrySearchValue = value || "";
+  const search = scoreEntrySearchValue.trim().toLowerCase();
+  const rows = document.querySelectorAll(".score-entry-row");
+  let visible = 0;
+  rows.forEach(row => {
+    const match = !search ||
+      (row.dataset.name || "").includes(search) ||
+      (row.dataset.plaque || "").includes(search) ||
+      (row.dataset.club || "").includes(search);
+    row.style.display = match ? "" : "none";
+    if(match) visible++;
+  });
+  const count = document.getElementById("scoreEntrySearchCount");
+  if(count) count.textContent = `${visible} pilote${visible > 1 ? "s" : ""}`;
 }
 
 function clickTour(ci,id,t){
@@ -4875,19 +5150,9 @@ function clickTour(ci,id,t){
 
 }
 
-function changeSortEntry(mode,i){
-
-  state.sortEntryMode=mode;
-
-  save();
-
-  selectPilot(i);
-}
-
 function sortEntryPilots(list,mode){
 
   let arr=[...list];
-
 
   // =====================================================
   // NOM A → Z
@@ -4901,7 +5166,6 @@ function sortEntryPilots(list,mode){
 
   }
 
-
   // =====================================================
   // NOM Z → A
   // =====================================================
@@ -4913,7 +5177,6 @@ function sortEntryPilots(list,mode){
     );
 
   }
-
 
   // =====================================================
   // CATÉGORIE ELITE → N5
@@ -4935,7 +5198,6 @@ function sortEntryPilots(list,mode){
 
   }
 
-
   // =====================================================
   // CATÉGORIE N5 → ELITE
   // =====================================================
@@ -4956,7 +5218,6 @@ function sortEntryPilots(list,mode){
 
   }
 
-
   // =====================================================
   // MATIN — N4 / N5 PRIORITAIRES
   // N4 + N5 mélangés, A → Z
@@ -4967,26 +5228,19 @@ function sortEntryPilots(list,mode){
 
     arr.sort((a,b)=>{
 
-      let aMorning =
-        a.cat.startsWith("N4") ||
-        a.cat.startsWith("N5");
+      let aMorning = isTrialManagerMorningCategory(a.cat);
 
-      let bMorning =
-        b.cat.startsWith("N4") ||
-        b.cat.startsWith("N5");
-
+      let bMorning = isTrialManagerMorningCategory(b.cat);
 
       if(aMorning && !bMorning) return -1;
 
       if(!aMorning && bMorning) return 1;
-
 
       return a.name.localeCompare(b.name);
 
     });
 
   }
-
 
   // =====================================================
   // APRÈS-MIDI — ELITE / N1 / N2 / N3 PRIORITAIRES
@@ -4998,23 +5252,13 @@ function sortEntryPilots(list,mode){
 
     arr.sort((a,b)=>{
 
-      let aAfternoon =
-        a.cat.startsWith("Elite") ||
-        a.cat.startsWith("N1") ||
-        a.cat.startsWith("N2") ||
-        a.cat.startsWith("N3");
+      let aAfternoon = isTrialManagerAfternoonCategory(a.cat);
 
-      let bAfternoon =
-        b.cat.startsWith("Elite") ||
-        b.cat.startsWith("N1") ||
-        b.cat.startsWith("N2") ||
-        b.cat.startsWith("N3");
-
+      let bAfternoon = isTrialManagerAfternoonCategory(b.cat);
 
       if(aAfternoon && !bAfternoon) return -1;
 
       if(!aAfternoon && bAfternoon) return 1;
-
 
       return a.name.localeCompare(b.name);
 
@@ -5022,10 +5266,8 @@ function sortEntryPilots(list,mode){
 
   }
 
-
   return arr;
 }
-
 
 function changeSortEntry(mode,i){
 
@@ -5034,37 +5276,6 @@ function changeSortEntry(mode,i){
   save();
 
   selectPilot(i);
-}
-
-function getStatus(c,id){
-
-  if(getPilotStatus(c,id)==="AB"){
-    return "🟥";
-  }
-
-  let filled=0;
-
-  for(let t=1;t<=c.tours;t++){
-
-    let s=c.scores[id+"-"+t];
-
-    if(s && !s.includes(null)){
-      filled++;
-    }
-    else if(s){
-      return "🟡";
-    }
-  }
-
-  if(filled===0){
-    return "❌";
-  }
-
-  if(filled<c.tours){
-    return "🟡";
-  }
-
-  return "✅";
 }
 
 function pilotDetail(ci,id){
@@ -5078,14 +5289,12 @@ function pilotDetail(ci,id){
     return;
   }
 
-
   let p = getPilotById(id);
 
   if(!p){
     selectPilot(ci);
     return;
   }
-
 
   let plaque =
     c.participantPlates?.[id]
@@ -5094,10 +5303,8 @@ function pilotDetail(ci,id){
     ??
     "";
 
-
   let isAB =
     c.status[id] === "AB";
-
 
   let html = `
 
@@ -5174,19 +5381,20 @@ function pilotDetail(ci,id){
 
 `;
 
+  // Le total du pilote additionne uniquement les tours entièrement saisis.
+  // Un tour absent ou en cours reste à zéro jusqu'à sa validation complète.
+  let pilotTotal = 0;
 
   for(let t=1; t<=c.tours; t++){
 
     let s =
       c.scores[id + "-" + t];
 
-
     let icon = "❌";
 
     let label = "Non saisi";
 
     let total = "";
-
 
     if(isAB && !s){
 
@@ -5216,13 +5424,14 @@ function pilotDetail(ci,id){
             0
           );
 
+        pilotTotal += tourTotal;
+
         total =
           `${tourTotal} point${tourTotal > 1 ? "s" : ""}`;
 
       }
 
     }
-
 
     html += `
 
@@ -5264,7 +5473,6 @@ function pilotDetail(ci,id){
 
       </div>
 
-
       <div class="score-detail-tour-arrow">
         ›
       </div>
@@ -5278,8 +5486,12 @@ function pilotDetail(ci,id){
 
   html += `
 
-  </div>
+    <div class="score-detail-pilot-total">
+      <span>Total des tours</span>
+      <strong>${pilotTotal} point${pilotTotal > 1 ? "s" : ""}</strong>
+    </div>
 
+  </div>
 
   <div class="score-detail-footer">
 
@@ -5301,7 +5513,6 @@ function pilotDetail(ci,id){
     }
 
   </div>
-
 
 </div>
 
@@ -5330,7 +5541,6 @@ function declareAB(ci,id){
     ⚠️ Confirmer abandon
   </h3>
 
-
   <div class="card abandon-confirm-card">
 
     <div class="abandon-pilot-name">
@@ -5349,7 +5559,6 @@ function declareAB(ci,id){
 
   </div>
 
-
   <div class="score-actions">
 
     <button
@@ -5358,7 +5567,6 @@ function declareAB(ci,id){
     >
       Confirmer l'abandon
     </button>
-
 
     <button
       class="score-cancel-btn"
@@ -5472,7 +5680,6 @@ function enterScore(ci,id,t){
 
   </div>
 
-
   <div class="score-form-pilot">
 
     <div class="score-form-pilot-name">
@@ -5501,7 +5708,6 @@ function enterScore(ci,id,t){
     </div>
 
   </div>
-
 
   <div class="score-zones" id="zones">
 
@@ -5533,26 +5739,9 @@ function enterScore(ci,id,t){
     ""
   }
 
-
-  <button
-    class="score-cancel-btn"
-    onclick="selectPilot(${ci})"
-  >
-    ← Retour
-  </button>
-
 </div>
 
-
-    <button
-      class="score-cancel-btn"
-      onclick="selectPilot(${ci})"
-    >
-      ← Retour
-    </button>
-
   </div>
-
 
 </div>
 
@@ -5578,7 +5767,6 @@ function enterScore(ci,id,t){
       <div class="score-zone-number">
         Zone ${i+1}
       </div>
-
 
       <div class="score-buttons">
 
@@ -5608,19 +5796,6 @@ function enterScore(ci,id,t){
 
       </div>
 
-
-      <div class="score-zone-current">
-
-        ${
-          selected !== null
-          ?
-          `✓ ${selected}`
-          :
-          "—"
-        }
-
-      </div>
-
     </div>
 
     `;
@@ -5628,7 +5803,33 @@ function enterScore(ci,id,t){
   }
 
 
+  z += `
+
+    <div class="score-tour-total" aria-live="polite">
+      <div class="score-tour-total-label">Total du tour</div>
+      <div class="score-tour-total-value" id="score-tour-total-value">0 point</div>
+    </div>
+
+  `;
+
   document.getElementById("zones").innerHTML = z;
+  updateScoreTourTotal();
+
+}
+
+function updateScoreTourTotal(){
+
+  const totalElement = document.getElementById("score-tour-total-value");
+
+  if(!totalElement){
+    return;
+  }
+
+  const total = currentScores.reduce((sum, value) => {
+    return sum + (typeof value === "number" ? value : 0);
+  }, 0);
+
+  totalElement.textContent = `${total} ${total === 1 ? "point" : "points"}`;
 
 }
 
@@ -5663,68 +5864,33 @@ function showDoublePointageMatin(i){
 
   let c = state.competitions[i];
 
-  let participants = c.participants
-    .map(id => getPilotById(id))
-    .filter(p => p)
-    .map(p => ({
-
-      ...p,
-
-      plaque:
-        c.participantPlates?.[p.id]
-        ??
-        p.plaque
-
-    }));
+  let participants = getCompetitionParticipantsWithPlates(c);
 
 
-  function plaqueNumber(p){
-
-    return parseInt(
-      String(p.plaque || "")
-        .replace(/[^\d]/g,"")
-    ) || 99999;
-
-  }
 
 
-  function mainCat(cat){
 
-    if(cat.startsWith("N4")) return "N4";
-    if(cat.startsWith("N5")) return "N5";
-
-    return cat;
-
-  }
-
-
-  const order = ["N4","N5"];
+  const order = getTrialManagerDoublePointageMorningOrder();
 
 
   let list = participants
 
-    .filter(p =>
-
-      p.cat.startsWith("N4")
-      ||
-      p.cat.startsWith("N5")
-
-    )
+    .filter(p => order.includes(getDoublePointageMainCategory(p.cat)))
 
     .sort((a,b)=>{
 
       let diff =
-        order.indexOf(mainCat(a.cat))
+        order.indexOf(getDoublePointageMainCategory(a.cat))
         -
-        order.indexOf(mainCat(b.cat));
+        order.indexOf(getDoublePointageMainCategory(b.cat));
 
       if(diff!==0){
         return diff;
       }
 
-      return plaqueNumber(a)
+      return getTrialManagerPlateNumber(a)
         -
-        plaqueNumber(b);
+        getTrialManagerPlateNumber(b);
 
     });
 
@@ -5757,6 +5923,8 @@ function showDoublePointageMatin(i){
 
 <table class="double-pointage">
 
+<thead>
+${buildDoublePointagePrintHeader({competitionName:c.name, competitionDate:c.date})}
 <tr>
 
 <th style="width:10%">
@@ -5784,6 +5952,8 @@ Tour 3
 </th>
 
 </tr>
+</thead>
+<tbody>
 
 `;
 
@@ -5854,6 +6024,7 @@ ${p.cat}
 
 
   html += `
+</tbody>
 </table>
 `;
 
@@ -5877,74 +6048,33 @@ function showDoublePointageApresMidi(i){
 
   let c = state.competitions[i];
 
-  let participants = c.participants
-    .map(id => getPilotById(id))
-    .filter(p => p)
-    .map(p => ({
-
-      ...p,
-
-      plaque:
-        c.participantPlates?.[p.id]
-        ??
-        p.plaque
-
-    }));
+  let participants = getCompetitionParticipantsWithPlates(c);
 
 
-  function plaqueNumber(p){
-
-    return parseInt(
-      String(p.plaque || "")
-        .replace(/[^\d]/g,"")
-    ) || 99999;
-
-  }
 
 
-  function mainCat(cat){
 
-    if(cat.startsWith("Elite")) return "Elite";
-    if(cat.startsWith("N1")) return "N1";
-    if(cat.startsWith("N2")) return "N2";
-    if(cat.startsWith("N3")) return "N3";
-
-    return cat;
-
-  }
-
-
-  const order = ["Elite","N1","N2","N3"];
+  const order = TRIAL_MANAGER_DOUBLE_POINTAGE_AFTERNOON_ORDER;
 
 
   let list = participants
 
-    .filter(p =>
-
-      p.cat.startsWith("Elite")
-      ||
-      p.cat.startsWith("N1")
-      ||
-      p.cat.startsWith("N2")
-      ||
-      p.cat.startsWith("N3")
-
-    )
+    .filter(p => order.includes(getDoublePointageMainCategory(p.cat)))
 
     .sort((a,b)=>{
 
       let diff =
-        order.indexOf(mainCat(a.cat))
+        order.indexOf(getDoublePointageMainCategory(a.cat))
         -
-        order.indexOf(mainCat(b.cat));
+        order.indexOf(getDoublePointageMainCategory(b.cat));
 
       if(diff!==0){
         return diff;
       }
 
-      return plaqueNumber(a)
+      return getTrialManagerPlateNumber(a)
         -
-        plaqueNumber(b);
+        getTrialManagerPlateNumber(b);
 
     });
 
@@ -5977,6 +6107,8 @@ function showDoublePointageApresMidi(i){
 
 <table class="double-pointage">
 
+<thead>
+${buildDoublePointagePrintHeader({competitionName:c.name, competitionDate:c.date})}
 <tr>
 
 <th style="width:10%">
@@ -6004,6 +6136,8 @@ Tour 3
 </th>
 
 </tr>
+</thead>
+<tbody>
 
 `;
 
@@ -6012,7 +6146,7 @@ Tour 3
 
   list.forEach(p=>{
 
-    let group = mainCat(p.cat);
+    let group = getDoublePointageMainCategory(p.cat);
 
     currentGroup = group;
 
@@ -6078,6 +6212,7 @@ ${p.cat}
 
 
   html += `
+</tbody>
 </table>
 `;
 
@@ -6101,87 +6236,33 @@ function showDoublePointageToutesCategories(i){
 
   let c = state.competitions[i];
 
-  let participants = c.participants
-    .map(id => getPilotById(id))
-    .filter(p => p)
-    .map(p => ({
-
-      ...p,
-
-      plaque:
-        c.participantPlates?.[p.id]
-        ??
-        p.plaque
-
-    }));
+  let participants = getCompetitionParticipantsWithPlates(c);
 
 
-  function plaqueNumber(p){
-
-    return parseInt(
-      String(p.plaque || "")
-        .replace(/[^\d]/g,"")
-    ) || 99999;
-
-  }
 
 
-  function mainCat(cat){
 
-    if(cat.startsWith("Elite")) return "Elite";
-    if(cat.startsWith("N1")) return "N1";
-    if(cat.startsWith("N2")) return "N2";
-    if(cat.startsWith("N3")) return "N3";
-    if(cat.startsWith("N4")) return "N4";
-    if(cat.startsWith("N5")) return "N5";
-
-    return cat;
-
-  }
-
-
-  const order = [
-    "Elite",
-    "N1",
-    "N2",
-    "N3",
-    "N4",
-    "N5"
-  ];
+  const order = getTrialManagerDoublePointageAllOrder();
 
 
   let list = participants
 
-    .filter(p =>
-
-      p.cat.startsWith("Elite")
-      ||
-      p.cat.startsWith("N1")
-      ||
-      p.cat.startsWith("N2")
-      ||
-      p.cat.startsWith("N3")
-      ||
-      p.cat.startsWith("N4")
-      ||
-      p.cat.startsWith("N5")
-
-    )
+    .filter(p => order.includes(getDoublePointageMainCategory(p.cat)))
 
     .sort((a,b)=>{
 
       let diff =
-        order.indexOf(mainCat(a.cat))
+        order.indexOf(getDoublePointageMainCategory(a.cat))
         -
-        order.indexOf(mainCat(b.cat));
+        order.indexOf(getDoublePointageMainCategory(b.cat));
 
       if(diff!==0){
         return diff;
       }
 
-      return plaqueNumber(a)
+      return getTrialManagerPlateNumber(a)
         -
-        plaqueNumber(b);
+        getTrialManagerPlateNumber(b);
 
     });
 
@@ -6214,6 +6295,8 @@ function showDoublePointageToutesCategories(i){
 
 <table class="double-pointage">
 
+<thead>
+${buildDoublePointagePrintHeader({competitionName:c.name, competitionDate:c.date})}
 <tr>
 
 <th style="width:10%">
@@ -6241,6 +6324,8 @@ Tour 3
 </th>
 
 </tr>
+</thead>
+<tbody>
 
 `;
 
@@ -6249,7 +6334,7 @@ Tour 3
 
   list.forEach(p=>{
 
-    let group = mainCat(p.cat);
+    let group = getDoublePointageMainCategory(p.cat);
 
     currentGroup = group;
 
@@ -6315,6 +6400,7 @@ ${p.cat}
 
 
   html += `
+</tbody>
 </table>
 `;
 
@@ -6345,6 +6431,8 @@ function setScore(i,v,btn){
   });
 
   btn.classList.add("selected");
+
+  updateScoreTourTotal();
 }
 
 function saveScore(ci,id,t){
@@ -6468,6 +6556,7 @@ if(v===null){
       club:p.club || "",
       cat:p.cat,
       lic:p.lic,
+      ageScratchOnly: !!p.ageScratchOnly,
       total,
       tours,
       nb0,
@@ -6577,27 +6666,27 @@ function renderTable(title,list,c,htmlRef,ci,provisional){
   htmlRef+=`
   <div class="print-page">
 
-  <div class="section-title">
-  CLASSEMENT ${title} — ${c.name} (${formatBirthDate(c.date)})
-</div>
+  <div class="ranking-heading">
+    <div class="section-title">
+      <span class="ranking-category-label" style="background:${getRankingTitleColor(title)};color:${getRankingTitleTextColor(title)};">
+        CLASSEMENT ${title}
+      </span>
+      <span class="ranking-event-label">— ${c.name} (${formatBirthDate(c.date)})</span>
+    </div>
+    <img class="ufolep-ranking-logo" src="ufolep-logo-lockup.svg" alt="UFOLEP — Tous les sports autrement">
+  </div>
 
-<div class="category-status ${
-  provisional
-  ? "status-provisoire"
-  : "status-ok"
-}">
-  ${
+  <div class="category-status ${
     provisional
-    ? "⚠️ Classement provisoire"
-    : "✔ Classement validé"
-  }
-
-  <div class="print-footer">
-  <span> </span>
-  <span class="pageCounter"></span>
-</div>
-
-</div>
+    ? "status-provisoire"
+    : "status-ok"
+  }">
+    ${
+      provisional
+      ? "⚠️ Classement provisoire"
+      : "✔ Classement validé"
+    }
+  </div>
 
 <table>
 
@@ -6636,7 +6725,7 @@ function renderTable(title,list,c,htmlRef,ci,provisional){
 
     htmlRef+=`
     <tr class="${
-      p.lic === "FFC" || p.lic === "NL"
+      (p.lic === "FFC" || p.lic === "NL" || isAgeScratchOnlyPilot(p))
         ? "ranking-non-ufolep"
         : ""
     }">
@@ -6721,7 +6810,7 @@ function renderTable(title,list,c,htmlRef,ci,provisional){
   </table>
 
   <div class="print-note">
-    Rappel : seuls les pilotes titulaires d'une licence UFOLEP peuvent être classés.
+    Rappel : seuls les pilotes titulaires d'une licence UFOLEP peuvent être classés, sauf exceptions inscrites au règlement.
   </div>
     
   <div class="print-note3">
@@ -6886,7 +6975,7 @@ femaleList = finalFemaleList;
 
   // UFOLEP
   let ufoOrdered = femaleList
-    .filter(p => p.lic === "UFOLEP");
+    .filter(isUfolepRankingEligible);
 
   femaleList.forEach(p => {
 
@@ -6986,7 +7075,7 @@ veteranList = finalVeteranList;
   });
 
   let ufoOrdered = veteranList
-    .filter(p => p.lic === "UFOLEP");
+    .filter(isUfolepRankingEligible);
 
   veteranList.forEach(p => {
 
@@ -7023,6 +7112,51 @@ if(veteranProvisional){
   veteranProvisional
 );
 }
+
+  // ===== CATÉGORIES PERSONNALISÉES =====
+  // Même calcul que les catégories officielles : classement scratch,
+  // rang UFOLEP et points UFOLEP. Ces tableaux restent après les vétérans.
+  (state.customCategories || []).forEach(customCategory => {
+    const categoryName = String(customCategory?.name || "").trim();
+    if (!categoryName) return;
+
+    let customList = stats.filter(p =>
+      String(p.cat || "").trim().toLocaleLowerCase("fr") === categoryName.toLocaleLowerCase("fr")
+    );
+    if (!customList.length) return;
+
+    customList = buildOrderedRanking(customList);
+    const tieResult = applyTieBreaks(customList, c, categoryName);
+    customList = buildOrderedRanking(tieResult.list);
+
+    customList.forEach((p, index) => {
+      p.rankScratch = index + 1;
+      p.rankUfolep = "-";
+      p.ufoPoints = 0;
+    });
+
+    // Les rangs et points UFOLEP sont calculés séparément dans chaque
+    // catégorie personnalisée, comme pour les catégories déjà présentes.
+    const customUfolepList = customList.filter(isUfolepRankingEligible);
+    customUfolepList.forEach((p, index) => {
+      p.rankUfolep = index + 1;
+      p.ufoPoints = p.status === "AB" ? 1 : Engine.getUfolepPoints(index + 1);
+    });
+
+    const customProvisional = tieResult.unresolved || customList.some(
+      p => !p.completed && p.status !== "AB"
+    );
+    if (customProvisional) exportIntermediaire = true;
+
+    html = renderTable(
+      categoryName,
+      customList,
+      c,
+      html,
+      i,
+      customProvisional
+    );
+  });
 
   // ===== ACTIONS =====
   return {
@@ -7422,6 +7556,11 @@ function savePilotEdit(){
   let cat =
   document.getElementById("cat").value;
 
+  if(cat==="__NEW_CATEGORY__"){
+    cat=addCustomCategoryFromForm();
+    if(!cat) return;
+  }
+
   let plaque =
   document.getElementById("plaque").value.trim();
 
@@ -7459,6 +7598,7 @@ const pilotUsed =
 
 if(!pilotUsed){
   p.cat = cat;
+  if(!['N5','N5 F','N5 V'].includes(String(cat || '').trim())) p.ageScratchOnly = false;
 }
   p.plaque = plaque;
   p.licenceNumber = licenceNumber;
@@ -7608,7 +7748,6 @@ async function deleteCompetition(i){
 
   }
 
-
   /* =========================================
      PREMIÈRE CONFIRMATION
      ========================================= */
@@ -7623,7 +7762,6 @@ async function deleteCompetition(i){
   if(!ok){
     return;
   }
-
 
   /* =========================================
      CONFIRMATION CODE ADMIN
@@ -7661,7 +7799,6 @@ async function deleteCompetition(i){
     // ✅ bon code
     break;
   }
-
 
   /* =========================================
      SUPPRESSION
@@ -7722,7 +7859,6 @@ async function lockCompetition(i){
     return;
   }
 
-
   /* =========================================
      SAISIE INCOMPLÈTE
      ========================================= */
@@ -7773,7 +7909,6 @@ async function lockCompetition(i){
     return;
   }
 
-
   /* =========================================
      DÉPARTAGES NON FINALISÉS
      ========================================= */
@@ -7801,7 +7936,6 @@ async function lockCompetition(i){
     }
 
   });
-
 
   if(unresolved){
 
@@ -7842,7 +7976,6 @@ async function lockCompetition(i){
 
     return;
   }
-
 
   /* =========================================
      CONFIRMATION DE VALIDATION
@@ -7929,13 +8062,11 @@ async function unlockCompetition(i){
 
     // Code vide
     if(code === ""){
-      console.log("Code obligatoire");
       continue;
     }
 
     // Code incorrect
     if(code !== "1234"){
-      console.log("Code incorrect");
       continue;
     }
 
@@ -7952,19 +8083,15 @@ async function unlockCompetition(i){
 
 // ===== CHAMPIONNAT =====
 
+// Reuse the shared date-key parser so participant and competition dates
+// follow one chronological ordering for French and ISO date strings.
 function parseDateFR(str){
+  return getBirthDateSortValue(str);
+}
 
-  if(!str){
-    return 0;
-  }
-
-  let p=str.split("/");
-
-  return new Date(
-    p[2],
-    p[1]-1,
-    p[0]
-  ).getTime();
+// Comparator partagé pour garder le même ordre chronologique dans tous les championnats.
+function compareCompetitionDates(a, b){
+  return parseDateFR(a && a.date) - parseDateFR(b && b.date);
 }
 
 function buildChampionship(jokers){
@@ -7974,15 +8101,13 @@ function buildChampionship(jokers){
     .filter(c=>c.locked);
 
   // tri chronologique
-  competitions.sort((a,b)=>
-    parseDateFR(a.date)-parseDateFR(b.date)
-  );
+  competitions.sort(compareCompetitionDates);
 
   let championship={};
 
   // création pilotes
   state.pilots
-    .filter(p=>p.lic==="UFOLEP")
+    .filter(isUfolepRankingEligible)
     .forEach(p=>{
 
       championship[p.id]={
@@ -8030,10 +8155,10 @@ function buildChampionship(jokers){
 
         let points=0;
 
-        if(p.lic==="UFOLEP"){
+        if(isUfolepRankingEligible(p)){
 
           let ufoPos=list
-            .filter(x=>x.lic==="UFOLEP")
+            .filter(isUfolepRankingEligible)
             .findIndex(x=>x.id===p.id)+1;
 
           points=
@@ -8049,6 +8174,32 @@ function buildChampionship(jokers){
           championship[p.id]
             .scores[comp.name]=points;
         }
+      });
+    });
+
+    // Catégories personnalisées : elles entrent dans le championnat UFOLEP
+    // après validation/verrouillage de la compétition, avec leur propre barème
+    // de classement. Elles ne sont volontairement pas reprises dans les clubs.
+    (state.customCategories || []).forEach(customCategory => {
+      const categoryName = String(customCategory?.name || "").trim();
+      if (!categoryName) return;
+
+      let list = stats.filter(p =>
+        String(p.cat || "").trim().toLocaleLowerCase("fr") === categoryName.toLocaleLowerCase("fr")
+      );
+      if (!list.length) return;
+
+      list = buildOrderedRanking(list);
+      const tieResult = applyTieBreaks(list, comp, categoryName);
+      list = buildOrderedRanking(tieResult.list);
+      const ufolepList = list.filter(isUfolepRankingEligible);
+
+      list.forEach(p => {
+        if (!championship[p.id]) return;
+        const ufoPos = ufolepList.findIndex(x => x.id === p.id) + 1;
+        const points = !isUfolepRankingEligible(p) ? 0 : (p.status === "AB" ? 1 : Engine.getUfolepPoints(ufoPos));
+        championship[p.id].participated = true;
+        championship[p.id].scores[comp.name] = points;
       });
     });
   });
@@ -8140,12 +8291,15 @@ function renderChampionshipTable(
 
   <div class="print-page">
 
-  <div class="section-title">
-  CLASSEMENT ${title} — CHAMPIONNAT UFOLEP
-  <br>
-  SAISON ${window.currentExportInfo.startYear}-${window.currentExportInfo.endYear}
-  (${state.currentJokers || 0} joker${(state.currentJokers || 0) > 1 ? "s" : ""})
-</div>
+  <div class="ranking-heading championship-ranking-heading">
+    <div class="section-title">
+      <span class="ranking-category-label" style="background:${getRankingTitleColor(title)};color:${getRankingTitleTextColor(title)};">
+        CLASSEMENT ${title}
+      </span>
+      <span class="ranking-event-label">— CHAMPIONNAT UFOLEP<br>SAISON ${window.currentExportInfo.startYear}-${window.currentExportInfo.endYear} (${state.currentJokers || 0} joker${(state.currentJokers || 0) > 1 ? "s" : ""})</span>
+    </div>
+    <img class="ufolep-ranking-logo" src="ufolep-logo-lockup.svg" alt="UFOLEP — Tous les sports autrement">
+  </div>
 
   <table>
 
@@ -8219,7 +8373,7 @@ function renderChampionshipTable(
   </table>
 
   <div class="print-note">
-    Rappel : seuls les pilotes titulaires d'une licence UFOLEP peuvent être classés. 0 point pour une compétition = pilote Absent de cette compétition.
+    Rappel : seuls les pilotes titulaires d'une licence UFOLEP peuvent être classés, sauf exceptions inscrites au règlement. 0 point pour une compétition = pilote Absent de cette compétition.
   </div>
     
     </div>
@@ -8234,15 +8388,13 @@ function buildFemaleChampionship(jokers){
   let competitions = state.competitions
     .filter(c => c.locked);
 
-  competitions.sort((a,b)=>
-    parseDateFR(a.date)-parseDateFR(b.date)
-  );
+  competitions.sort(compareCompetitionDates);
 
   let championship = {};
 
   state.pilots
     .filter(p =>
-      p.lic === "UFOLEP"
+      isUfolepRankingEligible(p)
       &&
       categoryOrderFemale[p.cat] !== undefined
     )
@@ -8324,12 +8476,12 @@ function buildFemaleChampionship(jokers){
 
       let points = 0;
 
-      if(p.lic !== "UFOLEP"){
+      if(!isUfolepRankingEligible(p)){
         return;
       }
 
       let ufoPos = femaleList
-        .filter(x => x.lic === "UFOLEP")
+        .filter(isUfolepRankingEligible)
         .findIndex(x => x.id === p.id) + 1;
 
       points =
@@ -8396,15 +8548,13 @@ function buildVeteranChampionship(jokers){
   let competitions = state.competitions
     .filter(c => c.locked);
 
-  competitions.sort((a,b)=>
-    parseDateFR(a.date)-parseDateFR(b.date)
-  );
+  competitions.sort(compareCompetitionDates);
 
   let championship = {};
 
   state.pilots
     .filter(p =>
-      p.lic === "UFOLEP"
+      isUfolepRankingEligible(p)
       &&
       categoryOrderVeteran[p.cat] !== undefined
     )
@@ -8484,12 +8634,12 @@ function buildVeteranChampionship(jokers){
 
     vetList.forEach((p,index)=>{
 
-      if(p.lic !== "UFOLEP"){
+      if(!isUfolepRankingEligible(p)){
         return;
       }
 
       let ufoPos = vetList
-        .filter(x => x.lic === "UFOLEP")
+        .filter(isUfolepRankingEligible)
         .findIndex(x => x.id === p.id) + 1;
 
       let points =
@@ -8699,26 +8849,52 @@ function showChampionship(jokers){
     html
   );
 
+  // Les tableaux personnalisés viennent après tous les tableaux officiels.
+  (state.customCategories || []).forEach(customCategory => {
+    const categoryName = String(customCategory?.name || "").trim();
+    if (!categoryName) return;
+    html = renderChampionshipTable(
+      categoryName,
+      [categoryName],
+      dataMain,
+      competitions,
+      html
+    );
+  });
+
   app.innerHTML=html;
 }
 
-function printPDFPWA(fileName){
+function printPDFPWA(fileName, forceLight = false){
 
   const oldTitle =
     document.title;
+  const wasDark = document.body.classList.contains("dark-mode");
+  if(forceLight && wasDark){
+    document.body.classList.remove("dark-mode");
+  }
 
-  document.title =
-    fileName.replace(/\.pdf$/i,"");
+  // Évite que le navigateur réimprime le nom du fichier dans son en-tête
+  // automatique au-dessus de notre véritable en-tête de compétition.
+  document.title = /^Double_Pointage_/i.test(fileName)
+    ? ""
+    : fileName.replace(/\.pdf$/i,"");
 
   const restoreTitle = () => {
 
     document.title =
       oldTitle;
 
+    if(forceLight && wasDark){
+      document.body.classList.add("dark-mode");
+    }
+
     window.removeEventListener(
       "afterprint",
       restoreTitle
     );
+
+    document.getElementById("double-pointage-page-print-style")?.remove();
 
   };
 
@@ -8729,6 +8905,46 @@ function printPDFPWA(fileName){
 
   window.print();
 
+}
+
+
+// Flux PDF commun à l’application : Electron enregistre le fichier, tandis que
+// le navigateur ouvre sa boîte d’impression avec le nom de fichier demandé.
+async function exportPDFDocument(fileName, landscape = false){
+  // Les PDF de classements et les trois doubles pointages restent toujours
+  // en thème clair, même lorsque l’interface est utilisée en mode sombre.
+  const forceLight = /^(Resultats_|Classement_Championnat_UFOLEP_|Classement_Clubs_|Double_Pointage_|Cravates)/i.test(fileName);
+  const body = typeof document !== "undefined" ? document.body : null;
+  if(window.api && typeof window.api.exportPDF === "function"){
+    const wasDark = !!body && body.classList.contains("dark-mode");
+    if(forceLight && wasDark){
+      body.classList.remove("dark-mode");
+    }
+    // Electron renvoie false lorsque l’utilisateur ferme la boîte de dialogue
+    // sans enregistrer : ne pas présenter cette annulation comme un succès.
+    try {
+      const result = await window.api.exportPDF({
+        fileName,
+        landscape,
+        ...( /^Double_Pointage_/i.test(fileName)
+          ? { margins: { top: 1.06, bottom: 0.31, left: 0.31, right: 0.31 } }
+          : {} )
+      });
+      return result !== false;
+    } finally {
+      if(forceLight && wasDark){
+        body.classList.add("dark-mode");
+      }
+    }
+  }
+
+  if(typeof window.print === "function"){
+    printPDFPWA(fileName, forceLight);
+    return true;
+  }
+
+  showAppNotice("L'export PDF n'est pas disponible sur cet appareil.");
+  return false;
 }
 
 async function printResults(){
@@ -8742,66 +8958,23 @@ async function printResults(){
 
   }
 
-
   const safeName =
     info.name
       .replace(/[\\/:*?"<>|]/g,"_")
       .replace(/\s+/g,"_");
 
-
   const safeDate =
     formatDateForFile(info.date);
-
 
   const suffix =
     info.intermediaire
       ? "_INTERMEDIAIRE"
       : "";
 
-
   const fileName =
     `Resultats_${safeName}_${safeDate}${suffix}.pdf`;
 
-
-  // ================================
-  // ELECTRON
-  // ================================
-
-  if(
-    window.api &&
-    typeof window.api.exportPDF === "function"
-  ){
-
-    await window.api.exportPDF({
-
-      fileName,
-      landscape:true
-
-    });
-
-    return;
-
-  }
-
-
-  // ================================
-  // PWA / NAVIGATEUR
-  // ================================
-
-  if(
-    typeof window.print === "function"
-  ){
-
-    printPDFPWA(fileName);
-
-    return;
-
-  }
-
-
-  alert(
-    "L'export PDF n'est pas disponible sur cet appareil."
-  );
+  return exportPDFDocument(fileName, true);
 
 }
 
@@ -8811,7 +8984,7 @@ function buildClubChampionship(){
 
   let competitions = state.competitions
     .filter(c => c.locked)
-    .sort((a,b)=>parseDateFR(a.date)-parseDateFR(b.date));
+    .sort(compareCompetitionDates);
 
   let clubs = {};
 
@@ -8842,9 +9015,9 @@ function buildClubChampionship(){
 
       list.forEach(p => {
 
-        if(p.lic !== "UFOLEP") return;
+        if(!isUfolepRankingEligible(p)) return;
 
-        let ufoList = list.filter(x => x.lic === "UFOLEP");
+        let ufoList = list.filter(isUfolepRankingEligible);
 
         let ufoPos = ufoList.findIndex(x => x.id === p.id) + 1;
 
@@ -8906,7 +9079,7 @@ if (femaleList.length) {
 
   // 🔥 UFOLEP STABLE
   const femaleUfoList = femaleList.filter(
-  p => p.lic === "UFOLEP"
+  isUfolepRankingEligible
 );
 
 const femaleUfoRankMap = new Map();
@@ -8918,7 +9091,7 @@ femaleUfoList.forEach((p,i)=>{
   // 🔥 POINTS CLUBS
   femaleList.forEach(p => {
 
-    if(p.lic !== "UFOLEP") return;
+    if(!isUfolepRankingEligible(p)) return;
 
     const ufoPos = femaleUfoRankMap.get(p.id);
 
@@ -8985,7 +9158,7 @@ if(veteranList.length){
 
   // 🔥 UFOLEP STABLE
   const veteranUfoList = veteranList.filter(
-    p => p.lic === "UFOLEP"
+    isUfolepRankingEligible
   );
 
   const veteranUfoRankMap = new Map();
@@ -8997,7 +9170,7 @@ if(veteranList.length){
   // 🔥 POINTS CLUBS
   veteranList.forEach(p => {
 
-    if(p.lic !== "UFOLEP") return;
+    if(!isUfolepRankingEligible(p)) return;
 
     const ufoPos = veteranUfoRankMap.get(p.id);
 
@@ -9046,46 +9219,7 @@ async function printChampionshipPDF(){
   const fileName =
     `Classement_Championnat_UFOLEP_${info.startYear}-${info.endYear}.pdf`;
 
-
-  // ================================
-  // ELECTRON
-  // ================================
-
-  if(
-    window.api &&
-    typeof window.api.exportPDF === "function"
-  ){
-
-    await window.api.exportPDF({
-
-      fileName,
-      landscape:true
-
-    });
-
-    return;
-
-  }
-
-
-  // ================================
-  // PWA / NAVIGATEUR
-  // ================================
-
-  if(
-    typeof window.print === "function"
-  ){
-
-    printPDFPWA(fileName);
-
-    return;
-
-  }
-
-
-  alert(
-    "L'export PDF n'est pas disponible sur cet appareil."
-  );
+  return exportPDFDocument(fileName, true);
 
 }
 
@@ -9276,230 +9410,104 @@ async function printClubPDF(){
   const fileName =
     `Classement_Clubs_${info.startYear}-${info.endYear}.pdf`;
 
+  return exportPDFDocument(fileName, true);
 
-  // ================================
-  // ELECTRON
-  // ================================
+}
 
-  if(
-    window.api &&
-    typeof window.api.exportPDF === "function"
-  ){
+// En-tête intégré au thead : il se répète avec les colonnes sur chaque page.
+function buildDoublePointagePrintHeader(info){
+  const escape = value => String(value ?? "").replace(/[&<>\"']/g, char => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;"
+  }[char]));
+  // Afficher uniquement la date enregistrée pour la compétition, jamais la
+  // date système du jour. Les anciennes sauvegardes peuvent être en JJ/MM/AAAA.
+  const rawDate = String(info.competitionDate ?? "").trim();
+  const competitionDate = rawDate.includes("/") ? rawDate : formatBirthDate(rawDate);
+  return `
+    <tr class="double-pointage-print-header-row">
+      <th colspan="6">
+        <div class="double-pointage-print-header">
+          <div class="double-pointage-print-heading">
+            <strong class="double-pointage-print-title">${escape(info.competitionName || "Compétition")}</strong>
+            ${competitionDate ? `<span class="double-pointage-print-date">${escape(competitionDate)}</span>` : ""}
+          </div>
+          <span class="double-pointage-print-zone"><strong>ZONE</strong><span class="double-pointage-zone-circle"></span></span>
+        </div>
+      </th>
+    </tr>
+  `;
+}
 
-    await window.api.exportPDF({
-
-      fileName,
-      landscape:true
-
-    });
-
-    return;
-
+// Export commun aux trois doubles pointages.
+async function printDoublePointagePDF(sheetName, landscape = false){
+  const info = window.currentExportInfo;
+  if(!info) return;
+  const dateFR = formatDateForFile(info.competitionDate);
+  const fileName = `Double_Pointage_${sheetName}_${info.competitionName}_${dateFR}.pdf`;
+  const printDocument = typeof document !== "undefined" ? document : null;
+  let printStyle = null;
+  if(printDocument){
+    printStyle = printDocument.createElement("style");
+    printStyle.id = "double-pointage-page-print-style";
+    printStyle.textContent = `
+      @page { size: A4 portrait; margin: 8mm; }
+      @media print {
+        .double-pointage-print-header-row > th { padding: 0 !important; border: 0 !important; }
+        .double-pointage-print-header { display:flex !important; align-items:center !important; justify-content:center !important; position:relative !important; box-sizing:border-box !important; width:100% !important; min-height:19mm !important; padding:1mm 42mm 1mm 2mm !important; background:#fff !important; color:#111 !important; }
+        .double-pointage-print-title { display:block !important; width:100% !important; text-align:center !important; font-size:22pt !important; line-height:1.1 !important; font-weight:800 !important; color:#111 !important; }
+        .double-pointage-print-zone { position:absolute !important; right:2mm !important; top:50% !important; transform:translateY(-50%) !important; display:flex !important; align-items:center !important; gap:2mm !important; font-size:14pt !important; font-weight:800 !important; white-space:nowrap !important; color:#111 !important; }
+        .double-pointage-zone-circle { display:inline-block !important; width:15mm !important; height:15mm !important; min-width:15mm !important; min-height:15mm !important; border:2px solid #111 !important; border-radius:50% !important; box-sizing:border-box !important; background:#fff !important; }
+        .double-pointage-print-header-row { break-inside:avoid !important; page-break-inside:avoid !important; }
+      }
+    `;
+    printDocument.head.appendChild(printStyle);
   }
-
-
-  // ================================
-  // PWA / NAVIGATEUR
-  // ================================
-
-  if(
-    typeof window.print === "function"
-  ){
-
-    printPDFPWA(fileName);
-
-    return;
-
+  const cleanup = () => {
+    printStyle?.remove();
+    if(typeof window.removeEventListener === "function") window.removeEventListener("afterprint", cleanup);
+  };
+  if(window.api && typeof window.api.exportPDF === "function"){
+    try { return await exportPDFDocument(fileName, landscape); }
+    finally { cleanup(); }
   }
-
-
-  alert(
-    "L'export PDF n'est pas disponible sur cet appareil."
-  );
-
+  if(typeof window.addEventListener === "function") window.addEventListener("afterprint", cleanup);
+  return exportPDFDocument(fileName, landscape);
 }
 
 async function printDoublePointageMatinPDF(){
-
-  const info =
-    window.currentExportInfo;
-
-  if(!info){
-    return;
-  }
-
-  const dateFR =
-    formatDateForFile(info.competitionDate);
-
-  const fileName =
-    `Double_Pointage_Matin_${info.competitionName}_${dateFR}.pdf`;
-
-
-  // ================================
-  // ELECTRON
-  // ================================
-
-  if(
-    window.api &&
-    typeof window.api.exportPDF === "function"
-  ){
-
-    await window.api.exportPDF({
-
-      fileName,
-      landscape:false
-
-    });
-
-    return;
-
-  }
-
-
-  // ================================
-  // PWA / NAVIGATEUR
-  // ================================
-
-  if(
-    typeof window.print === "function"
-  ){
-
-    printPDFPWA(fileName);
-
-    return;
-
-  }
-
-
-  alert(
-    "L'export PDF n'est pas disponible sur cet appareil."
-  );
-
+  return printDoublePointagePDF("Matin");
 }
 
 async function printDoublePointageApresMidiPDF(){
-
-  const info =
-    window.currentExportInfo;
-
-  if(!info){
-    return;
-  }
-
-  const dateFR =
-    formatDateForFile(info.competitionDate);
-
-  const fileName =
-    `Double_Pointage_Apres_Midi_${info.competitionName}_${dateFR}.pdf`;
-
-
-  // ================================
-  // ELECTRON
-  // ================================
-
-  if(
-    window.api &&
-    typeof window.api.exportPDF === "function"
-  ){
-
-    await window.api.exportPDF({
-
-      fileName,
-      landscape:false
-
-    });
-
-    return;
-
-  }
-
-
-  // ================================
-  // PWA / NAVIGATEUR
-  // ================================
-
-  if(
-    typeof window.print === "function"
-  ){
-
-    printPDFPWA(fileName);
-
-    return;
-
-  }
-
-
-  alert(
-    "L'export PDF n'est pas disponible sur cet appareil."
-  );
-
+  return printDoublePointagePDF("Apres_Midi");
 }
 
 async function printDoublePointageToutesCategoriesPDF(){
+  return printDoublePointagePDF("Toutes_Categories");
+}
 
-  const info =
-    window.currentExportInfo;
-
-  if(!info){
-    return;
-  }
-
-
-  const dateFR =
-    formatDateForFile(
-      info.competitionDate
-    );
-
-
-  const fileName =
-    `Double_Pointage_Toutes_Categories_${info.competitionName}_${dateFR}.pdf`;
-
-
-  if(
-    window.api &&
-    typeof window.api.exportPDF === "function"
-  ){
-
-    await window.api.exportPDF({
-
-      fileName,
-
-      landscape:false
-
-    });
-
-    return;
-
-  }
-
-
-  if(
-    typeof window.print === "function"
-  ){
-
-    printPDFPWA(fileName);
-
-    return;
-
-  }
-
-
-  alert(
-    "L'export PDF n'est pas disponible sur cet appareil."
-  );
-
+// Téléchargement commun des fichiers générés côté navigateur. Garder l’URL
+// disponible quelques secondes laisse aux navigateurs mobiles le temps de
+// démarrer le téléchargement avant sa libération.
+function downloadGeneratedBlob(blob, fileName){
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 async function exportPilotsExcelPWA(){
 
   try{
 
-
     if(typeof ExcelJS === "undefined"){
 
-      alert(
-        "Impossible de charger le module ExcelJS."
-      );
+      showAppNotice("Impossible de charger le module ExcelJS. Recharge l’application puis réessaie.");
 
       return;
 
@@ -9511,34 +9519,7 @@ async function exportPilotsExcelPWA(){
      * ================================
      */
 
-    const categoryOrder = [
-
-      "Elite",
-      "Elite F",
-      "Elite V",
-
-      "N1",
-      "N1 F",
-      "N1 V",
-
-      "N2",
-      "N2 F",
-      "N2 V",
-
-      "N3",
-      "N3 F",
-      "N3 V",
-
-      "N4",
-      "N4 F",
-      "N4 V",
-
-      "N5",
-      "N5 F",
-      "N5 V"
-
-    ];
-
+    const categoryOrder = getTrialManagerCategoryOrder();
 
     /*
      * ================================
@@ -9553,7 +9534,6 @@ async function exportPilotsExcelPWA(){
       )
 
     );
-
 
     /*
      * ================================
@@ -9572,17 +9552,8 @@ async function exportPilotsExcelPWA(){
         return catDiff;
       }
 
-      const plaqueA =
-        parseInt(
-          String(a.plaque || "")
-            .replace(/[^\d]/g,"")
-        ) || 99999;
-
-      const plaqueB =
-        parseInt(
-          String(b.plaque || "")
-            .replace(/[^\d]/g,"")
-        ) || 99999;
+      const plaqueA = getTrialManagerPlateNumber(a);
+      const plaqueB = getTrialManagerPlateNumber(b);
 
       if(plaqueA !== plaqueB){
         return plaqueA - plaqueB;
@@ -9593,7 +9564,6 @@ async function exportPilotsExcelPWA(){
       );
 
     });
-
 
     /*
      * ================================
@@ -9608,7 +9578,6 @@ async function exportPilotsExcelPWA(){
       )
 
     );
-
 
     /*
      * ================================
@@ -9633,7 +9602,6 @@ async function exportPilotsExcelPWA(){
 
     });
 
-
     /*
      * ================================
      * CRÉATION DU CLASSEUR EXCELJS
@@ -9643,42 +9611,13 @@ async function exportPilotsExcelPWA(){
     const workbook =
       new ExcelJS.Workbook();
 
-
     /*
      * ================================
      * COULEURS
      * ================================
      */
 
-    const colorMap = {
-
-      "Elite":"FACC15",
-
-      "Elite F":"EC4899",
-      "Elite V":"6B7280",
-
-      "N1":"DC2626",
-      "N1 F":"EC4899",
-      "N1 V":"6B7280",
-
-      "N2":"2563EB",
-      "N2 F":"EC4899",
-      "N2 V":"6B7280",
-
-      "N3":"16A34A",
-      "N3 F":"EC4899",
-      "N3 V":"6B7280",
-
-      "N4":"FFFFFF",
-      "N4 F":"EC4899",
-      "N4 V":"6B7280",
-
-      "N5":"EA580C",
-      "N5 F":"EC4899",
-      "N5 V":"6B7280"
-
-    };
-
+    const colorMap = getTrialManagerCategoryColorMap();
 
     /*
      * ================================
@@ -9695,7 +9634,6 @@ async function exportPilotsExcelPWA(){
 
       const sheet =
         workbook.addWorksheet(name);
-
 
       /*
        * Colonnes
@@ -9747,7 +9685,6 @@ async function exportPilotsExcelPWA(){
 
       ];
 
-
       /*
        * Première ligne figée
        */
@@ -9758,7 +9695,6 @@ async function exportPilotsExcelPWA(){
           ySplit:1
         }
       ];
-
 
       /*
        * Mise en page
@@ -9772,14 +9708,12 @@ async function exportPilotsExcelPWA(){
 
       };
 
-
       /*
        * En-tête
        */
 
       const headerRow =
         sheet.getRow(1);
-
 
       headerRow.font = {
 
@@ -9789,7 +9723,6 @@ async function exportPilotsExcelPWA(){
 
       };
 
-
       headerRow.alignment = {
 
         horizontal:"center",
@@ -9798,9 +9731,7 @@ async function exportPilotsExcelPWA(){
 
       };
 
-
       headerRow.height = 30;
-
 
       headerRow.eachCell(cell => {
 
@@ -9817,7 +9748,6 @@ async function exportPilotsExcelPWA(){
           }
 
         };
-
 
         cell.border = {
 
@@ -9840,7 +9770,6 @@ async function exportPilotsExcelPWA(){
         };
 
       });
-
 
       /*
        * Pilotes
@@ -9900,7 +9829,6 @@ async function exportPilotsExcelPWA(){
 
           });
 
-
         /*
  * Format date de naissance
  */
@@ -9911,7 +9839,6 @@ if(p.birthDate){
     "dd/mm/yyyy";
 
 }
-
 
         /*
          * Police
@@ -9924,7 +9851,6 @@ if(p.birthDate){
           size:14
 
         };
-
 
         /*
          * Alignement
@@ -9941,7 +9867,6 @@ if(p.birthDate){
 
         };
 
-
         row.getCell(2).alignment = {
 
           horizontal:"left",
@@ -9949,7 +9874,6 @@ if(p.birthDate){
           vertical:"middle"
 
         };
-
 
         /*
          * Bordures
@@ -9979,14 +9903,12 @@ if(p.birthDate){
 
         });
 
-
         /*
          * Couleur catégorie
          */
 
         const color =
           colorMap[p.cat];
-
 
         if(color){
 
@@ -10008,11 +9930,9 @@ if(p.birthDate){
 
       });
 
-
       return sheet;
 
     }
-
 
     /*
      * ================================
@@ -10027,14 +9947,12 @@ if(p.birthDate){
       colorMap
     );
 
-
     buildPilotSheetPWA(
       workbook,
       "Tri Plaque",
       plaque,
       colorMap
     );
-
 
     buildPilotSheetPWA(
       workbook,
@@ -10043,14 +9961,12 @@ if(p.birthDate){
       colorMap
     );
 
-
     buildPilotSheetPWA(
       workbook,
       "Tri Catégorie",
       categorie,
       colorMap
     );
-
 
     /*
      * ================================
@@ -10063,8 +9979,6 @@ if(p.birthDate){
 
     const buffer =
       await workbook.xlsx.writeBuffer();
-
-
 
     const blob =
       new Blob(
@@ -10080,36 +9994,13 @@ if(p.birthDate){
 
       );
 
-
     /*
  * ================================
  * TÉLÉCHARGEMENT DU FICHIER
  * ================================
  */
 
-const url =
-  URL.createObjectURL(blob);
-
-const link =
-  document.createElement("a");
-
-link.href = url;
-
-link.download = fileName;
-
-link.style.display = "none";
-
-document.body.appendChild(link);
-
-link.click();
-
-link.remove();
-
-setTimeout(
-  () => URL.revokeObjectURL(url),
-  5000
-);
-
+downloadGeneratedBlob(blob, fileName);
 
     /*
      * ================================
@@ -10170,7 +10061,6 @@ Retour
 
     }
 
-
     console.error(
 
       "Erreur export Excel PWA :",
@@ -10179,13 +10069,7 @@ Retour
 
     );
 
-
-    alert(
-
-      "Erreur lors de la création du fichier Excel : "
-      + error.message
-
-    );
+    showAppNotice("Erreur lors de la création du fichier Excel : " + (error.message || "erreur inconnue"));
 
   }
 
@@ -10205,9 +10089,10 @@ async function exportPilotsExcel(){
   ){
 
     let ok =
-      await window.api.exportExcel(
-        state.pilots
-      );
+      await window.api.exportExcel({
+        pilots: state.pilots,
+        customCategories: state.customCategories || []
+      });
 
     if(ok){
 
@@ -10237,7 +10122,6 @@ Retour
 
   }
 
-
   /*
    * ================================
    * PWA / IPHONE / IPAD
@@ -10251,44 +10135,28 @@ Retour
 // ===== BACKUP =====
 
 function exportBackup(){
-
-  let data={
-
-    pilots:state.pilots,
-    clubs:state.clubs,
-    competitions:state.competitions,
-
-    sortPilotsMode:state.sortPilotsMode,
-    sortParticipantsMode:state.sortParticipantsMode,
-    sortEntryMode:state.sortEntryMode
+  const data = {
+    pilots: state.pilots,
+    clubs: state.clubs,
+    customCategories: state.customCategories || [],
+    competitions: state.competitions,
+    sortPilotsMode: state.sortPilotsMode,
+    sortParticipantsMode: state.sortParticipantsMode,
+    sortEntryMode: state.sortEntryMode
   };
 
-  let blob=new Blob(
-    [JSON.stringify(data,null,2)],
-    {type:"application/json"}
+  const blob = new Blob(
+    [JSON.stringify(data, null, 2)],
+    { type: "application/json" }
   );
 
-  let url=URL.createObjectURL(blob);
+  const today = new Date();
+  const dateString =
+    today.getFullYear() + "-" +
+    String(today.getMonth() + 1).padStart(2, "0") + "-" +
+    String(today.getDate()).padStart(2, "0");
 
-  let a=document.createElement("a");
-
-  let today=new Date();
-
-  let dateString=
-    today.getFullYear()
-    + "-"
-    + String(today.getMonth()+1).padStart(2,"0")
-    + "-"
-    + String(today.getDate()).padStart(2,"0");
-
-  a.href=url;
-
-  a.download=
-    "trial_manager_backup_"+dateString+".json";
-
-  a.click();
-
-  URL.revokeObjectURL(url);
+  downloadGeneratedBlob(blob, "trial_manager_backup_" + dateString + ".json");
 }
 
 function importBackup(){
@@ -10298,9 +10166,41 @@ function importBackup(){
     .click();
 }
 
+function isValidBackupData(data){
+
+  if(!data || typeof data !== "object" || Array.isArray(data)){
+    return false;
+  }
+
+  if(!Array.isArray(data.pilots) || !Array.isArray(data.competitions)){
+    return false;
+  }
+
+  if(data.clubs !== undefined && !Array.isArray(data.clubs)){
+    return false;
+  }
+  if(data.customCategories !== undefined && (!Array.isArray(data.customCategories) || data.customCategories.some(c => !c || typeof c.name !== "string" || typeof c.color !== "string"))){
+    return false;
+  }
+
+  for(const key of ["sortPilotsMode", "sortParticipantsMode", "sortEntryMode"]){
+    if(data[key] !== undefined && typeof data[key] !== "string"){
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function handleBackupImport(event){
 
-  let file = event.target.files[0];
+  const input = event.target;
+  const file = input.files && input.files[0];
+
+  // Réinitialiser immédiatement le champ permet de sélectionner à nouveau
+  // exactement le même fichier après une annulation ou une erreur.
+  // Le File reste utilisable par FileReader même après cette réinitialisation.
+  input.value = "";
 
   if(!file){
     return;
@@ -10314,11 +10214,8 @@ function handleBackupImport(event){
 
       let data = JSON.parse(e.target.result);
 
-      if(
-        !data.pilots ||
-        !data.competitions
-      ){
-        throw new Error();
+      if(!isValidBackupData(data)){
+        throw new Error("Format de sauvegarde invalide");
       }
 
       const ok = await askConfirm(
@@ -10333,6 +10230,9 @@ function handleBackupImport(event){
 
       state.clubs =
         data.clubs || [...defaultClubs];
+
+      state.customCategories = (data.customCategories || []).filter(c => c && typeof c.name === "string" && c.name.trim() && /^#[0-9a-f]{6}$/i.test(c.color || ""));
+      categories = [...BUILT_IN_CATEGORIES, ...state.customCategories.map(c => c.name)];
 
       state.competitions =
         data.competitions || [];
@@ -10390,9 +10290,9 @@ function handleBackupImport(event){
 
   };
 
+  // Le champ a déjà été réinitialisé avant le démarrage de FileReader.
+  // Ne pas le réinitialiser une seconde fois ici : le File capturé suffit.
   reader.readAsText(file);
-
-  event.target.value = "";
 
 }
 
@@ -10530,6 +10430,25 @@ function showExportParticipantsMenu(i){
             </div>
 
 
+            <div class="export-direct-card">
+
+              <div class="export-card-icon">🧾</div>
+              <div class="export-card-content">
+                <div class="export-card-title">Exports cravates matin</div>
+                <div class="export-card-description">PDF prêt à imprimer, adapté aux tours et zones de la compétition.</div>
+              </div>
+              <button class="export-excel-btn" onclick="exportCravatesPDF(${i}, 'matin')">Exporter PDF</button>
+            </div>
+
+            <div class="export-direct-card">
+              <div class="export-card-icon">🧾</div>
+              <div class="export-card-content">
+                <div class="export-card-title">Exports cravates après-midi</div>
+                <div class="export-card-description">PDF prêt à imprimer, adapté aux tours et zones de la compétition.</div>
+              </div>
+              <button class="export-excel-btn" onclick="exportCravatesPDF(${i}, 'apres-midi')">Exporter PDF</button>
+            </div>
+
             <div
               class="export-pointage-card"
               onclick="showDoublePointageMatin(${i})">
@@ -10649,6 +10568,15 @@ function showExportParticipantsMenu(i){
             </div>
 
 
+            <div class="export-direct-card">
+              <div class="export-card-icon">🧾</div>
+              <div class="export-card-content">
+                <div class="export-card-title">Export cravates</div>
+                <div class="export-card-description">Toutes les catégories en PDF, avec une pagination qui évite toute cravate coupée.</div>
+              </div>
+              <button class="export-excel-btn" onclick="exportCravatesPDF(${i}, 'toutes')">Exporter PDF</button>
+            </div>
+
             <div
               class="export-pointage-card"
               onclick="showDoublePointageToutesCategories(${i})">
@@ -10689,95 +10617,148 @@ function showExportParticipantsMenu(i){
   `;
 }
 
-async function exportDoublePointageMatin(i){
-
-  let c = state.competitions[i];
-
-  let participants = c.participants
-    .map(id => getPilotById(id))
-    .filter(p => p);
-
-  let ok =
-    await window.api.exportDoublePointageMatin({
-
-      participants,
-
-      competitionName:c.name,
-
-      competitionDate:c.date
-
-    });
-
-  if(ok){
-
-    app.innerHTML = `
-
-<h3>
-Export terminé
-</h3>
-
-<div class="card">
-
-✅ PDF Double Pointage Matin créé.
-
-</div>
-
-<br>
-
-<button onclick="showExportParticipantsMenu(${i})">
-Retour
-</button>
-
-`;
-
-  }
-
+// Export PDF des cravates. Les cases de zone gardent une hauteur fixe : seule
+// la hauteur totale de la cravate dépend du nombre de zones.
+function getCravateTourColor(index){
+  const colors = ["#95B3D7", "#FDE9D9", "#BFBFBF", "#D9EAD3", "#FFF2CC", "#D9D2E9", "#D0E0E3", "#F4CCCC"];
+  return colors[index] || "#EADCF8";
 }
 
+function buildCravateHTML(pilot, tourIndex, zoneCount, blank = false){
+  const safePilot = pilot || {};
+  const catColor = blank ? "#FFFFFF" : (getCategoryColor(safePilot.cat) || "#FFFFFF");
+  const tourColor = getCravateTourColor(tourIndex);
+  const esc = value => String(value ?? "").replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+  const zoneRows = Array.from({length: zoneCount}, (_, index) => `
+    <div class="cravate-zone"><span></span><span></span><span></span><span>${index + 1}</span><span></span><span></span></div>`).join("");
+  return `<section class="cravate${blank ? " cravate-blank" : ""}" style="--tour-color:${tourColor};--cat-color:${catColor}">
+    <div class="cravate-top"><div class="cravate-category">${blank ? "" : esc(safePilot.cat)}</div><div class="cravate-tour">TOUR ${tourIndex + 1}</div></div>
+    <div class="cravate-name">${blank ? "" : esc(safePilot.name)}</div>
+    <div class="cravate-club"><span>${blank ? "" : esc(safePilot.club || "")}</span><span>${blank ? "" : esc(safePilot.plaque || "")}</span></div>
+    <div class="cravate-barème"><span>0</span><span>1</span><span>2</span><span>N</span><span>3</span><span>5</span></div>
+    ${zoneRows}
+    <div class="cravate-total"><span>TOTAL Pénalité</span><span></span></div>
+  </section>`;
+}
 
-async function exportDoublePointageApresMidi(i){
+async function exportCravatesPDF(competitionIndex, selection = "toutes"){
+  const competition = state.competitions[competitionIndex];
+  if(!competition){ showAppNotice("Compétition introuvable."); return; }
+  let participants = getCompetitionParticipantsWithPlates(competition);
+  if(selection === "matin"){
+    participants = participants.filter(p => isTrialManagerMorningCategory(p.cat));
+  }else if(selection === "apres-midi"){
+    participants = participants.filter(p => isTrialManagerAfternoonCategory(p.cat));
+  }
+  // L'export papier historique "Club + Alpha" sert de référence : les noms
+  // sont triés alphabétiquement, indépendamment de la catégorie et du numéro.
+  participants.sort((a,b) => String(a.name || "").localeCompare(String(b.name || ""), "fr", {sensitivity:"base"})
+    || String(a.club || "").localeCompare(String(b.club || ""), "fr", {sensitivity:"base"})
+    || getTrialManagerPlateNumber(a, 0) - getTrialManagerPlateNumber(b, 0));
 
-  let c = state.competitions[i];
+  const tours = Math.max(1, Math.min(12, Number(competition.tours) || 3));
+  const zones = Math.max(1, Math.min(12, Number(competition.zones) || 6));
+  const cravateHeight = 43 + zones * 8.5; // mm; les lignes de zone restent à 8,5 mm.
+  const printableHeight = 283; // A4 portrait, avec 7 mm de sécurité en haut et en bas.
+  const rowGap = 0;
+  const rowsPerPage = Math.max(1, Math.floor((printableHeight + rowGap) / (cravateHeight + rowGap)));
+  const pages = [];
+  const rows = [];
 
-  let participants = c.participants
-    .map(id => getPilotById(id))
-    .filter(p => p);
-
-  let ok =
-    await window.api.exportDoublePointageApresMidi({
-
-      participants,
-
-      competitionName:c.name,
-
-      competitionDate:c.date
-
-    });
-
-  if(ok){
-
-    app.innerHTML = `
-
-<h3>
-Export terminé
-</h3>
-
-<div class="card">
-
-✅ PDF Double Pointage Après-midi créé.
-
-</div>
-
-<br>
-
-<button onclick="showExportParticipantsMenu(${i})">
-Retour
-</button>
-
-`;
-
+  // Les pilotes sont regroupés par quatre, de gauche à droite. Pour chaque
+  // groupe, les tours forment des rangées successives. Si une rangée ne tient
+  // plus, elle continue sur la page suivante, avant de passer aux pilotes suivants.
+  for(let start = 0; start < participants.length; start += 4){
+    const group = participants.slice(start, start + 4);
+    for(let tourIndex = 0; tourIndex < tours; tourIndex++){
+      // Chaque rangée contient toujours quatre emplacements. Si le dernier
+      // groupe compte moins de quatre pilotes, les places restantes sont
+      // complétées par des cravates vierges, sans créer de page supplémentaire.
+      const row = Array.from({length:4}, (_, columnIndex) =>
+        group[columnIndex]
+          ? buildCravateHTML(group[columnIndex], tourIndex, zones)
+          : buildCravateHTML({}, tourIndex, zones, true)
+      );
+      rows.push(row);
+    }
   }
 
+  for(let start = 0; start < rows.length; start += rowsPerPage){
+    const pageRows = rows.slice(start, start + rowsPerPage);
+    pages.push(`<article class="cravate-page"><div class="cravate-grid">${pageRows.map(row => `<div class="cravate-row">${row.join("")}</div>`).join("")}</div></article>`);
+  }
+
+  const label = selection === "matin" ? "Cravates_Matin" : selection === "apres-midi" ? "Cravates_Apres_Midi" : "Cravates";
+  const dateFR = competition.date ? String(competition.date).split("-").reverse().join("-") : "Sans_Date";
+  const fileName = `${label}_${String(competition.name || "Competition").replace(/[^\p{L}\p{N}_-]+/gu,"_")}_${dateFR}.pdf`;
+  const style = `<style id="cravates-pdf-style">
+    @page { size:A4 portrait; margin:0; }
+    #app:has(.cravate-document){ margin:0!important;padding:0!important;width:100%!important;max-width:none!important; }
+    .cravate-document{width:210mm;margin:0 auto;color:#111;background:#fff;font-family:Arial,Helvetica,sans-serif;}
+    .cravate-page{box-sizing:border-box;width:210mm;height:297mm;padding:7mm 7mm;overflow:hidden;page-break-after:always;break-after:page;background:#fff;}
+    .cravate-page:last-child{page-break-after:auto;break-after:auto;}
+    .cravate-grid{display:flex;flex-direction:column;gap:0;align-items:stretch;width:100%;}
+    .cravate-row{box-sizing:border-box;width:100%;height:${cravateHeight}mm;flex:0 0 ${cravateHeight}mm;display:grid;grid-template-columns:repeat(4,48.5mm);column-gap:0;justify-content:center;align-items:start;}
+    .cravate{box-sizing:border-box;position:relative;width:48.5mm;min-width:48.5mm;max-width:48.5mm;border:0;box-shadow:none;display:flex;flex-direction:column;background:#fff;break-inside:avoid;page-break-inside:avoid;font-size:8pt;overflow:visible;}\n    .cravate::after{content:"";position:absolute;inset:-.4mm;box-sizing:border-box;border:.8mm solid #111;pointer-events:none;z-index:5;}
+    .cravate-top{box-sizing:border-box;width:100%;height:9.5mm;flex:0 0 9.5mm;display:grid;grid-template-columns:1fr 1fr;font-weight:700;text-align:center;}
+    .cravate-category,.cravate-tour{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;border-bottom:.15mm solid #111;}
+    .cravate-category{background:var(--cat-color);border-right:.15mm solid #111;}
+    .cravate-tour{background:var(--tour-color);}
+    .cravate-name{box-sizing:border-box;width:100%;height:9.5mm;flex:0 0 9.5mm;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;overflow:hidden;overflow-wrap:anywhere;border-bottom:.15mm solid #111;padding:0 .5mm;}
+    .cravate-club{box-sizing:border-box;width:100%;height:8mm;flex:0 0 8mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-bottom:.15mm solid #111;font-size:7pt;font-weight:700;}
+    .cravate-club span:first-child{grid-column:span 4;}
+    .cravate-club span:nth-child(2){grid-column:span 2;}
+    .cravate-club span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;overflow:hidden;overflow-wrap:anywhere;padding:0 .3mm;}
+    .cravate-club span+span{position:relative;left:-.25mm;border-left:.15mm solid #111;}
+    .cravate-barème,.cravate-zone{box-sizing:border-box;width:100%;display:grid;grid-template-columns:repeat(6,1fr);height:8.5mm;flex:0 0 8.5mm;}
+    .cravate-barème span,.cravate-zone span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;border-right:.15mm solid #111;border-bottom:.15mm solid #111;font-weight:700;}
+    .cravate-barème span:nth-child(4),.cravate-zone span:nth-child(4){border-right:.15mm solid #111;}
+    
+    .cravate-barème span:last-child,.cravate-zone span:last-child{border-right:0;}
+    .cravate-barème{background:var(--tour-color);}
+    .cravate-zone{background:var(--tour-color);}
+    .cravate-zone span:nth-child(4){font-size:9pt;}
+    .cravate-total{box-sizing:border-box;width:100%;height:7.5mm;flex:0 0 7.5mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));font-weight:700;text-align:center;background:var(--tour-color);}
+    .cravate-total span:first-child{grid-column:span 4;}
+    .cravate-total span:nth-child(2){grid-column:span 2;}
+    .cravate-total span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;}
+    .cravate-total span+span{position:relative;left:-.25mm;border-left:.15mm solid #111;}
+    /* La première colonne est au bord du groupe imprimé : compenser son décalage propre pour retrouver la même verticale que les colonnes 2 à 4. */
+    .cravate-row > .cravate:first-child .cravate-club span+span,.cravate-row > .cravate:first-child .cravate-total span+span{left:-.5mm;}
+    .cravate-blank .cravate-name,.cravate-blank .cravate-club{color:#fff;}
+    @media screen{.cravate-page{border:1px solid #ddd;margin:8px auto;box-shadow:0 2px 8px #0002;}}
+    @media print{html,body{margin:0!important;padding:0!important;width:210mm!important;background:#fff!important;}.topbar,button{display:none!important;}#app{margin:0!important;padding:0!important;width:210mm!important;max-width:none!important;}.cravate-document{margin:0!important;width:210mm!important;}.cravate-page{margin:0!important;border:0!important;box-shadow:none!important;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
+  </style>`;
+  // Afficher directement la mise en page nécessaire à l'impression, sans écran
+  // intermédiaire ni boutons. Après fermeture/annulation de la boîte d'impression,
+  // revenir automatiquement au menu des exports.
+  app.innerHTML = `${style}<main class="cravate-document">${pages.join("")}</main>`;
+  window.currentExportInfo = {type:"cravates", competitionName:competition.name, competitionDate:competition.date};
+  try {
+    await exportPDFDocument(fileName, false);
+  } finally {
+    showExportParticipantsMenu(competitionIndex);
+  }
+}
+
+// Le double pointage utilise les écrans d’aperçu showDoublePointage* et
+// l’export PDF partagé printDoublePointagePDF/exportPDFDocument.
+// Les anciens wrappers Electron dédiés n’étaient appelés nulle part et
+// invoquaient des canaux IPC qui n’existaient pas dans main.js.
+
+function formatImportedPilotBirthDate(value){
+  if(value === null || value === undefined || value === "") return "";
+  if(value instanceof Date && !Number.isNaN(value.getTime())){
+    return `${value.getUTCFullYear()}-${String(value.getUTCMonth()+1).padStart(2,"0")}-${String(value.getUTCDate()).padStart(2,"0")}`;
+  }
+  if(typeof value === "number" && Number.isFinite(value)){
+    const date = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86400000);
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,"0")}-${String(date.getUTCDate()).padStart(2,"0")}`;
+  }
+  const text = String(value).trim();
+  const fr = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(fr) return `${fr[3]}-${String(fr[2]).padStart(2,"0")}-${String(fr[1]).padStart(2,"0")}`;
+  return text;
 }
 
 async function importPilotsExcel(){
@@ -10812,7 +10793,6 @@ Retour
     return;
   }
 
-
 function processImportedPilots(pilots){
 
   state.pilots = [];
@@ -10837,7 +10817,6 @@ function processImportedPilots(pilots){
         ? "Elite"
         : rawCat.toUpperCase();
 
-
     state.pilots.push({
 
       id: generatePilotId(),
@@ -10861,7 +10840,6 @@ function processImportedPilots(pilots){
 
     });
 
-
     if(
       club &&
       !state.clubs.includes(club)
@@ -10873,9 +10851,7 @@ function processImportedPilots(pilots){
 
   });
 
-
   save();
-
 
   app.innerHTML = `
 
@@ -10900,7 +10876,6 @@ Continuer
 
 }
 
-
   /* ================================
      ELECTRON
      ================================ */
@@ -10912,7 +10887,6 @@ Continuer
 
     const result =
       await window.api.importPilotsExcel();
-
 
     if(!result.success){
 
@@ -10946,20 +10920,17 @@ Retour
         return;
       }
 
-
       showPilots();
 
       return;
 
     }
 
-
     processImportedPilots(result.pilots);
 
     return;
 
   }
-
 
   /* ================================
      IPHONE / IPAD / NAVIGATEUR
@@ -10992,7 +10963,6 @@ Retour
 
   }
 
-
   const input =
     document.createElement("input");
 
@@ -11005,7 +10975,6 @@ Retour
 
   document.body.appendChild(input);
 
-
   input.onchange = async function(){
 
     const file =
@@ -11013,17 +10982,14 @@ Retour
 
     input.remove();
 
-
     if(!file){
       return;
     }
-
 
     try{
 
       const buffer =
         await file.arrayBuffer();
-
 
       const workbook =
         XLSX.read(
@@ -11033,19 +10999,16 @@ Retour
           }
         );
 
-
       if(!workbook.SheetNames.length){
 
         throw new Error("FORMAT");
 
       }
 
-
       const sheet =
         workbook.Sheets[
           workbook.SheetNames[0]
         ];
-
 
       const rows =
         XLSX.utils.sheet_to_json(
@@ -11055,7 +11018,6 @@ Retour
             defval: ""
           }
         );
-
 
       const expectedHeaders = [
 
@@ -11069,10 +11031,8 @@ Retour
 
       ];
 
-
       const headers =
         rows[0] || [];
-
 
       for(let i = 0; i < 7; i++){
 
@@ -11088,9 +11048,7 @@ Retour
 
       }
 
-
       const pilots = [];
-
 
       for(
         let r = 1;
@@ -11101,15 +11059,12 @@ Retour
         const row =
           rows[r] || [];
 
-
         const name =
           String(row[1] ?? "").trim();
-
 
         if(!name){
           continue;
         }
-
 
         pilots.push({
 
@@ -11131,15 +11086,13 @@ Retour
             String(row[5] ?? "").trim(),
 
           birthDate:
-            String(row[6] ?? "").trim()
+            formatImportedPilotBirthDate(row[6])
 
         });
 
       }
 
-
       processImportedPilots(pilots);
-
 
     }catch(error){
 
@@ -11147,7 +11100,6 @@ Retour
         "Erreur import Excel :",
         error
       );
-
 
       app.innerHTML = `
 
@@ -11178,7 +11130,6 @@ Retour
 
   };
 
-
   input.click();
 
 }
@@ -11189,18 +11140,14 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
     if(typeof ExcelJS === "undefined"){
 
-      alert(
-        "Impossible de charger le module ExcelJS."
-      );
+      showAppNotice("Impossible de charger le module ExcelJS. Recharge l’application puis réessaie.");
 
       return;
 
     }
 
-
     const c =
       state.competitions[i];
-
 
     /*
      * ================================
@@ -11223,42 +11170,13 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
         }));
 
-
     /*
      * ================================
      * COULEURS
      * ================================
      */
 
-    const colorMap = {
-
-      "Elite":"FACC15",
-
-      "Elite F":"EC4899",
-      "Elite V":"6B7280",
-
-      "N1":"DC2626",
-      "N1 F":"EC4899",
-      "N1 V":"6B7280",
-
-      "N2":"2563EB",
-      "N2 F":"EC4899",
-      "N2 V":"6B7280",
-
-      "N3":"16A34A",
-      "N3 F":"EC4899",
-      "N3 V":"6B7280",
-
-      "N4":"FFFFFF",
-      "N4 F":"EC4899",
-      "N4 V":"6B7280",
-
-      "N5":"EA580C",
-      "N5 F":"EC4899",
-      "N5 V":"6B7280"
-
-    };
-
+    const colorMap = getTrialManagerCategoryColorMap();
 
     /*
      * ================================
@@ -11266,34 +11184,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
      * ================================
      */
 
-    const categoryOrder = [
-
-      "Elite",
-      "Elite F",
-      "Elite V",
-
-      "N1",
-      "N1 F",
-      "N1 V",
-
-      "N2",
-      "N2 F",
-      "N2 V",
-
-      "N3",
-      "N3 F",
-      "N3 V",
-
-      "N4",
-      "N4 F",
-      "N4 V",
-
-      "N5",
-      "N5 F",
-      "N5 V"
-
-    ];
-
+    const categoryOrder = getTrialManagerCategoryOrder();
 
     /*
      * ================================
@@ -11304,6 +11195,13 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
     const workbook =
       new ExcelJS.Workbook();
 
+    // Keep formulas editable and automatically recalculated after amount entry,
+    // without forcing a full recalculation merely because the workbook is opened.
+    workbook.calcProperties = {
+      // ExcelJS only serializes fullCalcOnLoad; Excel remains in its normal
+      // automatic calculation mode when users edit amount cells.
+      fullCalcOnLoad: false
+    };
 
     /*
      * ================================
@@ -11316,7 +11214,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
       const headerRow =
         sheet.getRow(1);
 
-
       headerRow.font = {
 
         bold:true,
@@ -11325,9 +11222,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
       };
 
-
       headerRow.height = 30;
-
 
       headerRow.alignment = {
 
@@ -11336,7 +11231,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
         vertical:"middle"
 
       };
-
 
       headerRow.eachCell(cell => {
 
@@ -11351,7 +11245,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
           }
 
         };
-
 
         cell.border = {
 
@@ -11377,7 +11270,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
     }
 
-
     /*
      * ================================
      * OUTIL : STYLE LIGNE
@@ -11397,7 +11289,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
       };
 
-
       row.alignment = {
 
         horizontal:"center",
@@ -11406,7 +11297,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
       };
 
-
       row.getCell(2).alignment = {
 
         horizontal:"left",
@@ -11414,7 +11304,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
         vertical:"middle"
 
       };
-
 
       row.eachCell(cell => {
 
@@ -11440,14 +11329,11 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
       });
 
-
       const cat =
         row.getCell(categoryColumn).value;
 
-
       const color =
         colorMap[cat];
-
 
       if(color){
 
@@ -11467,7 +11353,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
     }
 
-
     /*
      * ================================
      * ONGLET CLUB + ALPHA
@@ -11480,7 +11365,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
         workbook.addWorksheet(
           "Club + Alpha"
         );
-
 
       sheet.columns = [
 
@@ -11528,7 +11412,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
       ];
 
-
       sheet.views = [
 
         {
@@ -11538,9 +11421,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
       ];
 
-
       styleHeader(sheet);
-
 
       const clubAlpha =
         [...participants]
@@ -11552,13 +11433,11 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
               b.club || ""
             );
 
-
           if(clubDiff !== 0){
 
             return clubDiff;
 
           }
-
 
           return (a.name || "")
             .localeCompare(
@@ -11567,13 +11446,11 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
         });
 
-
       let currentClub = null;
 
       let firstRowClub = null;
 
       const totalRows = [];
-
 
       clubAlpha.forEach(p=>{
 
@@ -11595,12 +11472,12 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
               {
 
                 formula:
-                  `SUM(G${firstRowClub}:G${sheet.rowCount})`
+                  `SUM(G${firstRowClub}:G${sheet.rowCount})`,
+      result: 0
 
               }
 
             ]);
-
 
           totalRow.font = {
 
@@ -11614,10 +11491,8 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
           };
 
-
           totalRow.getCell(7).numFmt =
             '# ##0.00 €';
-
 
           totalRow.eachCell(cell => {
 
@@ -11643,23 +11518,18 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
           });
 
-
           totalRows.push(
             totalRow.number
           );
 
-
           sheet.addRow([]);
-
 
           firstRowClub = null;
 
         }
 
-
         currentClub =
           p.club;
-
 
         const row =
           sheet.addRow({
@@ -11691,7 +11561,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
           });
 
-
         if(firstRowClub === null){
 
           firstRowClub =
@@ -11699,18 +11568,15 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
         }
 
-
         styleParticipantRow(
           row,
           4
         );
 
-
         row.getCell(7).numFmt =
           '# ##0.00 €';
 
       });
-
 
       /*
        * DERNIER CLUB
@@ -11731,12 +11597,12 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
             {
 
               formula:
-                `SUM(G${firstRowClub}:G${sheet.rowCount})`
+                `SUM(G${firstRowClub}:G${sheet.rowCount})`,
+      result: 0
 
             }
 
           ]);
-
 
         lastClubTotal.font = {
 
@@ -11750,10 +11616,8 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
         };
 
-
         lastClubTotal.getCell(7).numFmt =
           '# ##0.00 €';
-
 
         lastClubTotal.eachCell(cell => {
 
@@ -11779,14 +11643,11 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
         });
 
-
         totalRows.push(
           lastClubTotal.number
         );
 
-
         sheet.addRow([]);
-
 
         /*
          * TOTAL GÉNÉRAL
@@ -11809,7 +11670,8 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
                   totalRows
                     .map(r => `G${r}`)
                     .join(",")
-                })`
+                })`,
+              result: 0
 
             }
 
@@ -12757,57 +12619,9 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
        * puis plaque croissante
        */
 
-      function mainCat(cat){
-
-        if(cat.startsWith("Elite")){
-          return "Elite";
-        }
-
-        if(cat.startsWith("N1")){
-          return "N1";
-        }
-
-        if(cat.startsWith("N2")){
-          return "N2";
-        }
-
-        if(cat.startsWith("N3")){
-          return "N3";
-        }
-
-        if(cat.startsWith("N4")){
-          return "N4";
-        }
-
-        if(cat.startsWith("N5")){
-          return "N5";
-        }
-
-        return "";
-
-      }
-
-
-      function plaqueNumber(p){
-
-        return parseInt(
-          String(p.plaque || "")
-            .replace(/[^\d]/g,"")
-        ) || 0;
-
-      }
-
-
-      const cartonOrder = [
-
-        "Elite",
-        "N1",
-        "N2",
-        "N3",
-        "N4",
-        "N5"
-
-      ];
+      // Reuse the shared category normalizer so all double-pointage/carton
+      // exports follow the same category-prefix rules.
+      const cartonOrder = getTrialManagerDoublePointageAllOrder();
 
 
       const cartons =
@@ -12816,11 +12630,11 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
           const diff =
             cartonOrder.indexOf(
-              mainCat(a.cat)
+              getDoublePointageMainCategory(a.cat)
             )
             -
             cartonOrder.indexOf(
-              mainCat(b.cat)
+              getDoublePointageMainCategory(b.cat)
             );
 
 
@@ -12831,17 +12645,13 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
           }
 
 
-          return plaqueNumber(a)
+          return getTrialManagerPlateNumber(a, 0)
             -
-            plaqueNumber(b);
+            getTrialManagerPlateNumber(b, 0);
 
         });
 
 
-      buildCartonsSheetPWA(
-        "Cartons",
-        cartons
-      );
 
     }
 
@@ -12857,9 +12667,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
         participants
         .filter(p =>
 
-          p.cat.startsWith("N4")
-          ||
-          p.cat.startsWith("N5")
+          isTrialManagerMorningCategory(p.cat)
 
         )
         .sort((a,b)=>
@@ -12888,13 +12696,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
         participants
         .filter(p =>
 
-          p.cat.startsWith("Elite")
-          ||
-          p.cat.startsWith("N1")
-          ||
-          p.cat.startsWith("N2")
-          ||
-          p.cat.startsWith("N3")
+          isTrialManagerAfternoonCategory(p.cat)
 
         )
         .sort((a,b)=>
@@ -12919,16 +12721,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
        * ================================
        */
 
-      buildCartonsSheetPWA(
-        "Cartons Matin",
-        matin
-      );
-
-
-      buildCartonsSheetPWA(
-        "Cartons Après-midi",
-        apresMidi
-      );
 
     }
 
@@ -12952,10 +12744,8 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
       `Participants_${c.name}_${dateFR}.xlsx`
         .replaceAll(" ","_");
 
-
     const buffer =
       await workbook.xlsx.writeBuffer();
-
 
     const blob =
       new Blob(
@@ -12971,50 +12761,13 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
       );
 
-
     /*
      * ================================
      * TÉLÉCHARGEMENT
      * ================================
      */
 
-    const url =
-      URL.createObjectURL(blob);
-
-
-    const link =
-      document.createElement("a");
-
-
-    link.href =
-      url;
-
-
-    link.download =
-      fileName;
-
-
-    link.style.display =
-      "none";
-
-
-    document.body.appendChild(link);
-
-
-    link.click();
-
-
-    link.remove();
-
-
-    setTimeout(
-
-      () => URL.revokeObjectURL(url),
-
-      5000
-
-    );
-
+    downloadGeneratedBlob(blob, fileName);
 
     /*
      * ================================
@@ -13032,7 +12785,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
         &&
         navigator.maxTouchPoints > 1
       );
-
 
     app.innerHTML = `
 
@@ -13077,18 +12829,12 @@ Retour
 
     }
 
-
     console.error(
       "Erreur export Participants Excel PWA :",
       error
     );
 
-
-    alert(
-      "Erreur lors de la création du fichier Excel : "
-      +
-      error.message
-    );
+    showAppNotice("Erreur lors de la création du fichier Excel : " + (error.message || "erreur inconnue"));
 
   }
 
@@ -13130,6 +12876,8 @@ async function exportParticipantsExcel(i, mode = "sessions"){
 
         participants,
 
+        customCategories: state.customCategories || [],
+
         competitionName:
           c.name,
 
@@ -13168,7 +12916,6 @@ Retour
 
   }
 
-
   /*
    * ================================
    * PWA
@@ -13179,187 +12926,36 @@ Retour
 
 }
 
-function doExportParticipantsExcel(i, mode){ 
+function getRankingTitleColor(title){
+  const normalized = String(title || "").trim().toLocaleUpperCase("fr");
+  if (normalized === "FEMININ" || normalized === "FÉMININ" || normalized === "FEMININ".normalize("NFD")) return "#EC4899";
+  if (normalized === "VETERAN" || normalized === "VÉTÉRAN") return "#6B7280";
+  return getCategoryColor(title) || "#FFFFFF";
+}
 
-  let c = state.competitions[i];
-
-  let list = c.participants
-    .map(id => getPilotById(id))
-    .filter(p => p);
-
-  mode = mode.toUpperCase();
-
-  // ===== TRI =====
-
-  if(mode==="CAT"){
-
-    list.sort((a,b)=>{
-
-      let catDiff=
-        categories.indexOf(a.cat)
-        -
-        categories.indexOf(b.cat);
-
-      if(catDiff!==0){
-        return catDiff;
-      }
-
-      return a.name.localeCompare(b.name);
-    });
-  }
-  else{
-
-    list.sort((a,b)=>
-      a.name.localeCompare(b.name)
-    );
-  }
-
-  // ===== DONNÉES =====
-
-  let data=[];
-
-  data.push([
-    "NOM PRENOM",
-    "CLUB",
-    "CATEGORIE",
-    "LICENCE",
-    "PLAQUE",
-    "TOUR 1",
-    "TOUR 2",
-    "TOUR 3"
-  ]);
-
-  list.forEach(p=>{
-
-    data.push([
-      p.name,
-      p.club || "",
-      p.cat,
-      p.lic || "",
-      "",
-      "",
-      "",
-      ""
-    ]);
-  });
-
-  // ===== WORKBOOK =====
-
-  let wb=XLSX.utils.book_new();
-
-  let ws=XLSX.utils.aoa_to_sheet(data);
-
-  // ===== LARGEUR COLONNES =====
-
-  ws["!cols"]=[
-
-    {wch:28}, // NOM
-    {wch:22}, // CLUB
-    {wch:14}, // CAT
-    {wch:14}, // LICENCE
-    {wch:10}, // PLAQUE
-    {wch:10}, // TOUR1
-    {wch:10}, // TOUR2
-    {wch:10}  // TOUR3
-  ];
-
-  // ===== STYLE EN-TÊTES =====
-
-  let headers=[
-    "A1",
-    "B1",
-    "C1",
-    "D1",
-    "E1",
-    "F1",
-    "G1",
-    "H1"
-  ];
-
-  headers.forEach(cell=>{
-
-    if(ws[cell]){
-
-      ws[cell].s={
-
-        font:{
-          bold:true,
-          color:{rgb:"FFFFFF"}
-        },
-
-        fill:{
-          fgColor:{rgb:"111827"}
-        },
-
-        alignment:{
-          horizontal:"center"
-        }
-      };
-    }
-  });
-
-  // ===== COULEURS CATEGORIES =====
-
-  for(let r=2;r<=list.length+1;r++){
-
-    let cat=data[r-1][2];
-
-    let color=CATEGORY_COLORS[cat];
-
-    if(ws["C"+r]){
-
-      ws["C"+r].s={
-
-        fill:{
-          fgColor:{rgb:color}
-        },
-
-        alignment:{
-          horizontal:"center"
-        }
-      };
-    }
-  }
-
-  XLSX.utils.book_append_sheet(
-    wb,
-    ws,
-    "Participants"
-  );
-
-  XLSX.writeFile(
-    wb,
-    c.name.replaceAll(" ","_")+"_participants.xlsx"
-  );
+function getRankingTitleTextColor(title){
+  const normalized = String(title || "").trim().toLocaleUpperCase("fr");
+  if (["N1", "N2", "N3", "N5"].includes(normalized)) return "#FFFFFF";
+  return "#111827";
 }
 
 function getCategoryColor(cat){
+  const customCategoriesForColor = typeof state !== "undefined" && Array.isArray(state.customCategories) ? state.customCategories : [];
+  const custom = customCategoriesForColor.find(c => String(c.name || "").trim().toLocaleLowerCase("fr") === String(cat ?? "").trim().toLocaleLowerCase("fr"));
+  if(custom && /^#[0-9a-f]{6}$/i.test(custom.color || "")) return custom.color;
+  const normalizedCategory = String(cat ?? "").trim().toUpperCase();
+  if (!normalizedCategory) return "";
 
-  if(cat.startsWith("Elite F")) return "#EC4899";
-  if(cat.startsWith("Elite V")) return "#6B7280";
-  if(cat.startsWith("Elite")) return "#FACC15";
+  // Prioritize full category labels before their main category prefixes.
+  // The shared reference is used by Excel exports; this maps it to CSS colors.
+  for (const category of TRIAL_MANAGER_CATEGORY_COLOR_MATCH_ORDER) {
+    if (normalizedCategory.startsWith(category.toUpperCase())) {
+      return `#${TRIAL_MANAGER_CATEGORY_COLORS[category]}`;
+    }
+  }
 
-  if(cat.startsWith("N1 F")) return "#EC4899";
-  if(cat.startsWith("N1 V")) return "#6B7280";
-  if(cat.startsWith("N1")) return "#DC2626";
-
-  if(cat.startsWith("N2 F")) return "#EC4899";
-  if(cat.startsWith("N2 V")) return "#6B7280";
-  if(cat.startsWith("N2")) return "#2563EB";
-
-  if(cat.startsWith("N3 F")) return "#EC4899";
-  if(cat.startsWith("N3 V")) return "#6B7280";
-  if(cat.startsWith("N3")) return "#16A34A";
-
-  if(cat.startsWith("N4 F")) return "#EC4899";
-  if(cat.startsWith("N4 V")) return "#6B7280";
-  if(cat.startsWith("N4")) return "#ffffff";
-
-  if(cat.startsWith("N5 F")) return "#EC4899";
-  if(cat.startsWith("N5 V")) return "#6B7280";
-  if(cat.startsWith("N5")) return "#EA580C";
-
-  return "#FFFFFF";
+  // An unrecognized category must not inherit N4's white background.
+  return "";
 }
 
 // ===== RESET FIN DE SAISON =====
@@ -13472,18 +13068,15 @@ async function confirmSeasonReset(){
       (data.code || "").trim();
 
     if(code === ""){
-      console.log("Code obligatoire");
       continue;
     }
 
     if(code !== "1234"){
-      console.log("Code incorrect");
       continue;
     }
 
     break;
   }
-
 
   let ok = await askConfirm(
     "Confirmer la suppression définitive de toutes les données de la saison ?"
@@ -13492,7 +13085,6 @@ async function confirmSeasonReset(){
   if(!ok){
     return;
   }
-
 
   state.competitions = [];
   state.pilots = [];

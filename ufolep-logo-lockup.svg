@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 190" role="img" aria-labelledby="title desc">
+  <title id="title">UFOLEP — Tous les sports autrement</title>
+  <desc id="desc">Wordmark UFOLEP multicolore avec la signature Tous les sports autrement.</desc>
+  <defs><linearGradient id="ufolepGradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b21b70"/><stop offset=".22" stop-color="#e74742"/><stop offset=".42" stop-color="#f29b2e"/><stop offset=".62" stop-color="#d4c747"/><stop offset=".82" stop-color="#79bb88"/><stop offset="1" stop-color="#2e9b9b"/></linearGradient></defs>
+  <rect width="520" height="190" fill="#fff" fill-opacity="0"/>
+  <text x="260" y="105" text-anchor="middle" font-family="Trebuchet MS, Arial, sans-serif" font-size="100" font-style="italic" font-weight="700" letter-spacing="-7" fill="url(#ufolepGradient)">ufolep</text>
+  <text x="260" y="151" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="1.2" fill="#606060">TOUS LES SPORTS</text>
+  <text x="260" y="180" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="1.2" fill="#239b9b">AUTREMENT</text>
+</svg>

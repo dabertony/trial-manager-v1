@@ -1,0 +1,15 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..');
+const preload = fs.readFileSync(path.join(root, 'preload.js'), 'utf8');
+const main = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
+const invoked = [...preload.matchAll(/ipcRenderer\.invoke\(\s*["']([^"']+)["']/g)].map(m => m[1]);
+const handled = new Set([...main.matchAll(/ipcMain\.handle\(\s*["']([^"']+)["']/g)].map(m => m[1]));
+assert.ok(invoked.length > 0, 'preload should expose at least one invoke-based API');
+const missing = [...new Set(invoked)].filter(channel => !handled.has(channel));
+assert.deepEqual(missing, [], `preload invoke channels missing ipcMain handlers: ${missing.join(', ')}`);
+const duplicate = invoked.filter((channel, index) => invoked.indexOf(channel) !== index);
+assert.deepEqual(duplicate, [], `preload should not expose duplicate invoke channels: ${duplicate.join(', ')}`);
+console.log(`PASS: ${new Set(invoked).size} Electron invoke channels match main-process handlers; no duplicates.`);

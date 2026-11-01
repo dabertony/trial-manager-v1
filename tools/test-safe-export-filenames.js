@@ -1,0 +1,30 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const source = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
+const match = source.match(/function sanitizeSuggestedFileName\(value, fallback = "Document"\) \{[\s\S]*?\n\}/);
+if (!match) throw new Error('Filename sanitizer not found');
+let checks = 0;
+function check(ok, message) { checks++; if (!ok) throw new Error(message); }
+const sandbox = {};
+vm.runInNewContext(`${match[0]}; this.sanitize = sanitizeSuggestedFileName;`, sandbox);
+const sanitize = sandbox.sanitize;
+check(sanitize('Resultats_Course.pdf') === 'Resultats_Course.pdf', 'ordinary filename should be preserved');
+check(sanitize('Course: test/club?.pdf') === 'Course__test_club_.pdf', 'Windows-invalid filename characters should be replaced');
+check(sanitize('nom\\avec\\chemins.pdf') === 'nom_avec_chemins.pdf', 'path separators should not remain in suggested filename');
+check(sanitize('   ') === 'Document', 'empty filename should use fallback');
+check(sanitize(null, 'Participants.xlsx') === 'Participants.xlsx', 'null filename should use supplied fallback');
+check(!/[<>:"/\\|?*\x00-\x1F]/.test(sanitize('a<>:"/\\|?*b.pdf')), 'sanitized name should contain no forbidden characters');
+check(sanitize('a'.repeat(250)).length === 180, 'suggested filename should have a bounded length');
+const longXlsx = sanitize('Competition_' + 'a'.repeat(250) + '.xlsx');
+check(longXlsx.length === 180 && longXlsx.endsWith('.xlsx'), 'long suggested filename should keep its extension');
+check(sanitize('test. ') === 'test', 'trailing dots/spaces should not remain');
+const pdfHandler = source.match(/ipcMain\.handle\("export-pdf", async \(event, options = \{\}\) => \{[\s\S]*?\n\}\);/);
+check(!!pdfHandler && pdfHandler[0].includes('sanitizeSuggestedFileName(options.fileName, "Document.pdf")'), 'PDF save dialog should use sanitized filename');
+const participantHandler = source.match(/ipcMain\.handle\("export-participants-excel", async \(event, data\) => \{[\s\S]*?\n\}\);/);
+check(!!participantHandler && participantHandler[0].includes('sanitizeSuggestedFileName('), 'participants Excel save dialog should use sanitized filename');
+
+const pilotHandler = source.match(/ipcMain\.handle\("export-excel", async \(event, data\) => \{[\s\S]*?\n\}\);/);
+check(!!pilotHandler && pilotHandler[0].includes('sanitizeSuggestedFileName("Pilotes.xlsx", "Pilotes.xlsx")'), 'pilots Excel save dialog should use the shared filename sanitizer');
+console.log(`PASS: ${checks} safe export filename checks passed.`);

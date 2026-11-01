@@ -1,0 +1,31 @@
+const fs = require('fs');
+const vm = require('vm');
+const app = fs.readFileSync('app.js', 'utf8');
+const css = fs.readFileSync('style.css', 'utf8');
+const index = fs.readFileSync('index.html', 'utf8');
+const sw = fs.readFileSync('service-worker.js', 'utf8');
+function check(ok, message) { if (!ok) throw new Error(message); }
+check(app.includes("showAgePilotDetection('n5')") && app.includes("showAgePilotDetection('veteran')"), 'both age-detection actions should be available');
+check(app.includes("year < season.n5BirthYearExclusive"), 'N5 cutoff should be exclusive and season-based');
+check(app.includes("year <= season.veteranBirthYearInclusive"), 'veteran cutoff should include the threshold birth year');
+check(app.includes("['N5','N5 F','N5 V']"), 'N5, N5F and N5V should be detected');
+check(app.includes("['N2','N3','N4']"), 'only N2, N3 and N4 should be eligible for veteran detection');
+check(app.includes("p.cat = `${p.cat} V`"), 'veteran promotion should preserve the N-level');
+check(app.includes('ageScratchOnly: !!p.ageScratchOnly'), 'age-only status should flow into competition ranking data');
+check(app.includes('isUfolepRankingEligible(p)'), 'ranking and championship logic should use the UFOLEP eligibility helper');
+check(app.includes('isAgeScratchOnlyPilot(p)'), 'age-exception pilots should be marked in ranking tables');
+check(css.includes('.age-scratch-marker') && css.includes('.age-detection-check'), 'age-detection styles and pilot marker should exist');
+check(index.includes('app.js?v=103'), 'application script cache version should be updated');
+check(sw.includes('trial-manager-cache-v114'), 'service worker cache should be updated');
+// Validate the season thresholds without loading the complete application.
+const source = app.slice(app.indexOf('function getUfolepSeasonContext'), app.indexOf('function showAgePilotDetection'));
+const context = { Date };
+vm.createContext(context);
+vm.runInContext(source, context);
+const oct = vm.runInContext('getUfolepSeasonContext(new Date(2026, 9, 30))', context);
+const jul = vm.runInContext('getUfolepSeasonContext(new Date(2027, 6, 15))', context);
+const sep = vm.runInContext('getUfolepSeasonContext(new Date(2027, 8, 1))', context);
+check(oct.label === '2026-2027' && oct.n5BirthYearExclusive === 2016 && oct.veteranBirthYearInclusive === 1996, '2026-2027 thresholds should match agreed rules');
+check(jul.label === '2026-2027', 'season thresholds should remain fixed through August');
+check(sep.label === '2027-2028' && sep.n5BirthYearExclusive === 2017 && sep.veteranBirthYearInclusive === 1997, 'thresholds should roll over on September 1');
+console.log('PASS: age-based pilot detection, seasonal thresholds, ranking exception and UI wiring.');

@@ -5,7 +5,7 @@
   <title>Trial Manager</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=30">
 
   <!-- PWA MANIFEST -->
   <link rel="manifest" href="manifest.json">
@@ -30,13 +30,12 @@
     style="display:none"
     onchange="handleBackupImport(event)">
 
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=103"></script>
 
   <!-- SERVICE WORKER (PWA) -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./service-worker.js')
-        .then(() => console.log('Service Worker enregistré'))
         .catch(err => console.error('Service Worker erreur:', err));
     }
   </script>

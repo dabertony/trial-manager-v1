@@ -5,6 +5,30 @@ const ExcelJS = require("exceljs");
 let mainWindow;
 let tvWindow = null;
 
+// Nettoie les noms proposés aux boîtes d’enregistrement Windows/macOS/Linux.
+// Les noms proviennent parfois du nom libre d’une compétition, qui peut
+// contenir des caractères interdits dans un nom de fichier.
+function sanitizeSuggestedFileName(value, fallback = "Document") {
+  const raw = String(value ?? "");
+  if (!raw.trim()) return fallback;
+
+  const cleaned = raw
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+    .replace(/\s+/g, "_")
+    .replace(/[. _]+$/g, "");
+
+  if (!cleaned) return fallback;
+  if (cleaned.length <= 180) return cleaned;
+
+  // Garder l’extension : une compétition très longue ne doit pas produire
+  // un fichier qui perd son .pdf ou son .xlsx dans la boîte d’enregistrement.
+  const extension = cleaned.match(/\.[A-Za-z0-9]{1,10}$/)?.[0] || "";
+  if (!extension) return cleaned.slice(0, 180);
+
+  const base = cleaned.slice(0, -extension.length);
+  return `${base.slice(0, Math.max(1, 180 - extension.length))}${extension}`;
+}
+
 function getMainCategory(cat){
 
   if(cat.startsWith("Elite")) return "Elite";
@@ -71,216 +95,223 @@ function createWindow() {
 
 app.whenReady().then(createWindow);
 
-ipcMain.handle("export-pdf", async (event, options) => {
+ipcMain.handle("export-pdf", async (event, options = {}) => {
 
-  const filePath = dialog.showSaveDialogSync(mainWindow, {
-    defaultPath: options.fileName
-  });
+  try {
+    const filePath = dialog.showSaveDialogSync(mainWindow, {
+      defaultPath: sanitizeSuggestedFileName(options.fileName, "Document.pdf"),
+      filters: [{ name: "Document PDF", extensions: ["pdf"] }]
+    });
 
-  if (!filePath) {
+    // Annuler la boîte de dialogue est un choix normal, pas une erreur.
+    if (!filePath) {
+      return false;
+    }
+
+    const pdfBuffer = await mainWindow.webContents.printToPDF({
+      landscape: options.landscape ?? true,
+      printBackground: true,
+      displayHeaderFooter: false,
+      pageSize: "A4",
+      margins: options.margins || {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0
+      },
+      headerTemplate: "<div></div>",
+      footerTemplate: "<div></div>"
+    });
+
+    fs.writeFileSync(filePath, pdfBuffer);
+    return true;
+  } catch (error) {
+    console.error("Erreur pendant l’export PDF :", error);
+    dialog.showErrorBox(
+      "Export PDF impossible",
+      "Le fichier PDF n’a pas pu être créé ou enregistré.\n\nVérifie que le dossier est accessible et que le fichier n’est pas déjà utilisé."
+    );
     return false;
   }
-
-  const pdfBuffer = await mainWindow.webContents.printToPDF({
-    landscape:
-    options.landscape ?? true,
-    printBackground: true,
-    pageSize: "A4",
-
-    margins: {
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0
-  }
-  });
-
-  
-
-  fs.writeFileSync(filePath, pdfBuffer);
-
-  return true;
 });
 
 ipcMain.handle("export-excel", async (event, data) => {
+  try {
+    const pilots = Array.isArray(data) ? data : (Array.isArray(data?.pilots) ? data.pilots : []);
+    const customCategories = Array.isArray(data?.customCategories) ? data.customCategories : [];
+    const exportColorMap = { ...colorMap };
+    customCategories.forEach(category => {
+      const name = String(category?.name || "").trim();
+      const hex = String(category?.color || "").replace(/^#/, "");
+      if (name && /^[0-9a-f]{6}$/i.test(hex)) exportColorMap[name] = hex.toUpperCase();
+    });
 
-  const filePath = dialog.showSaveDialogSync(mainWindow,{
-    defaultPath:"Pilotes.xlsx"
+    const filePath = dialog.showSaveDialogSync(mainWindow, {
+      defaultPath: sanitizeSuggestedFileName("Pilotes.xlsx", "Pilotes.xlsx"),
+      filters: [{ name: "Classeur Excel", extensions: ["xlsx"] }]
+    });
+
+    if(!filePath){
+      return false;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+
+  const categoryOrder = [
+
+    "Elite",
+    "Elite F",
+    "Elite V",
+
+    "N1",
+    "N1 F",
+    "N1 V",
+
+    "N2",
+    "N2 F",
+    "N2 V",
+
+    "N3",
+    "N3 F",
+    "N3 V",
+
+    "N4",
+    "N4 F",
+    "N4 V",
+
+    "N5",
+    "N5 F",
+    "N5 V",
+    ...customCategories.map(category => String(category?.name || "").trim()).filter(Boolean)
+  ];
+
+  const alpha = [...pilots]
+  .sort((a,b)=>
+    a.name.localeCompare(b.name)
+  );
+
+  const plaque = [...pilots]
+  .sort((a,b)=>{
+
+    let catDiff =
+      mainCategoryOrder.indexOf(
+        getMainCategory(a.cat)
+      )
+      -
+      mainCategoryOrder.indexOf(
+        getMainCategory(b.cat)
+      );
+
+    if(catDiff !== 0){
+      return catDiff;
+    }
+
+    let plaqueA =
+      parseInt(
+        String(a.plaque || "")
+        .replace(/[^\d]/g,"")
+      ) || 99999;
+
+    let plaqueB =
+      parseInt(
+        String(b.plaque || "")
+        .replace(/[^\d]/g,"")
+      ) || 99999;
+
+    if(plaqueA !== plaqueB){
+      return plaqueA - plaqueB;
+    }
+
+    return a.name.localeCompare(b.name);
+
   });
 
-  if(!filePath){
+  const club = [...pilots]
+  .sort((a,b)=>
+    (a.club || "")
+    .localeCompare(b.club || "")
+  );
+
+  const categorie = [...pilots]
+  .sort((a,b)=>{
+
+    let diff =
+      categoryOrder.indexOf(a.cat)
+      -
+      categoryOrder.indexOf(b.cat);
+
+    if(diff !== 0){
+      return diff;
+    }
+
+    return a.name.localeCompare(b.name);
+
+  });
+
+  buildPilotSheet(
+    workbook,
+    "Tri Alpha",
+    alpha,
+    exportColorMap
+  );
+
+  buildPilotSheet(
+    workbook,
+    "Tri Plaque",
+    plaque,
+    exportColorMap
+  );
+
+  buildPilotSheet(
+    workbook,
+    "Tri Club",
+    club,
+    exportColorMap
+  );
+
+  buildPilotSheet(
+    workbook,
+    "Tri Catégorie",
+    categorie,
+    exportColorMap
+  );
+
+  await workbook.xlsx.writeFile(filePath);
+
+    return true;
+
+
+  } catch (error) {
+    console.error("Erreur pendant l’export des pilotes :", error);
+    dialog.showErrorBox(
+      "Export Excel impossible",
+      "Le fichier Excel n’a pas pu être créé ou enregistré.\n\nVérifie que le dossier est accessible et que le fichier n’est pas déjà utilisé."
+    );
     return false;
   }
-
-  const workbook = new ExcelJS.Workbook();
-
-const categoryOrder = [
-
-  "Elite",
-  "Elite F",
-  "Elite V",
-
-  "N1",
-  "N1 F",
-  "N1 V",
-
-  "N2",
-  "N2 F",
-  "N2 V",
-
-  "N3",
-  "N3 F",
-  "N3 V",
-
-  "N4",
-  "N4 F",
-  "N4 V",
-
-  "N5",
-  "N5 F",
-  "N5 V"
-];
-
-const alpha = [...data]
-.sort((a,b)=>
-  a.name.localeCompare(b.name)
-);
-
-const plaque = [...data]
-.sort((a,b)=>{
-
-  let catDiff =
-    mainCategoryOrder.indexOf(
-      getMainCategory(a.cat)
-    )
-    -
-    mainCategoryOrder.indexOf(
-      getMainCategory(b.cat)
-    );
-
-  if(catDiff !== 0){
-    return catDiff;
-  }
-
-  let plaqueA =
-    parseInt(
-      String(a.plaque || "")
-      .replace(/[^\d]/g,"")
-    ) || 99999;
-
-  let plaqueB =
-    parseInt(
-      String(b.plaque || "")
-      .replace(/[^\d]/g,"")
-    ) || 99999;
-
-  if(plaqueA !== plaqueB){
-    return plaqueA - plaqueB;
-  }
-
-  return a.name.localeCompare(b.name);
-
-});
-
-const club = [...data]
-.sort((a,b)=>
-  (a.club || "")
-  .localeCompare(b.club || "")
-);
-
-const categorie = [...data]
-.sort((a,b)=>{
-
-  let diff =
-    categoryOrder.indexOf(a.cat)
-    -
-    categoryOrder.indexOf(b.cat);
-
-  if(diff !== 0){
-    return diff;
-  }
-
-  return a.name.localeCompare(b.name);
-
-});
-
-buildPilotSheet(
-  workbook,
-  "Tri Alpha",
-  alpha,
-  colorMap
-);
-
-buildPilotSheet(
-  workbook,
-  "Tri Plaque",
-  plaque,
-  colorMap
-);
-
-buildPilotSheet(
-  workbook,
-  "Tri Club",
-  club,
-  colorMap
-);
-
-buildPilotSheet(
-  workbook,
-  "Tri Catégorie",
-  categorie,
-  colorMap
-);
-
-await workbook.xlsx.writeFile(filePath);
-
-  return true;
 
 });
 
 function formatImportedBirthDate(value){
 
-  if(!value){
-    return "";
+  if(value === null || value === undefined || value === "") return "";
+
+  // Excel stocke les dates sous forme de nombre de jours depuis le 30/12/1899.
+  // La fraction correspond à l'heure : on l'ignore pour une date de naissance.
+  if(typeof value === "number" && Number.isFinite(value)){
+    const date = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86400000);
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,"0")}-${String(date.getUTCDate()).padStart(2,"0")}`;
   }
 
-  if(value instanceof Date){
-
-    const day =
-      String(value.getDate()).padStart(2,"0");
-
-    const month =
-      String(value.getMonth() + 1).padStart(2,"0");
-
-    const year =
-      value.getFullYear();
-
-    return `${year}-${month}-${day}`;
-
+  if(value instanceof Date && !Number.isNaN(value.getTime())){
+    return `${value.getUTCFullYear()}-${String(value.getUTCMonth()+1).padStart(2,"0")}-${String(value.getUTCDate()).padStart(2,"0")}`;
   }
 
-  const text =
-    String(value).trim();
-
-  const match =
-    text.match(
-      /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
-    );
-
-  if(match){
-
-    return (
-      match[3]
-      + "-"
-      + String(match[2]).padStart(2,"0")
-      + "-"
-      + String(match[1]).padStart(2,"0")
-    );
-
-  }
+  const text = String(value).trim();
+  const fr = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(fr) return `${fr[3]}-${String(fr[2]).padStart(2,"0")}-${String(fr[1]).padStart(2,"0")}`;
 
   return text;
-
 }
 
 ipcMain.handle("import-pilots-excel",async () => {
@@ -431,245 +462,218 @@ ipcMain.handle("import-pilots-excel",async () => {
 );
 
 ipcMain.handle("export-participants-excel", async (event, data) => {
+  try {
 
-  const dateFR =
-    formatDateForFile(data.competitionDate);
+    const dateFR =
+      formatDateForFile(data.competitionDate);
 
-  const filePath = dialog.showSaveDialogSync(
-    mainWindow,
-    {
-      defaultPath:
-        `Participants_${data.competitionName}_${dateFR}.xlsx`
-          .replaceAll(" ", "_")
-    }
-  );
-
-  if(!filePath){
-    return false;
-  }
-
-  const workbook =
-    new ExcelJS.Workbook();
-
-
-  // =========================================
-  // DONNÉES COMMUNES
-  // =========================================
-
-  buildParticipantsClubSheet(
-    workbook,
-    data.participants,
-    colorMap
-  );
-
-
-  // =========================================
-  // CATÉGORIE + ALPHA
-  // =========================================
-
-  const categoryOrder = [
-    "Elite",
-    "Elite F",
-    "Elite V",
-    "N1",
-    "N1 F",
-    "N1 V",
-    "N2",
-    "N2 F",
-    "N2 V",
-    "N3",
-    "N3 F",
-    "N3 V",
-    "N4",
-    "N4 F",
-    "N4 V",
-    "N5",
-    "N5 F",
-    "N5 V"
-  ];
-
-  const categorieAlpha =
-    [...data.participants]
-      .sort((a, b) => {
-
-        let diff =
-          categoryOrder.indexOf(a.cat)
-          -
-          categoryOrder.indexOf(b.cat);
-
-        if(diff !== 0){
-          return diff;
-        }
-
-        return a.name.localeCompare(b.name);
-      });
-
-  buildParticipantsSimpleSheet(
-    workbook,
-    "Catégorie + Alpha",
-    categorieAlpha,
-    colorMap
-  );
-
-
-  // =========================================
-  // COMPÉTITION TOUTES CATÉGORIES
-  // =========================================
-
-  if(data.mode === "toutes"){
-
-    const toutesCategories =
-  [...data.participants]
-    .sort((a, b) =>
-      a.name.localeCompare(b.name)
+    const filePath = dialog.showSaveDialogSync(
+      mainWindow,
+      {
+        defaultPath: sanitizeSuggestedFileName(
+          `Participants_${data.competitionName}_${dateFR}.xlsx`,
+          "Participants.xlsx"
+        ),
+        filters: [{ name: "Classeur Excel", extensions: ["xlsx"] }]
+      }
     );
 
-    buildParticipantsSimpleSheet(
+    if(!filePath){
+      return false;
+    }
+
+    const workbook =
+      new ExcelJS.Workbook();
+
+    // Keep formulas editable and automatically recalculated after amount entry,
+    // without forcing a full recalculation merely because the workbook is opened.
+    workbook.calcProperties = {
+      // ExcelJS only serializes fullCalcOnLoad; Excel remains in its normal
+      // automatic calculation mode when users edit amount cells.
+      fullCalcOnLoad: false
+    };
+    const exportColorMap = { ...colorMap };
+    (Array.isArray(data.customCategories) ? data.customCategories : []).forEach(category => {
+      const name = String(category?.name || "").trim();
+      const hex = String(category?.color || "").replace(/^#/, "");
+      if (name && /^[0-9a-f]{6}$/i.test(hex)) exportColorMap[name] = hex.toUpperCase();
+    });
+
+    // =========================================
+    // DONNÉES COMMUNES
+    // =========================================
+
+    buildParticipantsClubSheet(
       workbook,
-      "Toutes catégories",
-      toutesCategories,
-      colorMap
+      data.participants,
+      exportColorMap
     );
 
 
-    // =======================================
-    // CARTONS TOUTES CATÉGORIES
-    // =======================================
+    // =========================================
+    // CATÉGORIE + ALPHA
+    // =========================================
 
-    function mainCat(cat){
-
-      if(cat.startsWith("Elite")){
-        return "Elite";
-      }
-
-      if(cat.startsWith("N1")){
-        return "N1";
-      }
-
-      if(cat.startsWith("N2")){
-        return "N2";
-      }
-
-      if(cat.startsWith("N3")){
-        return "N3";
-      }
-
-      if(cat.startsWith("N4")){
-        return "N4";
-      }
-
-      if(cat.startsWith("N5")){
-        return "N5";
-      }
-
-      return "";
-    }
-
-
-    const cartonOrder = [
+    const categoryOrder = [
       "Elite",
+      "Elite F",
+      "Elite V",
       "N1",
+      "N1 F",
+      "N1 V",
       "N2",
+      "N2 F",
+      "N2 V",
       "N3",
+      "N3 F",
+      "N3 V",
       "N4",
-      "N5"
+      "N4 F",
+      "N4 V",
+      "N5",
+      "N5 F",
+      "N5 V",
+      ...(Array.isArray(data.customCategories) ? data.customCategories.map(category => String(category?.name || "").trim()).filter(Boolean) : [])
     ];
 
+    const categorieAlpha =
+      [...data.participants]
+        .sort((a, b) => {
 
-    const cartons =
-  [...data.participants]
-    .sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
+          let diff =
+            categoryOrder.indexOf(a.cat)
+            -
+            categoryOrder.indexOf(b.cat);
 
+          if(diff !== 0){
+            return diff;
+          }
 
-    buildCartonsSheet(
-      workbook,
-      "Cartons",
-      cartons,
-      colorMap
-    );
-
-  }
-
-
-  // =========================================
-  // COMPÉTITION EN 2 SESSIONS
-  // =========================================
-
-  else{
-
-    const matin =
-      data.participants
-        .filter(p =>
-          p.cat.startsWith("N4")
-          ||
-          p.cat.startsWith("N5")
-        )
-        .sort((a, b) =>
-          a.name.localeCompare(b.name)
-        );
-
+          return a.name.localeCompare(b.name);
+        });
 
     buildParticipantsSimpleSheet(
       workbook,
-      "Matin",
-      matin,
-      colorMap
+      "Catégorie + Alpha",
+      categorieAlpha,
+      exportColorMap
     );
 
 
-    const apresMidi =
-      data.participants
-        .filter(p =>
-          p.cat.startsWith("Elite")
-          ||
-          p.cat.startsWith("N1")
-          ||
-          p.cat.startsWith("N2")
-          ||
-          p.cat.startsWith("N3")
-        )
-        .sort((a, b) =>
-          a.name.localeCompare(b.name)
-        );
+    // =========================================
+    // COMPÉTITION TOUTES CATÉGORIES
+    // =========================================
+
+    if(data.mode === "toutes"){
+
+      const customCategoryNames = (Array.isArray(data.customCategories) ? data.customCategories : []).map(category => String(category?.name || "").trim()).filter(Boolean);
+      const toutesCategories =
+    [...data.participants]
+      .sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+
+      buildParticipantsSimpleSheet(
+        workbook,
+        "Toutes catégories",
+        toutesCategories,
+        exportColorMap
+      );
 
 
-    buildParticipantsSimpleSheet(
-      workbook,
-      "Après-midi",
-      apresMidi,
-      colorMap
+      // =======================================
+      // CARTONS TOUTES CATÉGORIES
+      // =======================================
+
+      // Les cartons utilisent directement le tri des participants ; les anciens
+      // mainCat/cartonOrder locaux n’étaient plus utilisés.
+
+      const cartons =
+    [...data.participants]
+      .sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+
+
+
+    }
+
+
+    // =========================================
+    // COMPÉTITION EN 2 SESSIONS
+    // =========================================
+
+    else{
+
+      const customCategoryNames = (Array.isArray(data.customCategories) ? data.customCategories : []).map(category => String(category?.name || "").trim().toLocaleLowerCase("fr")).filter(Boolean);
+      const matin =
+        data.participants
+          .filter(p =>
+            p.cat.startsWith("N4")
+            ||
+            p.cat.startsWith("N5")
+            || customCategoryNames.includes(String(p.cat || "").trim().toLocaleLowerCase("fr"))
+          )
+          .sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
+
+
+      buildParticipantsSimpleSheet(
+        workbook,
+        "Matin",
+        matin,
+        exportColorMap
+      );
+
+
+      const apresMidi =
+        data.participants
+          .filter(p =>
+            p.cat.startsWith("Elite")
+            ||
+            p.cat.startsWith("N1")
+            ||
+            p.cat.startsWith("N2")
+            ||
+            p.cat.startsWith("N3")
+          )
+          .sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
+
+
+      buildParticipantsSimpleSheet(
+        workbook,
+        "Après-midi",
+        apresMidi,
+        exportColorMap
+      );
+
+
+
+    }
+
+
+    // =========================================
+    // CRÉATION DU FICHIER
+    // =========================================
+
+    await workbook.xlsx.writeFile(
+      filePath
     );
 
+    return true;
 
-    buildCartonsSheet(
-      workbook,
-      "Cartons Matin",
-      matin,
-      colorMap
+
+  } catch (error) {
+    console.error("Erreur pendant l’export des participants :", error);
+    dialog.showErrorBox(
+      "Export Excel impossible",
+      "Le fichier Excel n’a pas pu être créé ou enregistré.\n\nVérifie que le dossier est accessible et que le fichier n’est pas déjà utilisé."
     );
-
-
-    buildCartonsSheet(
-      workbook,
-      "Cartons Après-midi",
-      apresMidi,
-      colorMap
-    );
-
+    return false;
   }
-
-
-  // =========================================
-  // CRÉATION DU FICHIER
-  // =========================================
-
-  await workbook.xlsx.writeFile(
-    filePath
-  );
-
-  return true;
 
 });
 
@@ -1051,7 +1055,8 @@ function buildParticipantsClubSheet(
     "TOTAL",
     {
       formula:
-        `SUM(G${firstRowClub}:G${sheet.rowCount})`
+        `SUM(G${firstRowClub}:G${sheet.rowCount})`,
+      result: 0
     }
   ]);
 
@@ -1166,7 +1171,8 @@ function buildParticipantsClubSheet(
       "TOTAL",
       {
       formula:
-        `SUM(G${firstRowClub}:G${sheet.rowCount})`
+        `SUM(G${firstRowClub}:G${sheet.rowCount})`,
+      result: 0
     }
     ]);
 
@@ -1208,7 +1214,8 @@ function buildParticipantsClubSheet(
       formula:
         `SUM(${totalRows
           .map(r => `G${r}`)
-          .join(",")})`
+          .join(",")})`,
+      result: 0
     }
     ]);
 
@@ -1349,13 +1356,7 @@ function buildParticipantsSimpleSheet(
 
 }
 
-function plaqueNumber(p){
-
-  return parseInt(
-    String(p.plaque || "")
-      .replace(/[^\d]/g,"")
-  ) || 0;
-}
+// Ancien helper plaqueNumber supprimé : aucun appelant ne l’utilisait.
 
 function buildCartonsSheet(
   workbook,
@@ -1426,7 +1427,7 @@ sheet.pageSetup = {
         pilot,
         startRow,
         startCol,
-        colorMap
+        exportColorMap
       );
 
       pilotIndex++;

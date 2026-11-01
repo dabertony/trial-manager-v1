@@ -1,4 +1,4 @@
-const CACHE_NAME = "trial-manager-cache-v19";
+const CACHE_NAME = "trial-manager-cache-v114";
 
 const urlsToCache = [
 
@@ -6,7 +6,11 @@ const urlsToCache = [
 
   "./index.html",
 
+  "./tv.html",
+
   "./style.css",
+
+  "./ufolep-logo-lockup.svg",
 
   "./app.js",
 
@@ -86,51 +90,37 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
 
+  const request = event.request;
+  const requestUrl = new URL(request.url);
+
+  // Ne pas intercepter les POST (sauvegardes/actions) ni les ressources d’un
+  // autre domaine : le cache hors ligne ne concerne que les fichiers locaux.
+  if (request.method !== "GET" || requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
   event.respondWith(
-
-    fetch(event.request)
-
+    fetch(request)
       .then((response) => {
+        // Seules les réponses locales réussies sont mises en cache. Une erreur
+        // d’écriture du cache ne doit jamais faire échouer le chargement.
+        if (response && response.status === 200 && response.type !== "opaque") {
+          const responseClone = response.clone();
+          const cacheUpdate = caches.open(CACHE_NAME)
+            .then((cache) => cache.put(request, responseClone))
+            .catch(() => {});
 
-        /*
-         * Si la réponse est correcte,
-         * on met à jour le cache.
-         */
-
-        if(response && response.status === 200){
-
-          const responseClone =
-            response.clone();
-
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-
-              cache.put(
-                event.request,
-                responseClone
-              );
-
-            });
-
+          if (typeof event.waitUntil === "function") {
+            event.waitUntil(cacheUpdate);
+          }
         }
 
         return response;
-
       })
-
       .catch(() => {
-
-        /*
-         * Si Internet est indisponible,
-         * utilisation du cache.
-         */
-
-        return caches.match(
-          event.request
-        );
-
+        // Ignore les paramètres de version (?v=...) en mode hors ligne.
+        return caches.match(request, { ignoreSearch: true });
       })
-
   );
 
 });

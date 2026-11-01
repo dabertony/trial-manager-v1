@@ -2,6 +2,7 @@ const state = {
 
   pilots:JSON.parse(localStorage.getItem("pilots"))||[],
   clubs: JSON.parse(localStorage.getItem("clubs")) || [],
+  customCategories: JSON.parse(localStorage.getItem("customCategories")) || [],
   competitions:JSON.parse(localStorage.getItem("competitions"))||[],
   sortPilotsMode:localStorage.getItem("sortPilotsMode") || "name",
   sortParticipantsMode:localStorage.getItem("sortParticipantsMode") || "name",

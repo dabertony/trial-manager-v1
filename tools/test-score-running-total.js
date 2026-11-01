@@ -1,0 +1,21 @@
+const fs = require('fs');
+const path = require('path');
+const assert = require('assert');
+const root = path.join(__dirname, '..');
+const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+const css = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
+const sw = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
+
+assert(app.includes('class="score-tour-total"'), 'score entry must display a tour total');
+assert(app.includes('function updateScoreTourTotal()'), 'live total updater must exist');
+assert(app.includes('updateScoreTourTotal();'), 'existing scores must populate the total when opening a tour');
+assert(app.includes('updateScoreTourTotal();'), 'the total must update after selecting a score');
+assert(app.includes('currentScores.reduce((sum, value) =>'), 'the total must sum entered zone scores');
+assert(!app.includes('score-tour-total-progress'), 'zone completion progress should not be displayed');
+assert(!app.includes('score-zone-current'), 'duplicate per-zone score at the right should not be displayed');
+assert(app.includes('class="score-col-total"'), 'score entry table must have a total column');
+assert(app.includes('class="score-tour-points"'), 'validated tour points must be shown with the tour indicator');
+assert(app.includes('pilotScoreTotal += tourPoints'), 'pilot total must sum validated tours only');
+assert(css.includes('.score-tour-total{'), 'the total must have dedicated styling');
+assert(sw.includes('trial-manager-cache-v114'), 'service worker cache version must be incremented');
+console.log('Score running total tests passed.');

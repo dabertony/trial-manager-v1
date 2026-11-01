@@ -14,15 +14,19 @@ contextBridge.exposeInMainWorld("api", {
   closeTV: () =>
     ipcRenderer.invoke("close-tv"),
 
-  onTVContent: (callback) =>
+  // Ne pas renvoyer le résultat d'ipcRenderer.on à travers contextBridge :
+  // Electron renvoie l'émetteur IPC, qui n'a pas à être exposé au renderer.
+  onTVContent: (callback) => {
     ipcRenderer.on("tv-content", (event, html) => {
       callback(html);
-    }),
+    });
+  },
 
-  onTVClosed: (callback) =>
+  onTVClosed: (callback) => {
     ipcRenderer.on("tv-closed", () => {
-    callback();
-  }),
+      callback();
+    });
+  },
 
   exportExcel: (data) =>
     ipcRenderer.invoke("export-excel", data),
@@ -33,10 +37,5 @@ contextBridge.exposeInMainWorld("api", {
   exportParticipantsExcel: (data) =>
     ipcRenderer.invoke("export-participants-excel", data),
 
-  exportDoublePointageMatin: (data) =>
-    ipcRenderer.invoke("export-double-pointage-matin", data),
-
-  exportDoublePointageApresMidi: (data) =>
-    ipcRenderer.invoke("export-double-pointage-apres-midi",  data)
 
 });

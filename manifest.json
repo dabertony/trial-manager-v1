@@ -6,19 +6,6 @@
   "background_color": "#111827",
   "theme_color": "#111827",
   "orientation": "landscape",
-  "screenshots": [
-  {
-    "src": "screenshot-desktop.png",
-    "sizes": "1280x720",
-    "type": "image/png",
-    "form_factor": "wide"
-  },
-  {
-    "src": "screenshot-mobile.png",
-    "sizes": "750x1334",
-    "type": "image/png"
-  }
-],
   "icons": [
     {
       "src": "icon-192.png",
@@ -31,5 +18,4 @@
       "type": "image/png"
     }
   ]
-  
 }
