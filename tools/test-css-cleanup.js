@@ -21,11 +21,11 @@ if (/\n\s*\.home-header\s*\{[^}]*text-align\s*:\s*left\s*;[^}]*\}\s*\n\s*\.home-
   throw new Error('The old standalone .home-header alignment override has returned');
 }
 for (const [name, source] of [['index.html', index], ['tv.html', tv]]) {
-  if (!source.includes('style.css?v=30')) {
-    throw new Error(`${name} must request style.css?v=30 after the CSS change`);
+  if (!source.includes('style.css?v=37')) {
+    throw new Error(`${name} must request style.css?v=37 after the CSS change`);
   }
 }
-if (!sw.includes('trial-manager-cache-v114')) {
+if (!sw.includes('trial-manager-cache-v127')) {
   throw new Error('Service-worker cache version must be bumped after the stylesheet update');
 }
 console.log('PASS: CSS consolidation and stylesheet cache-version checks passed.');

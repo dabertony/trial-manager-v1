@@ -1,0 +1,76 @@
+
+> trial_manager_v12@12.0.1 test
+> node tools/smoke-check.js && node tools/test-pdf-helper.js && node tools/test-double-pointage-export.js && node tools/test-double-pointage-print-layout.js && node tools/test-double-pointage-category-helper.js && node tools/test-shared-excel-category-reference.js && node tools/test-css-cleanup.js && node tools/test-service-worker.js && node tools/test-service-worker-lifecycle.js && node tools/test-offline-asset-coverage.js && node tools/test-precache-files.js && node tools/test-manifest-assets.js && node tools/test-score-form-actions.js && node tools/test-index-backup-wiring.js && node tools/test-backup-data-validation.js && node tools/test-backup-export-download.js && node tools/test-shared-generated-download.js && node tools/test-electron-pdf-ipc.js && node tools/test-electron-jpg-ipc.js && node tools/test-electron-jpg-html-ipc.js && node tools/test-ranking-jpg-wiring.js && node tools/test-electron-excel-ipc.js && node tools/test-safe-export-filenames.js && node tools/test-nonblocking-app-notices.js && node tools/test-app-version-cache.js && node tools/test-backup-reselect.js && node tools/test-duplicate-function-declarations.js && node tools/test-legacy-competition-creator.js && node tools/test-unused-main-helper.js && node tools/test-category-color-helper.js && node tools/test-shared-plate-number-helper.js && node tools/test-shared-carton-category-helper.js && node tools/test-double-pointage-shared-orders.js && node tools/test-shared-session-category-helper.js && node tools/test-shared-date-sort-helper.js && node tools/test-shared-competition-date-comparator.js && node tools/test-shared-birth-date-comparator.js && node tools/test-shared-pilot-name-comparator.js && node tools/test-shared-pilot-secondary-comparators.js && node tools/test-shared-plate-number-comparator.js && node tools/test-shared-participant-plate-sort-data.js && node tools/test-shared-participant-selection-comparator.js && node tools/test-shared-sort-direction.js && node tools/test-shared-sort-direction-application.js && node tools/test-shared-sort-tiebreak-direction.js && node tools/test-shared-participant-group-direction.js && node tools/test-preload-tv-listeners.js && node tools/test-electron-ipc-parity.js && node tools/test-ranking-header-presentation.js && node tools/test-championship-header-presentation.js && node tools/test-custom-category-ranking.js && node tools/test-competition-info-custom-categories.js && node tools/test-score-running-total.js && node tools/test-pilot-duplicate-search.js && node tools/test-cravate-pdf-export.js && node tools/test-age-pilot-detection.js && node tools/test-import-birth-date.js && node tools/test-rules-explanations.js && node tools/test-participants-excel-clean-open.js && node tools/test-ranking-pdf-selector.js
+
+PASS: service worker offline fallback, GET-only scope, and same-origin restrictions passed.
+PASS: 14 shared PDF export checks passed.
+PASS: 87 lightweight checks passed.
+Note: these are static/smoke checks, not a full interactive browser test.
+PASS: 14 shared PDF export checks passed.
+PASS: 21 double-pointage export wiring checks passed.
+PASS: double-pointage print header, pagination, and unchanged cell sizing checks passed.
+PASS: 20 double-pointage category helper checks passed.
+PASS: 12 shared Excel category-reference checks passed.
+PASS: CSS consolidation and stylesheet cache-version checks passed.
+PASS: service worker offline fallback, GET-only scope, and same-origin restrictions passed.
+PASS: service worker install precache and activation lifecycle checks passed.
+PASS: 6 local HTML asset references are covered by the offline precache.
+PASS: 12 unique service-worker precache entries exist on disk (trial-manager-cache-v124).
+PASS: manifest references 2 existing assets; unused empty placeholder absent.
+PASS: score form has one Retour button and retains validate/delete actions.
+PASS: backup import input, handler and trigger are wired together.
+PASS: 10 backup validation cases and import-order checks passed.
+PASS: backup export download lifecycle checks passed.
+PASS: shared generated-file download checks passed (10 checks).
+PASS: 12 Electron PDF IPC checks passed.
+PASS: 9 Electron JPG IPC checks passed.
+PASS: 9 Electron HTML JPG capture IPC checks passed.
+PASS: ranking JPG export wiring checks passed (18 checks).
+PASS: 16 Electron Excel export safety checks passed.
+PASS: 12 safe export filename checks passed.
+PASS: 11 non-blocking notice checks passed.
+PASS: application script version (113) and offline cache (v124) are consistent.
+PASS: backup file input reset, same-file reselection, and confirmation checks passed.
+PASS: 181 top-level function declarations have unique names.
+PASS: legacy competition-creation flow removed; current form and save path retained (5 checks).
+PASS: unused Electron plaque helper removed; carton builders and plate handling retained (4 checks).
+PASS: 25 category color helper checks passed.
+PASS: 6 shared plate-number helper checks passed.
+PASS: 9 shared carton-category helper checks passed.
+PASS: shared double-pointage orders, filtering, and carton-order checks passed.
+PASS: 22 shared session-category checks and 6 call-site checks passed.
+PASS: 25 shared date-sort checks passed.
+PASS: 6 shared competition date-comparator cases and 4 championship call sites passed.
+PASS: 7 shared birth-date comparator cases and 2 call sites passed.
+PASS: 7 shared pilot-name comparator cases and 2 call sites passed.
+PASS: 9 shared secondary comparator cases and 6 sort call sites passed.
+PASS: 7 shared plate-number comparator cases and 2 sort call sites passed.
+PASS: 6 participant plate-sort data cases and shared-helper call sites passed.
+PASS: 5 participant-selection comparator cases and shared sort call site passed.
+PASS: 6 sort-direction cases and 2 shared call sites passed.
+PASS: 10 direction-application cases and 6 comparator call sites passed.
+PASS: 5 secondary-sort tie-break direction cases passed.
+PASS: 4 participant plate-group direction cases and shared-helper wiring passed.
+PASS: TV IPC subscriptions no longer return the Electron emitter through contextBridge (3 checks).
+PASS: 9 Electron invoke channels match main-process handlers; no duplicates.
+PASS: ranking header presentation checks passed (10 checks).
+PASS: championship header presentation checks passed (7 checks).
+PASS: custom categories have their own rankings with UFOLEP points, enter the validated-competition championship after official tables, and remain excluded from club rankings.
+PASS: custom categories are included in competition info participant, abandonment, tie-break and tour summaries in the requested order.
+Score running total tests passed.
+PASS: duplicate-search and ranking-title-color checks passed (16 checks).
+PASS: cravate PDF export wiring, fixed dimensions, adaptive layout, colors and no-split rules.
+PASS: age-based pilot detection, seasonal thresholds, ranking exception and UI wiring.
+PASS: Excel serial 42054.95833333 and French/ISO birth dates import as 2015-02-19 in Electron and browser.
+✓ custom categories own ranking and historical penalty system
+✓ custom categories are not automatically official or championship eligible
+✓ custom categories explanation follows main categories and F/V rankings
+✓ season reference dates are explicit
+✓ N5 threshold uses January 1 reference
+✓ scratch-only rule and N5 FFC/NL treatment are explained
+✓ detection screen shows dynamic season start and end dates
+✓ application script cache version bumped
+✓ service worker cache version bumped
+9 vérifications des explications réglementaires réussies.
+Participants Excel clean-open: 8 checks passed.
+PASS: ranking PDF category selector checks passed (12 checks).

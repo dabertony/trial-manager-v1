@@ -15,15 +15,19 @@ function check(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-for (const [name, label, printFunction] of [
-  ['Matin', 'showDoublePointageMatin', 'printDoublePointageMatinPDF'],
-  ['Après-midi', 'showDoublePointageApresMidi', 'printDoublePointageApresMidiPDF'],
-  ['Toutes catégories', 'showDoublePointageToutesCategories', 'printDoublePointageToutesCategoriesPDF']
+for (const [name, label, printFunction, directFunction] of [
+  ['Matin', 'showDoublePointageMatin', 'printDoublePointageMatinPDF', 'exportDoublePointageMatinPDF'],
+  ['Après-midi', 'showDoublePointageApresMidi', 'printDoublePointageApresMidiPDF', 'exportDoublePointageApresMidiPDF'],
+  ['Journée', 'showDoublePointageToutesCategories', 'printDoublePointageToutesCategoriesPDF', 'exportDoublePointageToutesCategoriesPDF']
 ]) {
-  check(app.includes(`function ${label}(i)`), `${name}: preview screen should exist`);
-  check(app.includes(`onclick="${printFunction}()`), `${name}: preview should offer its PDF export action`);
+  check(app.includes(`function ${label}(i)`), `${name}: document builder should exist`);
+  check(app.includes('onclick="' + directFunction + '(${i})"'), `${name}: export menu should launch the PDF directly`);
   check(app.includes(`async function ${printFunction}()`), `${name}: shared PDF action should exist`);
+  check(app.includes(`async function ${directFunction}(competitionIndex)`), `${name}: direct export wrapper should exist`);
 }
+check(!app.includes('Prévisualisation du document') && !app.includes('Aperçu →'), 'double-pointage export menu should not show preview cards');
+check(app.includes('async function exportDoublePointageDirect(competitionIndex, showSheet, printSheet)'), 'direct export should prepare the sheet and launch the shared PDF flow');
+check(/finally\s*\{\s*showExportParticipantsMenu\(competitionIndex\);\s*\}/.test(app), 'direct export should return to the export menu after the PDF dialog closes');
 check(app.includes('async function printDoublePointagePDF(sheetName, landscape = false)'), 'double-pointage sheets should use the shared PDF export helper');
 check(app.includes('return exportPDFDocument(fileName, landscape);'), 'shared helper should pass generated file name and orientation to PDF export');
 check(!app.includes('async function exportDoublePointage(i, apiMethod, periodLabel)'), 'obsolete duplicate Electron export wrapper should be removed');

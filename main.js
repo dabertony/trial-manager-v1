@@ -135,6 +135,82 @@ ipcMain.handle("export-pdf", async (event, options = {}) => {
   }
 });
 
+ipcMain.handle("export-jpg", async (event, options = {}) => {
+  try {
+    const filePath = dialog.showSaveDialogSync(mainWindow, {
+      defaultPath: sanitizeSuggestedFileName(options.fileName, "Classement.jpg"),
+      filters: [{ name: "Image JPEG", extensions: ["jpg", "jpeg"] }]
+    });
+    if (!filePath) return false;
+
+    const dataUrl = String(options.dataUrl || "");
+    const match = dataUrl.match(/^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) throw new Error("Format d’image invalide.");
+    const imageBuffer = Buffer.from(match[1], "base64");
+    if (!imageBuffer.length || imageBuffer.length > 40 * 1024 * 1024) {
+      throw new Error("Taille d’image invalide.");
+    }
+    fs.writeFileSync(filePath, imageBuffer);
+    return true;
+  } catch (error) {
+    console.error("Erreur pendant l’export JPG :", error);
+    dialog.showErrorBox(
+      "Export JPG impossible",
+      "L’image n’a pas pu être créée ou enregistrée. Vérifie que le dossier est accessible et que le fichier n’est pas déjà utilisé."
+    );
+    return false;
+  }
+});
+
+ipcMain.handle("export-jpg-html", async (event, options = {}) => {
+  let captureWindow = null;
+  try {
+    const width = Math.ceil(Number(options.width));
+    const height = Math.ceil(Number(options.height));
+    const html = String(options.html || "");
+    if (!html || html.length > 12 * 1024 * 1024 || !Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1 || width > 6000 || height > 16000) {
+      throw new Error("Dimensions ou contenu de l’image invalides.");
+    }
+
+    captureWindow = new BrowserWindow({
+      show: false,
+      width,
+      height,
+      useContentSize: true,
+      backgroundColor: "#ffffff",
+      webPreferences: {
+        offscreen: true,
+        contextIsolation: true,
+        sandbox: true
+      }
+    });
+    await captureWindow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+    await captureWindow.webContents.executeJavaScript(`(async () => {
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      await Promise.all(Array.from(document.images).map(image => image.decode().catch(() => undefined)));
+      return true;
+    })()`);
+
+    const image = await captureWindow.webContents.capturePage({ x: 0, y: 0, width, height });
+    if (!image || image.isEmpty()) throw new Error("La capture du classement est vide.");
+    const jpeg = image.toJPEG(94);
+    if (!jpeg || !jpeg.length) throw new Error("La conversion en JPG a échoué.");
+
+    const filePath = dialog.showSaveDialogSync(mainWindow, {
+      defaultPath: sanitizeSuggestedFileName(options.fileName, "Classement.jpg"),
+      filters: [{ name: "Image JPEG", extensions: ["jpg", "jpeg"] }]
+    });
+    if (!filePath) return false;
+    fs.writeFileSync(filePath, jpeg);
+    return true;
+  } catch (error) {
+    console.error("Erreur pendant la capture JPG du classement :", error);
+    return { ok: false, error: String(error?.message || error || "Erreur inconnue") };
+  } finally {
+    if (captureWindow && !captureWindow.isDestroyed()) captureWindow.destroy();
+  }
+});
+
 ipcMain.handle("export-excel", async (event, data) => {
   try {
     const pilots = Array.isArray(data) ? data : (Array.isArray(data?.pilots) ? data.pilots : []);

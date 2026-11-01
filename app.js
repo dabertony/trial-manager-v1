@@ -22,7 +22,8 @@ function showAppNotice(message, type = "error") {
   close.type = "button";
   close.textContent = "Fermer";
   close.setAttribute("aria-label", "Fermer le message d’erreur");
-  close.style.cssText = "float:right;margin-left:12px;cursor:pointer";
+  close.className = "tm-notice-close";
+  close.style.cssText = "float:right;margin-left:12px;padding:3px 9px;border:1px solid #d1a4a4;border-radius:5px;background:#fff;color:#7f1d1d;font:inherit;font-size:12px;cursor:pointer;box-shadow:none";
   close.addEventListener("click", () => notice.remove());
   notice.appendChild(close);
   host.insertBefore(notice, host.firstChild);
@@ -6845,9 +6846,16 @@ html += `
 
     <button
       class="results-export-btn"
-      onclick="printResults()"
+      onclick="openRankingPDFSelector('competition')"
     >
       Export PDF
+    </button>
+
+    <button
+      class="results-jpg-btn"
+      onclick="openRankingJPGSelector('competition')"
+    >
+      🖼️ Export JPG
     </button>
 
     <button
@@ -8296,10 +8304,12 @@ function renderChampionshipTable(
       <span class="ranking-category-label" style="background:${getRankingTitleColor(title)};color:${getRankingTitleTextColor(title)};">
         CLASSEMENT ${title}
       </span>
-      <span class="ranking-event-label">— CHAMPIONNAT UFOLEP<br>SAISON ${window.currentExportInfo.startYear}-${window.currentExportInfo.endYear} (${state.currentJokers || 0} joker${(state.currentJokers || 0) > 1 ? "s" : ""})</span>
+      <span class="ranking-event-label">— CHAMPIONNAT UFOLEP · SAISON ${window.currentExportInfo.startYear}-${window.currentExportInfo.endYear} · (${state.currentJokers || 0} joker${(state.currentJokers || 0) > 1 ? "s" : ""})</span>
     </div>
     <img class="ufolep-ranking-logo" src="ufolep-logo-lockup.svg" alt="UFOLEP — Tous les sports autrement">
   </div>
+
+  <div class="category-status championship-status-spacer" aria-hidden="true"></div>
 
   <table>
 
@@ -8796,9 +8806,16 @@ function showChampionship(jokers){
 
     <button
       class="championship-export"
-      onclick="printChampionshipPDF()"
+      onclick="openRankingPDFSelector('championship')"
     >
       📄 Export PDF
+    </button>
+
+    <button
+      class="championship-jpg-export"
+      onclick="openRankingJPGSelector('championship')"
+    >
+      🖼️ Export JPG
     </button>
 
   </div>
@@ -8945,6 +8962,408 @@ async function exportPDFDocument(fileName, landscape = false){
 
   showAppNotice("L'export PDF n'est pas disponible sur cet appareil.");
   return false;
+}
+
+// ===== EXPORT JPG DES CLASSEMENTS =====
+// Capture un seul tableau à la fois, en haute résolution, sans modifier les données.
+function safeRankingFilePart(value){
+  return String(value ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .trim().replace(/\s+/g, "_")
+    .replace(/[^A-Za-z0-9_-]/g, "_")
+    .replace(/_+/g, "_") || "Categorie";
+}
+
+function getRankingJpgPages(type){
+  const pages = Array.from(document.querySelectorAll("#app .print-page"));
+  return pages.map((element, index) => {
+    const label = element.querySelector(".ranking-category-label")?.textContent?.trim();
+    const category = label
+      ? label.replace(/^CLASSEMENT\s*/i, "").trim()
+      : (type === "clubs" ? "Clubs" : `Classement_${index + 1}`);
+    return { element, category };
+  }).filter(page => page.element.querySelector("table"));
+}
+
+function buildRankingJpgDocument(element){
+  const rect = element.getBoundingClientRect();
+  const width = Math.ceil(Math.max(rect.width, element.scrollWidth, 800));
+  const height = Math.ceil(Math.max(rect.height, element.scrollHeight));
+  if(!width || !height) throw new Error("Le tableau à exporter est vide.");
+
+  const clone = element.cloneNode(true);
+  // Ne pas laisser d'image externe ou data: dans le SVG de capture : Chrome
+  // peut alors marquer le canvas comme "tainted" et interdire toBlob().
+  // Le logo est intégré comme véritable SVG inline (aucune requête d'image).
+  const inlineLogo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 190" role="img" aria-label="UFOLEP — Tous les sports autrement"><defs><linearGradient id="tm-ufolep-gradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b21b70"/><stop offset=".22" stop-color="#e74742"/><stop offset=".42" stop-color="#f29b2e"/><stop offset=".62" stop-color="#d4c747"/><stop offset=".82" stop-color="#79bb88"/><stop offset="1" stop-color="#2e9b9b"/></linearGradient></defs><text x="260" y="105" text-anchor="middle" font-family="Trebuchet MS,Arial,sans-serif" font-size="100" font-style="italic" font-weight="700" letter-spacing="-7" fill="url(#tm-ufolep-gradient)">ufolep</text><text x="260" y="151" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" letter-spacing="1.2" fill="#606060">TOUS LES SPORTS</text><text x="260" y="180" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700" letter-spacing="1.2" fill="#239b9b">AUTREMENT</text></svg>`;
+  const logoDocument = new DOMParser().parseFromString(inlineLogo, "image/svg+xml");
+  clone.querySelectorAll("img.ufolep-ranking-logo").forEach(img => {
+    const logo = document.importNode(logoDocument.documentElement, true);
+    logo.setAttribute("class", "ufolep-ranking-logo");
+    logo.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    img.replaceWith(logo);
+  });
+  // Les autres images éventuelles sont converties en données locales avant capture.
+  clone.querySelectorAll("img").forEach(img => {
+    if(!img.src || img.src.startsWith("data:")) return;
+    throw new Error("Une image du classement n’a pas pu être intégrée à la capture JPG.");
+  });
+  clone.style.width = `${width}px`;
+  clone.style.height = "auto";
+  clone.style.margin = "0";
+  clone.style.padding = "0";
+  clone.style.boxSizing = "border-box";
+  clone.style.background = "#ffffff";
+  clone.style.breakAfter = "auto";
+  clone.style.pageBreakAfter = "auto";
+
+  let css = "";
+  for(const sheet of Array.from(document.styleSheets)){
+    try {
+      css += Array.from(sheet.cssRules).map(rule => rule.cssText).join("\n") + "\n";
+    } catch(error) {
+      console.warn("Une feuille de style n’a pas pu être intégrée à l’export JPG.", error);
+    }
+  }
+
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}
+html,body{margin:0!important;padding:0!important;width:${width}px!important;background:#fff!important;color:#111827!important;}body{overflow:hidden!important}.print-page{margin:0!important;break-after:auto!important;page-break-after:auto!important;}table{border-collapse:collapse!important;}th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}</style></head><body>${clone.outerHTML}</body></html>`;
+  return { html, width, height };
+}
+
+async function rankingPageToJpeg(element){
+  // Image paysage 16:9 (Full HD) : on capture toute la composition réelle,
+  // y compris les éléments positionnés (notamment le logo), puis on la centre
+  // sur un fond blanc. Cela évite les coupes dues aux débordements absolus.
+  const targetWidth = 1920;
+  const targetHeight = 1080;
+  const safeMargin = 64;
+  const elements = [element, ...element.querySelectorAll("*")];
+  const visibleRects = [];
+  for(const node of elements){
+    if(node.nodeType !== Node.ELEMENT_NODE) continue;
+    const style = getComputedStyle(node);
+    if(style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
+    const r = node.getBoundingClientRect();
+    if(r.width > 0 && r.height > 0) visibleRects.push(r);
+  }
+  if(!visibleRects.length) throw new Error("Le tableau à exporter est vide.");
+
+  const minX = Math.min(...visibleRects.map(r => r.left));
+  const minY = Math.min(...visibleRects.map(r => r.top));
+  const maxX = Math.max(...visibleRects.map(r => r.right));
+  const maxY = Math.max(...visibleRects.map(r => r.bottom));
+  const width = Math.ceil(maxX - minX);
+  const height = Math.ceil(maxY - minY);
+  if(!width || !height) throw new Error("Le tableau à exporter est vide.");
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const context = canvas.getContext("2d", { alpha: false });
+  if(!context) throw new Error("Le navigateur ne permet pas de créer l’image.");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, targetWidth, targetHeight);
+
+  const scale = Math.min(
+    (targetWidth - safeMargin * 2) / width,
+    (targetHeight - safeMargin * 2) / height
+  );
+  const offsetX = (targetWidth - width * scale) / 2;
+  const offsetY = (targetHeight - height * scale) / 2;
+  context.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+
+  const isTransparent = value => !value || value === "transparent" || value === "rgba(0, 0, 0, 0)";
+  const box = node => {
+    const r = node.getBoundingClientRect();
+    return { x:r.left-minX, y:r.top-minY, width:r.width, height:r.height };
+  };
+  // Aucun bitmap externe ou SVG n'est injecté dans le canvas : le logo UFOLEP
+  // est redessiné en vectoriel, sans intégrer de bitmap, pour éviter tout canvas tainté.
+  for(const node of elements){
+    if(node.tagName === "IMG" && !node.classList.contains("ufolep-ranking-logo")){
+      throw new Error("Une image inattendue empêche la création sécurisée du JPG.");
+    }
+  }
+
+  const drawUfolepLogo = (node, r) => {
+    const x=r.x, y=r.y, w=r.width, h=r.height;
+    context.save();
+    context.textAlign="center";
+    context.textBaseline="alphabetic";
+    const cx=x+w/2;
+    const logoScale=Math.min(w/210,h/77);
+    const wordGradient=context.createLinearGradient(x,y,x+w,y);
+    wordGradient.addColorStop(0,"#b21b70");
+    wordGradient.addColorStop(.22,"#e74742");
+    wordGradient.addColorStop(.42,"#f29b2e");
+    wordGradient.addColorStop(.62,"#d4c747");
+    wordGradient.addColorStop(.82,"#79bb88");
+    wordGradient.addColorStop(1,"#2e9b9b");
+    context.fillStyle=wordGradient;
+    context.font=`italic 700 ${Math.max(12,48*logoScale)}px Trebuchet MS, Arial, sans-serif`;
+    context.fillText("ufolep",cx,y+Math.min(h*.55,42*logoScale),w);
+    context.fillStyle="#606060";
+    context.font=`700 ${Math.max(5,11.5*logoScale)}px Arial, Helvetica, sans-serif`;
+    context.fillText("TOUS LES SPORTS",cx,y+Math.min(h*.78,60*logoScale),w);
+    context.fillStyle="#239b9b";
+    context.fillText("AUTREMENT",cx,y+Math.min(h*.96,74*logoScale),w);
+    context.restore();
+  };
+
+  const drawElement = node => {
+    if(node.nodeType !== Node.ELEMENT_NODE) return;
+    const style = getComputedStyle(node);
+    if(style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return;
+    const r = box(node);
+    if(r.width <= 0 || r.height <= 0) return;
+
+    if(!isTransparent(style.backgroundColor)){
+      context.fillStyle = style.backgroundColor;
+      context.fillRect(r.x, r.y, r.width, r.height);
+    }
+
+    const borders = [
+      ["borderTopWidth","borderTopColor",r.x,r.y,r.width,"top"],
+      ["borderRightWidth","borderRightColor",r.x+r.width,r.y,r.height,"right"],
+      ["borderBottomWidth","borderBottomColor",r.x,r.y+r.height,r.width,"bottom"],
+      ["borderLeftWidth","borderLeftColor",r.x,r.y,r.height,"left"]
+    ];
+    for(const [widthProp,colorProp,x,y,length,side] of borders){
+      const thickness = parseFloat(style[widthProp]) || 0;
+      const color = style[colorProp];
+      if(thickness <= 0 || isTransparent(color) || style[widthProp] === "0px") continue;
+      context.fillStyle = color;
+      if(side === "top") context.fillRect(x,y,length,thickness);
+      else if(side === "bottom") context.fillRect(x,y-thickness,length,thickness);
+      else if(side === "left") context.fillRect(x,y,thickness,length);
+      else context.fillRect(x-thickness,y,thickness,length);
+    }
+
+    if(node.tagName === "IMG" && node.classList.contains("ufolep-ranking-logo")) drawUfolepLogo(node,r);
+
+    // Reproduire chaque ligne de texte à ses coordonnées réelles du DOM.
+    for(const child of node.childNodes){
+      if(child.nodeType !== Node.TEXT_NODE || !child.nodeValue || !child.nodeValue.trim()) continue;
+      const range=document.createRange();
+      const lines=new Map();
+      let offset=0;
+      for(const character of Array.from(child.nodeValue)){
+        const nextOffset=offset+character.length;
+        range.setStart(child,offset); range.setEnd(child,nextOffset);
+        offset=nextOffset;
+        const charRect=range.getBoundingClientRect();
+        if(!charRect.width || !charRect.height) continue;
+        const key=Math.round(charRect.top*2)/2;
+        if(!lines.has(key)) lines.set(key,{text:"",left:charRect.left, right:charRect.right, top:charRect.top, height:charRect.height});
+        const line=lines.get(key);
+        line.text+=character;
+        line.left=Math.min(line.left,charRect.left);
+        line.right=Math.max(line.right,charRect.right);
+        line.height=Math.max(line.height,charRect.height);
+      }
+      const textStyle=getComputedStyle(node);
+      context.save();
+      context.font=[textStyle.fontStyle,textStyle.fontVariant,textStyle.fontWeight,textStyle.fontSize,textStyle.fontFamily].filter(Boolean).join(" ");
+      context.fillStyle=textStyle.color || "#111827";
+      context.textBaseline="alphabetic";
+      context.direction=textStyle.direction || "ltr";
+      for(const line of lines.values()){
+        const align=textStyle.textAlign || "start";
+        context.textAlign=align === "start" ? (context.direction === "rtl" ? "right" : "left") : align === "end" ? (context.direction === "rtl" ? "left" : "right") : align;
+        let x=line.left-minX;
+        if(context.textAlign === "center") x=(line.left+line.right)/2-minX;
+        else if(context.textAlign === "right") x=line.right-minX;
+        const fontSize=parseFloat(textStyle.fontSize)||12;
+        const y=line.top-minY+(line.height-fontSize)/2+fontSize*.82;
+        context.fillText(line.text,x,y,Math.max(1,r.width));
+      }
+      context.restore();
+    }
+
+    for(const child of node.children) drawElement(child);
+  };
+
+  drawElement(element);
+  const jpeg = await new Promise((resolve,reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("La conversion JPG a échoué.")),"image/jpeg",0.94);
+  });
+  return jpeg;
+}
+
+async function saveRankingJpeg(blob, fileName){
+  if(window.api && typeof window.api.exportJPG === "function"){
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Lecture de l’image impossible."));
+      reader.readAsDataURL(blob);
+    });
+    return await window.api.exportJPG({fileName, dataUrl});
+  }
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  return true;
+}
+
+async function exportRankingPageJPG(page, fileName){
+  try {
+    if(window.api && typeof window.api.exportJPGHTML === "function"){
+      const documentData = buildRankingJpgDocument(page.element);
+      const result = await window.api.exportJPGHTML({ fileName, ...documentData });
+      if(result && result.ok === false){
+        throw new Error(result.error || "Erreur renvoyée par Electron.");
+      }
+      if(result !== true && result !== false){
+        throw new Error("Réponse inattendue du module d’export Windows.");
+      }
+      // false correspond à l’annulation volontaire de la boîte Enregistrer sous.
+      return result;
+    }
+    const blob = await rankingPageToJpeg(page.element);
+    const saved = await saveRankingJpeg(blob, fileName);
+    if(saved === false) return false;
+    return true;
+  } catch(error) {
+    console.error("Export JPG du classement impossible :", error);
+    const detail = String(error?.message || error || "Erreur inconnue").slice(0, 220);
+    showAppNotice(`Export JPG impossible : ${detail}`);
+    return false;
+  }
+}
+
+// ===== EXPORT PDF DES CLASSEMENTS PAR CATEGORIE =====
+// Le sélecteur PDF réutilise les mêmes pages/catégories que le JPG, sans
+// modifier le rendu ni le fonctionnement des exports JPG.
+function closeRankingPDFSelector(){
+  document.getElementById("ranking-pdf-modal")?.remove();
+}
+
+function rankingPdfFileName(type, page){
+  const info = window.currentExportInfo || {};
+  let base;
+  if(type === "competition"){
+    const safeName = safeRankingFilePart(info.name);
+    const safeDate = safeRankingFilePart(formatDateForFile(info.date));
+    const suffix = info.intermediaire ? "_INTERMEDIAIRE" : "";
+    base = `Resultats_${safeName}_${safeDate}${suffix}`;
+  } else if(type === "championship"){
+    base = `Classement_Championnat_UFOLEP_${info.startYear}-${info.endYear}`;
+  } else {
+    base = `Classement_Clubs_${info.startYear}-${info.endYear}`;
+  }
+  if(page && type !== "clubs") base += `_${safeRankingFilePart(page.category)}`;
+  return `${base}.pdf`;
+}
+
+async function exportRankingPagesPDF(type, selectedPage = null){
+  const pages = getRankingJpgPages(type);
+  if(!pages.length){
+    showAppNotice("Aucun classement disponible à exporter.");
+    return false;
+  }
+  const hiddenPages = selectedPage
+    ? pages.filter(page => page.element !== selectedPage.element)
+    : [];
+  hiddenPages.forEach(page => page.element.classList.add("ranking-pdf-page-hidden"));
+  try {
+    return await exportPDFDocument(rankingPdfFileName(type, selectedPage), true);
+  } finally {
+    hiddenPages.forEach(page => page.element.classList.remove("ranking-pdf-page-hidden"));
+  }
+}
+
+function openRankingPDFSelector(type){
+  const pages = getRankingJpgPages(type);
+  if(!pages.length){
+    showAppNotice("Aucun classement disponible à exporter.");
+    return;
+  }
+  closeRankingPDFSelector();
+  const modal = document.createElement("div");
+  modal.id = "ranking-pdf-modal";
+  modal.className = "ranking-jpg-overlay";
+  const title = type === "competition"
+    ? "Choisir les catégories à imprimer"
+    : type === "championship"
+      ? "Choisir les catégories du championnat"
+      : "Classement à imprimer";
+  modal.innerHTML = `<div class="ranking-jpg-dialog" role="dialog" aria-modal="true" aria-labelledby="ranking-pdf-title"><div class="ranking-jpg-dialog-head"><strong id="ranking-pdf-title">📄 Exporter en PDF</strong><button type="button" class="ranking-jpg-close" aria-label="Fermer">×</button></div><p>${title} :</p><div class="ranking-jpg-options"></div><div class="ranking-jpg-hint">Chaque sélection crée un PDF indépendant.</div></div>`;
+  const options = modal.querySelector(".ranking-jpg-options");
+  const addOption = (label, page = null) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ranking-jpg-option";
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      closeRankingPDFSelector();
+      exportRankingPagesPDF(type, page);
+    });
+    options.appendChild(button);
+  };
+  if(type !== "clubs") addOption("Toutes les catégories");
+  pages.forEach(page => addOption(type === "clubs" ? "Classement clubs" : page.category, page));
+  modal.querySelector(".ranking-jpg-close").addEventListener("click", closeRankingPDFSelector);
+  modal.addEventListener("click", event => { if(event.target === modal) closeRankingPDFSelector(); });
+  document.body.appendChild(modal);
+}
+
+function closeRankingJPGSelector(){
+  document.getElementById("ranking-jpg-modal")?.remove();
+}
+
+function openRankingJPGSelector(type){
+  const pages = getRankingJpgPages(type);
+  if(!pages.length){
+    showAppNotice("Aucun classement disponible à exporter.");
+    return;
+  }
+  closeRankingJPGSelector();
+  const modal = document.createElement("div");
+  modal.id = "ranking-jpg-modal";
+  modal.className = "ranking-jpg-overlay";
+  const title = type === "competition" ? "Choisir une catégorie" : "Choisir un classement";
+  modal.innerHTML = `<div class="ranking-jpg-dialog" role="dialog" aria-modal="true" aria-labelledby="ranking-jpg-title"><div class="ranking-jpg-dialog-head"><strong id="ranking-jpg-title">🖼️ Exporter en JPG</strong><button type="button" class="ranking-jpg-close" aria-label="Fermer">×</button></div><p>${title} à enregistrer :</p><div class="ranking-jpg-options"></div><div class="ranking-jpg-hint">Chaque sélection crée une image JPG indépendante.</div></div>`;
+  const options = modal.querySelector(".ranking-jpg-options");
+  pages.forEach(page => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ranking-jpg-option";
+    button.textContent = page.category;
+    button.addEventListener("click", () => {
+      const info = window.currentExportInfo || {};
+      let base;
+      if(type === "competition"){
+        const safeName = safeRankingFilePart(info.name);
+        const safeDate = safeRankingFilePart(formatDateForFile(info.date));
+        const suffix = info.intermediaire ? "_INTERMEDIAIRE" : "";
+        base = `Resultats_${safeName}_${safeDate}${suffix}`;
+      } else {
+        base = `Classement_Championnat_UFOLEP_${info.startYear}-${info.endYear}`;
+      }
+      const fileName = `${base}_${safeRankingFilePart(page.category)}.jpg`;
+      exportRankingPageJPG(page, fileName);
+    });
+    options.appendChild(button);
+  });
+  modal.querySelector(".ranking-jpg-close").addEventListener("click", closeRankingJPGSelector);
+  modal.addEventListener("click", event => { if(event.target === modal) closeRankingJPGSelector(); });
+  document.body.appendChild(modal);
+}
+
+async function exportClubRankingJPG(){
+  const page = getRankingJpgPages("clubs")[0];
+  const info = window.currentExportInfo;
+  if(!page || !info) return;
+  const fileName = `Classement_Clubs_${info.startYear}-${info.endYear}.jpg`;
+  return exportRankingPageJPG(page, fileName);
 }
 
 async function printResults(){
@@ -9271,9 +9690,16 @@ let html=`
 
     <button
       class="club-export"
-      onclick="printClubPDF()"
+      onclick="openRankingPDFSelector('clubs')"
     >
       📄 Export PDF
+    </button>
+
+    <button
+      class="club-jpg-export"
+      onclick="exportClubRankingJPG()"
+    >
+      🖼️ Export JPG
     </button>
 
   </div>
@@ -9484,6 +9910,39 @@ async function printDoublePointageApresMidiPDF(){
 
 async function printDoublePointageToutesCategoriesPDF(){
   return printDoublePointagePDF("Toutes_Categories");
+}
+
+// Depuis le menu des exports, préparer le document puis ouvrir directement
+// la boîte d’enregistrement/impression PDF, sans demander à l’utilisateur
+// de passer par l’écran d’aperçu. Le menu revient après fermeture du dialogue.
+async function exportDoublePointageDirect(competitionIndex, showSheet, printSheet){
+  if(!state.competitions[competitionIndex]){
+    showAppNotice("Compétition introuvable.");
+    return;
+  }
+  showSheet(competitionIndex);
+  try {
+    // Laisser le navigateur calculer la mise en page avant la capture PDF,
+    // notamment dans Electron où l’appel IPC peut partir immédiatement.
+    if(typeof requestAnimationFrame === "function"){
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+    return await printSheet();
+  } finally {
+    showExportParticipantsMenu(competitionIndex);
+  }
+}
+
+async function exportDoublePointageMatinPDF(competitionIndex){
+  return exportDoublePointageDirect(competitionIndex, showDoublePointageMatin, printDoublePointageMatinPDF);
+}
+
+async function exportDoublePointageApresMidiPDF(competitionIndex){
+  return exportDoublePointageDirect(competitionIndex, showDoublePointageApresMidi, printDoublePointageApresMidiPDF);
+}
+
+async function exportDoublePointageToutesCategoriesPDF(competitionIndex){
+  return exportDoublePointageDirect(competitionIndex, showDoublePointageToutesCategories, printDoublePointageToutesCategoriesPDF);
 }
 
 // Téléchargement commun des fichiers générés côté navigateur. Garder l’URL
@@ -10449,59 +10908,22 @@ function showExportParticipantsMenu(i){
               <button class="export-excel-btn" onclick="exportCravatesPDF(${i}, 'apres-midi')">Exporter PDF</button>
             </div>
 
-            <div
-              class="export-pointage-card"
-              onclick="showDoublePointageMatin(${i})">
-
-              <div class="export-card-icon">
-                🌅
-              </div>
-
+            <div class="export-direct-card">
+              <div class="export-card-icon">🌅</div>
               <div class="export-card-content">
-
-                <div class="export-card-title">
-                  Double pointage matin
-                </div>
-
-                <div class="export-card-description">
-                  N4 et N5 · Prévisualisation du document
-                  avant export PDF.
-                </div>
-
+                <div class="export-card-title">Double pointage matin</div>
+                <div class="export-card-description">N4 et N5 · PDF prêt à imprimer.</div>
               </div>
-
-              <div class="export-preview-btn">
-                Aperçu →
-              </div>
-
+              <button class="export-excel-btn" onclick="exportDoublePointageMatinPDF(${i})">Exporter PDF</button>
             </div>
 
-
-            <div
-              class="export-pointage-card"
-              onclick="showDoublePointageApresMidi(${i})">
-
-              <div class="export-card-icon">
-                ☀️
-              </div>
-
+            <div class="export-direct-card">
+              <div class="export-card-icon">☀️</div>
               <div class="export-card-content">
-
-                <div class="export-card-title">
-                  Double pointage après-midi
-                </div>
-
-                <div class="export-card-description">
-                  Elite, N1, N2 et N3 · Prévisualisation
-                  avant export PDF.
-                </div>
-
+                <div class="export-card-title">Double pointage après-midi</div>
+                <div class="export-card-description">Elite, N1, N2 et N3 · PDF prêt à imprimer.</div>
               </div>
-
-              <div class="export-preview-btn">
-                Aperçu →
-              </div>
-
+              <button class="export-excel-btn" onclick="exportDoublePointageApresMidiPDF(${i})">Exporter PDF</button>
             </div>
 
 
@@ -10577,31 +10999,13 @@ function showExportParticipantsMenu(i){
               <button class="export-excel-btn" onclick="exportCravatesPDF(${i}, 'toutes')">Exporter PDF</button>
             </div>
 
-            <div
-              class="export-pointage-card"
-              onclick="showDoublePointageToutesCategories(${i})">
-
-              <div class="export-card-icon">
-                🏁
-              </div>
-
+            <div class="export-direct-card">
+              <div class="export-card-icon">🏁</div>
               <div class="export-card-content">
-
-                <div class="export-card-title">
-                  Double pointage unique
-                </div>
-
-                <div class="export-card-description">
-                  Toutes les catégories · Prévisualisation
-                  du document avant export PDF.
-                </div>
-
+                <div class="export-card-title">Double pointage journée</div>
+                <div class="export-card-description">Toutes les catégories · PDF prêt à imprimer.</div>
               </div>
-
-              <div class="export-preview-btn">
-                Aperçu →
-              </div>
-
+              <button class="export-excel-btn" onclick="exportDoublePointageToutesCategoriesPDF(${i})">Exporter PDF</button>
             </div>
 
 

@@ -422,20 +422,8 @@ button:not(.delete):not(.score-btn):not(.comp-delete):not(.comp-edit):not(.comp-
    ===== TITRES / STATUTS =================================
    ========================================================= */
 
-.championship-ranking-heading{
-  margin-top:0;
-  margin-bottom:12px;
-  min-height:80px;
-  break-inside:avoid;
-  page-break-inside:avoid;
-}
-
-.championship-ranking-heading .section-title{
-  max-width:calc(65% - 120px);
-}
-
-.championship-ranking-heading .ranking-event-label{
-  line-height:1.35;
+.championship-status-spacer{
+  visibility:hidden;
 }
 
 .ranking-heading{
@@ -693,15 +681,6 @@ th{
     overflow:visible;
   }
 
-  .championship-ranking-heading{
-    margin-top:0;
-    gap:12px;
-    min-height:80px;
-    break-inside:avoid !important;
-    page-break-inside:avoid !important;
-    overflow:visible;
-  }
-
   .section-title{
     max-width:calc(65% - 110px);
     font-size:18px;
@@ -724,6 +703,23 @@ th{
 
   @page{
     margin:5mm;
+  }
+}
+
+/* Le titre du championnat tient sur une seule ligne, comme celui de la compétition.
+   On conserve la typographie d'impression commune et on réserve la place du logo. */
+@media print{
+  .championship-ranking-heading .section-title{
+    max-width:calc(78% - 150px);
+    flex-wrap:nowrap;
+    white-space:nowrap;
+    gap:8px;
+    font-size:18px;
+  }
+  .championship-ranking-heading .ranking-event-label{
+    white-space:nowrap;
+    font-size:inherit;
+    line-height:1.2;
   }
 }
 
@@ -4382,3 +4378,121 @@ body.dark-mode .export-page .export-preview-btn{
   .double-pointage-zone-circle { display:inline-block; width:15mm; height:15mm; min-width:15mm; min-height:15mm; border:2px solid #111; border-radius:50%; box-sizing:border-box; background:#fff; }
   .double-pointage-print-header-row { break-inside:avoid; page-break-inside:avoid; }
 }
+
+/* ===== FENETRE DE SELECTION DES EXPORTS JPG ===== */
+.results-jpg-btn,
+.championship-jpg-export,
+.club-jpg-export{
+  background:#0f766e !important;
+  color:#fff !important;
+  margin:0 !important;
+  font-weight:700;
+}
+.results-jpg-btn:hover,
+.championship-jpg-export:hover,
+.club-jpg-export:hover{
+  background:#115e59 !important;
+}
+
+.ranking-jpg-overlay{
+  position:fixed;
+  inset:0;
+  z-index:10050;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(15,23,42,.62);
+}
+.ranking-jpg-dialog{
+  width:min(440px,100%);
+  max-height:min(80vh,680px);
+  overflow:auto;
+  padding:20px;
+  border-radius:14px;
+  background:#fff;
+  color:#1e293b;
+  box-shadow:0 18px 55px rgba(0,0,0,.28);
+}
+.ranking-jpg-dialog-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  font-size:20px;
+}
+.ranking-jpg-dialog-head .ranking-jpg-close{
+  width:36px;
+  height:36px;
+  min-width:36px;
+  padding:0 !important;
+  margin:0 !important;
+  border-radius:50%;
+  background:#e2e8f0 !important;
+  color:#1e293b !important;
+  font-size:25px !important;
+  line-height:1;
+}
+.ranking-jpg-dialog p{
+  margin:14px 0 10px;
+  color:#475569;
+}
+.ranking-jpg-options{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.ranking-jpg-option{
+  margin:0 !important;
+  padding:12px 10px !important;
+  border:1px solid #cbd5e1 !important;
+  border-radius:8px !important;
+  background:#f1f5f9 !important;
+  color:#1e293b !important;
+  font-size:15px !important;
+  font-weight:700;
+}
+.ranking-jpg-option:hover{
+  background:#dbeafe !important;
+  border-color:#60a5fa !important;
+}
+.ranking-jpg-hint{
+  margin-top:14px;
+  color:#64748b;
+  font-size:12px;
+  text-align:center;
+}
+@media(max-width:420px){
+  .ranking-jpg-options{grid-template-columns:1fr;}
+}
+
+/* Le bouton de fermeture des messages reste discret, quelle que soit la couleur globale des boutons. */
+.tm-notice-close,
+.tm-notice-close:hover,
+.tm-notice-close:focus{
+  background:#fff !important;
+  color:#7f1d1d !important;
+  border:1px solid #d1a4a4 !important;
+  box-shadow:none !important;
+}
+
+/* Les boutons JPG reprennent exactement le gabarit des boutons PDF voisins. */
+.results-jpg-btn{
+  margin:0 !important;
+  padding:10px 14px !important;
+  border-radius:8px !important;
+  font-size:14px !important;
+  font-weight:700 !important;
+  box-shadow:none !important;
+}
+.championship-jpg-export,
+.club-jpg-export{
+  padding:14px 20px !important;
+  font-size:18px !important;
+  font-weight:700 !important;
+  box-shadow:none !important;
+}
+
+
+/* Masquage temporaire des autres catégories pendant un export PDF ciblé. */
+.ranking-pdf-page-hidden{display:none!important;}

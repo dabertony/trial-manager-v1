@@ -5,6 +5,12 @@ contextBridge.exposeInMainWorld("api", {
   exportPDF: (options) =>
     ipcRenderer.invoke("export-pdf", options),
 
+  exportJPG: (options) =>
+    ipcRenderer.invoke("export-jpg", options),
+
+  exportJPGHTML: (options) =>
+    ipcRenderer.invoke("export-jpg-html", options),
+
   openTV: (html) =>
     ipcRenderer.invoke("open-tv", html),
 
