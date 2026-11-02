@@ -9,7 +9,7 @@ const sw = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
 function check(ok, message) { if (!ok) throw new Error(message); }
 check(app.includes('championship-ranking-heading'), 'championship tables should use the shared ranking heading');
 check(app.includes('getCategoryColor(title)'), 'championship category heading should reuse category colors');
-check(app.includes('src="ufolep-logo-lockup.svg"'), 'championship heading should include the local UFOLEP logo');
+check(app.includes('src="ufolep-logo-lockup-print.png"'), 'championship heading should include the local UFOLEP logo');
 check(/CHAMPIONNAT UFOLEP · SAISON \$\{window\.currentExportInfo\.startYear\}-\$\{window\.currentExportInfo\.endYear\}/.test(app), 'championship label should remain present');
 check(/class="category-status championship-status-spacer" aria-hidden="true"/.test(app), 'championship should reserve the same status-row space as daily rankings without displaying status text');
 check(/\.championship-status-spacer\s*\{[^}]*visibility:hidden/s.test(css), 'the reserved championship status row should be invisible but retain its layout height');
@@ -17,6 +17,6 @@ check(/\.championship-ranking-heading \.section-title\s*\{[^}]*flex-wrap:nowrap/
 check(/\.championship-ranking-heading \.ranking-event-label\s*\{[^}]*white-space:nowrap/s.test(css), 'championship season label should not wrap in PDF');
 check(!/min-height:88px/.test(css), 'championship must not use a taller custom heading than competition');
 check(/\.ranking-heading\s*\{[^}]*min-height:80px/s.test(css), 'championship logo should use the same 80px heading as competition in print');
-check(index.includes('style.css?v=37') && index.includes('app.js?v=118'), 'index should request updated CSS and app');
-check(sw.includes('trial-manager-cache-v129'), 'offline cache should be bumped');
+check(index.includes('style.css?v=38') && index.includes('app.js?v=119'), 'index should request updated CSS and app');
+check(sw.includes('trial-manager-cache-v130'), 'offline cache should be bumped');
 console.log('PASS: championship header parity checks passed (12 checks).');

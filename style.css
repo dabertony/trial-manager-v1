@@ -660,6 +660,12 @@ th{
     display:none;
   }
 
+  /* Safari iOS doit traiter chaque classement comme une page distincte. */
+  #app{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;}
+  #app .print-page{display:block!important;position:relative!important;overflow:visible!important;break-after:page!important;page-break-after:always!important;}
+  #app .print-page ~ .print-page{break-before:page!important;page-break-before:always!important;}
+  #app .print-page:last-child{break-after:auto!important;page-break-after:auto!important;}
+
   .print-footer{
     position:fixed;
     bottom:5mm;

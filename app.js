@@ -6674,7 +6674,7 @@ function renderTable(title,list,c,htmlRef,ci,provisional){
       </span>
       <span class="ranking-event-label">— ${c.name} (${formatBirthDate(c.date)})</span>
     </div>
-    <img class="ufolep-ranking-logo" src="ufolep-logo-lockup.svg" alt="UFOLEP — Tous les sports autrement">
+    <img class="ufolep-ranking-logo" src="ufolep-logo-lockup-print.png" alt="UFOLEP — Tous les sports autrement">
   </div>
 
   <div class="category-status ${
@@ -8306,7 +8306,7 @@ function renderChampionshipTable(
       </span>
       <span class="ranking-event-label">— CHAMPIONNAT UFOLEP · SAISON ${window.currentExportInfo.startYear}-${window.currentExportInfo.endYear} · (${state.currentJokers || 0} joker${(state.currentJokers || 0) > 1 ? "s" : ""})</span>
     </div>
-    <img class="ufolep-ranking-logo" src="ufolep-logo-lockup.svg" alt="UFOLEP — Tous les sports autrement">
+    <img class="ufolep-ranking-logo" src="ufolep-logo-lockup-print.png" alt="UFOLEP — Tous les sports autrement">
   </div>
 
   <div class="category-status championship-status-spacer" aria-hidden="true"></div>
@@ -11062,7 +11062,7 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
   const ua = String(navigator.userAgent || "");
   const isAppleMobile = /iPhone|iPad|iPod/i.test(ua)
     || (navigator.platform === "MacIntel" && Number(navigator.maxTouchPoints || 0) > 1);
-  const printableHeight = isAppleMobile ? 278 : 283; // mm, sans changer le rendu PC/Electron.
+  const printableHeight = isAppleMobile ? 286 : 283; // mm : trois cravates de 94 mm tiennent avec une marge basse dédiée.
   const rowGap = 0;
   const rowsPerPage = Math.max(1, Math.floor((printableHeight + rowGap) / (cravateHeight + rowGap)));
   const pages = [];
@@ -11098,7 +11098,7 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
     @page { size:A4 portrait; margin:0; }
     #app:has(.cravate-document){ margin:0!important;padding:0!important;width:100%!important;max-width:none!important; }
     .cravate-document{width:210mm;margin:0 auto;color:#111;background:#fff;font-family:Arial,Helvetica,sans-serif;}
-    .cravate-page{box-sizing:border-box;width:210mm;height:297mm;padding:7mm 7mm ${isAppleMobile ? "12mm" : "7mm"};overflow:hidden;page-break-after:always;break-after:page;background:#fff;}
+    .cravate-page{box-sizing:border-box;width:210mm;height:297mm;padding:${isAppleMobile ? "4mm 7mm 7mm" : "7mm"};overflow:hidden;page-break-after:always;break-after:page;background:#fff;}
     .cravate-page:last-child{page-break-after:auto;break-after:auto;}
     .cravate-grid{display:flex;flex-direction:column;gap:0;align-items:stretch;width:100%;}
     .cravate-row{box-sizing:border-box;width:100%;height:${cravateHeight}mm;flex:0 0 ${cravateHeight}mm;display:grid;grid-template-columns:repeat(4,48.5mm);column-gap:0;justify-content:center;align-items:start;}

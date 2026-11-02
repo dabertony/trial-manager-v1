@@ -11,7 +11,7 @@ function check(ok, message) { if (!ok) throw new Error(message); }
 check(app.includes('class="ranking-heading"'), 'ranking heading should use a shared layout');
 check(app.includes('CLASSEMENT ${title}'), 'ranking category label should remain dynamic');
 check(app.includes('getCategoryColor(title)'), 'ranking label should reuse category colors');
-check(app.includes('src="ufolep-logo-lockup.svg"'), 'ranking heading should include the local UFOLEP lockup');
+check(app.includes('src="ufolep-logo-lockup-print.png"'), 'ranking heading should include the local UFOLEP lockup');
 check(app.includes('✔ Classement validé'), 'validated/provisional status should be retained');
 check(!app.includes('class="print-footer"'), 'redundant line under ranking status should be removed');
 check(css.includes('.ranking-category-label') && css.includes('border:1px solid #111827'), 'category label should have a black border, including white N4');
