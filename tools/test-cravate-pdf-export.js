@@ -16,7 +16,7 @@ check(source.includes(".cravate::after") && source.includes("border:.8mm solid #
 check(source.includes("border:0;box-shadow:none;display:flex;flex-direction:column;background:#fff"), "Cravate content must not add a second thick border under the outer frame");
 check(!source.includes(".cravate-row .cravate:not(:first-child){border-left:0;}"), "Every cravate must retain its own left outer contour");
 check(source.includes("border-right:.15mm solid #111") && source.includes("border-bottom:.15mm solid #111"), "Internal grid lines must remain thin compared with the outer contour");
-check(source.includes("height:8.5mm;flex:0 0 8.5mm"), "Zone rows must keep a fixed, punchable height");
+check(source.includes("height:${cravateZoneHeight}mm;flex:0 0 ${cravateZoneHeight}mm"), "Zone rows must keep a fixed, punchable height");
 check(source.includes("page-break-inside:avoid") && source.includes("break-inside:avoid"), "Cravates must not be split across pages");
 check(source.includes("#D9EAD3") && source.includes("#FFF2CC"), "Additional tour colors must be light pastel shades");
 check(source.includes('participants.sort((a,b) => String(a.name || "").localeCompare(String(b.name || ""), "fr", {sensitivity:"base"})'), "Participants must be sorted alphabetically by name");

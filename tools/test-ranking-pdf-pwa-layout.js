@@ -1,0 +1,16 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+const check = (ok, message) => { if (!ok) throw new Error(message); };
+const match = source.match(/async function exportRankingPagesPDF\(type, selectedPage = null\)\s*\{[\s\S]*?\n\}/);
+check(!!match, 'Ranking PDF export function is missing');
+check(match[0].includes('@page { size: A4 landscape; margin: 5mm; }'), 'PWA ranking PDF must request landscape orientation before the print dialog opens');
+check(match[0].includes('pageStyle.textContent') && match[0].includes('document.head.appendChild(pageStyle)'), 'Landscape print style must be installed before printing');
+check(match[0].includes('finally {\n    pageStyle?.remove();\n    hiddenPages.forEach(page => page.element.classList.remove("ranking-pdf-page-hidden"));'), 'Temporary print style and hidden pages must be restored after printing');
+check(source.includes('const isElectronPDF = !!(window.api && typeof window.api.exportPDF === "function");'), 'Cravate layout must distinguish Electron from browser/PWA printing');
+check(source.includes('const printableHeight = isElectronPDF ? 283 : 273;'), 'Only PWA cravate pagination must reserve additional room for browser print footers');
+check(source.includes('const cravateHeight = cravateTopHeight + cravateNameHeight + cravateClubHeight + cravateBarHeight + cravateTotalHeight + zones * cravateZoneHeight;'), 'Cravate row height must be derived from the selected platform dimensions');
+check(source.includes('const cravateTopHeight = isElectronPDF ? 9.5 : 8.5;'), 'Electron cravate dimensions must remain unchanged');
+check(source.includes('height:${cravateTopHeight}mm') && source.includes('height:${cravateNameHeight}mm') && source.includes('height:${cravateClubHeight}mm') && source.includes('height:${cravateTotalHeight}mm'), 'Platform-specific cravate row dimensions must be defined in print CSS');
+console.log('PASS: PWA ranking landscape and cravate print-safe layout checks passed.');

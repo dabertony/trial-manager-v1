@@ -16,5 +16,5 @@ check(app.includes('@page { size: A4 portrait; margin: 8mm; }'), 'print page mar
 check(css.includes('.double-pointage thead{display:table-header-group;}') && css.includes('break-inside:avoid'), 'table headings repeat and rows do not split');
 check(!/\.double-pointage\s+th\s*,\s*\.double-pointage\s+td\s*\{[^}]*height\s*:/s.test(css), 'cell heights remain unchanged');
 check(main.includes('displayHeaderFooter: false') && main.includes('headerTemplate: "<div></div>"') && main.includes('footerTemplate: "<div></div>"'), 'Electron suppresses automatic date/title headers and footers');
-check(html.includes('app.js?v=117') && html.includes('style.css?v=37') && sw.includes('trial-manager-cache-v128'), 'assets and cache versions bumped');
+check(html.includes('app.js?v=118') && html.includes('style.css?v=37') && sw.includes('trial-manager-cache-v129'), 'assets and cache versions bumped');
 console.log('PASS: double-pointage print header, pagination, and unchanged cell sizing checks passed.');

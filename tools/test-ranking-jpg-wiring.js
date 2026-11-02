@@ -32,6 +32,6 @@ assert.match(css, /\.tm-notice-close:hover[\s\S]*?background:#fff !important/, '
 assert.match(css, /\.results-jpg-btn\s*\{[\s\S]*?font-size:14px !important/, 'competition JPG button must match the adjacent 14px export button');
 assert.match(css, /\.championship-jpg-export,[\s\S]*?font-size:18px !important/, 'championship and club JPG buttons must match their 18px PDF buttons');
 assert.match(app, /Classement_Championnat_UFOLEP_\$\{info\.startYear\}-\$\{info\.endYear\}/, 'championship JPG name must retain PDF base name plus category');
-assert.match(html, /style\.css\?v=37/); assert.match(html, /app\.js\?v=117/);
-assert.match(sw, /trial-manager-cache-v128/);
+assert.match(html, /style\.css\?v=37/); assert.match(html, /app\.js\?v=118/);
+assert.match(sw, /trial-manager-cache-v129/);
 console.log('PASS: ranking JPG export wiring checks passed (18 checks).');

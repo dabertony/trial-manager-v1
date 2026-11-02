@@ -14,10 +14,10 @@ assert.match(app, /function openRankingPDFSelector\(type\)/, 'PDF selector must 
 assert.match(app, /if\(type !== "clubs"\) addOption\("Toutes les catégories"\)/, 'all categories option must be first for competition and championship');
 assert.match(app, /pages\.forEach\(page => addOption\(type === "clubs" \? "Classement clubs" : page\.category, page\)\)/, 'PDF selector must offer each rendered ranking page');
 assert.match(app, /pages\.filter\(page => page\.element !== selectedPage\.element\)/, 'single-category PDF must hide all other ranking pages');
-assert.match(app, /finally\s*\{\s*hiddenPages\.forEach\(page => page\.element\.classList\.remove\("ranking-pdf-page-hidden"\)\)/, 'hidden pages must always be restored after PDF export');
+assert.match(app, /finally\s*\{[\s\S]*?hiddenPages\.forEach\(page => page\.element\.classList\.remove\("ranking-pdf-page-hidden"\)\)/, 'hidden pages must always be restored after PDF export');
 assert.match(app, /Classement_Clubs_\$\{info\.startYear\}-\$\{info\.endYear\}/, 'club PDF must keep its established filename');
 assert.match(css, /\.ranking-pdf-page-hidden\s*\{display:none!important;\}/, 'selected PDF export must hide unselected pages');
 assert.match(html, /style\.css\?v=37/);
-assert.match(html, /app\.js\?v=117/);
-assert.match(sw, /trial-manager-cache-v128/);
+assert.match(html, /app\.js\?v=118/);
+assert.match(sw, /trial-manager-cache-v129/);
 console.log('PASS: ranking PDF category selector checks passed (12 checks).');

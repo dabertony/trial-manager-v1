@@ -9269,9 +9269,22 @@ async function exportRankingPagesPDF(type, selectedPage = null){
     ? pages.filter(page => page.element !== selectedPage.element)
     : [];
   hiddenPages.forEach(page => page.element.classList.add("ranking-pdf-page-hidden"));
+
+  // Sur navigateur/PWA, l'orientation paysage doit être portée par le CSS
+  // avant l'ouverture de la feuille d'impression. Laisser l'utilisateur
+  // changer manuellement l'orientation provoquait une nouvelle prévisualisation
+  // iOS pendant laquelle les catégories masquées pouvaient réapparaître.
+  let pageStyle = null;
+  if(!(window.api && typeof window.api.exportPDF === "function")){
+    pageStyle = document.createElement("style");
+    pageStyle.id = "ranking-pdf-page-style";
+    pageStyle.textContent = "@page { size: A4 landscape; margin: 5mm; }";
+    document.head.appendChild(pageStyle);
+  }
   try {
     return await exportPDFDocument(rankingPdfFileName(type, selectedPage), true);
   } finally {
+    pageStyle?.remove();
     hiddenPages.forEach(page => page.element.classList.remove("ranking-pdf-page-hidden"));
   }
 }
@@ -11061,8 +11074,18 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
 
   const tours = Math.max(1, Math.min(12, Number(competition.tours) || 3));
   const zones = Math.max(1, Math.min(12, Number(competition.zones) || 6));
-  const cravateHeight = 43 + zones * 8.5; // mm; les lignes de zone restent à 8,5 mm.
-  const printableHeight = 283; // A4 portrait, avec 7 mm de sécurité en haut et en bas.
+  const isElectronPDF = !!(window.api && typeof window.api.exportPDF === "function");
+  // On conserve exactement les dimensions PC/Electron déjà validées. La version
+  // PWA compacte légèrement les cravates et réserve plus d’espace au pied de page
+  // ajouté par le moteur d’impression mobile.
+  const cravateTopHeight = isElectronPDF ? 9.5 : 8.5;
+  const cravateNameHeight = isElectronPDF ? 9.5 : 8.5;
+  const cravateClubHeight = isElectronPDF ? 8 : 7;
+  const cravateBarHeight = isElectronPDF ? 8.5 : 8.3;
+  const cravateZoneHeight = isElectronPDF ? 8.5 : 8.3;
+  const cravateTotalHeight = isElectronPDF ? 7.5 : 7;
+  const cravateHeight = cravateTopHeight + cravateNameHeight + cravateClubHeight + cravateBarHeight + cravateTotalHeight + zones * cravateZoneHeight;
+  const printableHeight = isElectronPDF ? 283 : 273; // réserve supplémentaire uniquement pour l’impression PWA.
   const rowGap = 0;
   const rowsPerPage = Math.max(1, Math.floor((printableHeight + rowGap) / (cravateHeight + rowGap)));
   const pages = [];
@@ -11103,17 +11126,18 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
     .cravate-grid{display:flex;flex-direction:column;gap:0;align-items:stretch;width:100%;}
     .cravate-row{box-sizing:border-box;width:100%;height:${cravateHeight}mm;flex:0 0 ${cravateHeight}mm;display:grid;grid-template-columns:repeat(4,48.5mm);column-gap:0;justify-content:center;align-items:start;}
     .cravate{box-sizing:border-box;position:relative;width:48.5mm;min-width:48.5mm;max-width:48.5mm;border:0;box-shadow:none;display:flex;flex-direction:column;background:#fff;break-inside:avoid;page-break-inside:avoid;font-size:8pt;overflow:visible;}\n    .cravate::after{content:"";position:absolute;inset:-.4mm;box-sizing:border-box;border:.8mm solid #111;pointer-events:none;z-index:5;}
-    .cravate-top{box-sizing:border-box;width:100%;height:9.5mm;flex:0 0 9.5mm;display:grid;grid-template-columns:1fr 1fr;font-weight:700;text-align:center;}
+    .cravate-top{box-sizing:border-box;width:100%;height:${cravateTopHeight}mm;flex:0 0 ${cravateTopHeight}mm;display:grid;grid-template-columns:1fr 1fr;font-weight:700;text-align:center;}
     .cravate-category,.cravate-tour{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;border-bottom:.15mm solid #111;}
     .cravate-category{background:var(--cat-color);border-right:.15mm solid #111;}
     .cravate-tour{background:var(--tour-color);}
-    .cravate-name{box-sizing:border-box;width:100%;height:9.5mm;flex:0 0 9.5mm;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;overflow:hidden;overflow-wrap:anywhere;border-bottom:.15mm solid #111;padding:0 .5mm;}
-    .cravate-club{box-sizing:border-box;width:100%;height:8mm;flex:0 0 8mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-bottom:.15mm solid #111;font-size:7pt;font-weight:700;}
+    .cravate-name{box-sizing:border-box;width:100%;height:${cravateNameHeight}mm;flex:0 0 ${cravateNameHeight}mm;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;overflow:hidden;overflow-wrap:anywhere;border-bottom:.15mm solid #111;padding:0 .5mm;}
+    .cravate-club{box-sizing:border-box;width:100%;height:${cravateClubHeight}mm;flex:0 0 ${cravateClubHeight}mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-bottom:.15mm solid #111;font-size:7pt;font-weight:700;}
     .cravate-club span:first-child{grid-column:span 4;}
     .cravate-club span:nth-child(2){grid-column:span 2;}
     .cravate-club span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;overflow:hidden;overflow-wrap:anywhere;padding:0 .3mm;}
     .cravate-club span+span{position:relative;left:-.25mm;border-left:.15mm solid #111;}
-    .cravate-barème,.cravate-zone{box-sizing:border-box;width:100%;display:grid;grid-template-columns:repeat(6,1fr);height:8.5mm;flex:0 0 8.5mm;}
+    .cravate-barème,.cravate-zone{box-sizing:border-box;width:100%;display:grid;grid-template-columns:repeat(6,1fr);height:${cravateBarHeight}mm;flex:0 0 ${cravateBarHeight}mm;}
+    .cravate-zone{height:${cravateZoneHeight}mm;flex:0 0 ${cravateZoneHeight}mm;}
     .cravate-barème span,.cravate-zone span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;border-right:.15mm solid #111;border-bottom:.15mm solid #111;font-weight:700;}
     .cravate-barème span:nth-child(4),.cravate-zone span:nth-child(4){border-right:.15mm solid #111;}
     
@@ -11121,7 +11145,7 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
     .cravate-barème{background:var(--tour-color);}
     .cravate-zone{background:var(--tour-color);}
     .cravate-zone span:nth-child(4){font-size:9pt;}
-    .cravate-total{box-sizing:border-box;width:100%;height:7.5mm;flex:0 0 7.5mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));font-weight:700;text-align:center;background:var(--tour-color);}
+    .cravate-total{box-sizing:border-box;width:100%;height:${cravateTotalHeight}mm;flex:0 0 ${cravateTotalHeight}mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));font-weight:700;text-align:center;background:var(--tour-color);}
     .cravate-total span:first-child{grid-column:span 4;}
     .cravate-total span:nth-child(2){grid-column:span 2;}
     .cravate-total span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;}
