@@ -28,6 +28,7 @@ for (const [name, label, printFunction, directFunction] of [
 check(!app.includes('Prévisualisation du document') && !app.includes('Aperçu →'), 'double-pointage export menu should not show preview cards');
 check(app.includes('async function exportDoublePointageDirect(competitionIndex, showSheet, printSheet)'), 'direct export should prepare the sheet and launch the shared PDF flow');
 check(/finally\s*\{\s*showExportParticipantsMenu\(competitionIndex\);\s*\}/.test(app), 'direct export should return to the export menu after the PDF dialog closes');
+check(app.includes('window.addEventListener("afterprint", browserPrintHandler, { once: true })') && app.includes('if(waitForBrowserPrint) await waitForBrowserPrint;'), 'browser export must keep the double-pointage table visible until the print dialog has finished');
 check(app.includes('async function printDoublePointagePDF(sheetName, landscape = false)'), 'double-pointage sheets should use the shared PDF export helper');
 check(app.includes('return exportPDFDocument(fileName, landscape);'), 'shared helper should pass generated file name and orientation to PDF export');
 check(!app.includes('async function exportDoublePointage(i, apiMethod, periodLabel)'), 'obsolete duplicate Electron export wrapper should be removed');

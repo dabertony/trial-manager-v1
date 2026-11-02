@@ -8955,55 +8955,13 @@ async function exportPDFDocument(fileName, landscape = false){
     }
   }
 
-  if(window.TMDirectPDF && typeof window.TMDirectPDF.exportElements === "function"){
-    try {
-      const elements = getDirectPDFExportElements();
-      if(!elements.length) throw new Error("Aucune page à exporter.");
-      return await window.TMDirectPDF.exportElements(elements, fileName, landscape);
-    } catch(error) {
-      console.error("Génération PDF directe impossible :", error);
-      showAppNotice("Impossible de créer le PDF sur cet appareil. Réessaie.");
-      return false;
-    } finally {
-      if(typeof document !== "undefined") document.getElementById("direct-pdf-staging")?.remove();
-    }
+  if(typeof window.print === "function"){
+    printPDFPWA(fileName, forceLight);
+    return true;
   }
 
-  showAppNotice("Le générateur PDF local n'est pas disponible sur cet appareil.");
+  showAppNotice("L'export PDF n'est pas disponible sur cet appareil.");
   return false;
-}
-
-function getDirectPDFExportElements(){
-  const appRoot = document.getElementById("app");
-  if(!appRoot) return [];
-  const cravatePages = Array.from(appRoot.querySelectorAll(".cravate-page"));
-  if(cravatePages.length) return cravatePages;
-  const rankingPages = Array.from(appRoot.querySelectorAll(".print-page"))
-    .filter(element => element.querySelector("table"));
-  if(rankingPages.length) return rankingPages.filter(element => getComputedStyle(element).display !== "none");
-  const doublePointage = appRoot.querySelector("table.double-pointage");
-  if(doublePointage){
-    const rows = Array.from(doublePointage.tBodies[0]?.rows || []);
-    if(rows.length <= 43) return [doublePointage];
-    const staging = document.createElement("div");
-    staging.id = "direct-pdf-staging";
-    staging.style.cssText = `position:fixed;left:-10000px;top:0;width:${Math.max(1000,Math.ceil(doublePointage.getBoundingClientRect().width))}px;background:#fff;z-index:-1;`;
-    appRoot.appendChild(staging);
-    const pages = [];
-    for(let start=0; start<rows.length; start+=43){
-      const clone = doublePointage.cloneNode(true);
-      const body = clone.tBodies[0];
-      while(body.firstChild) body.removeChild(body.firstChild);
-      rows.slice(start,start+43).forEach(row=>body.appendChild(row.cloneNode(true)));
-      clone.style.width = `${Math.max(1000,Math.ceil(doublePointage.getBoundingClientRect().width))}px`;
-      staging.appendChild(clone);
-      pages.push(clone);
-    }
-    return pages;
-  }
-  const tables = Array.from(appRoot.querySelectorAll("table"));
-  if(tables.length) return tables;
-  return [appRoot];
 }
 
 // ===== EXPORT JPG DES CLASSEMENTS =====
@@ -9311,27 +9269,14 @@ async function exportRankingPagesPDF(type, selectedPage = null){
     showAppNotice("Aucun classement disponible à exporter.");
     return false;
   }
-  const elements = selectedPage
-    ? [selectedPage.element]
-    : pages.map(page => page.element);
-  const fileName = rankingPdfFileName(type, selectedPage);
-  // Conserver strictement le flux Electron existant : sélection par masquage
-  // temporaire, puis export natif Chromium avec sa boîte d'enregistrement.
-  if(window.api && typeof window.api.exportPDF === "function"){
-    const hiddenPages = selectedPage ? pages.filter(page => page.element !== selectedPage.element) : [];
-    hiddenPages.forEach(page => page.element.classList.add("ranking-pdf-page-hidden"));
-    try { return await exportPDFDocument(fileName, true); }
-    finally { hiddenPages.forEach(page => page.element.classList.remove("ranking-pdf-page-hidden")); }
-  }
+  const hiddenPages = selectedPage
+    ? pages.filter(page => page.element !== selectedPage.element)
+    : [];
+  hiddenPages.forEach(page => page.element.classList.add("ranking-pdf-page-hidden"));
   try {
-    if(!window.TMDirectPDF || typeof window.TMDirectPDF.exportElements !== "function"){
-      throw new Error("Le générateur PDF local n'est pas disponible.");
-    }
-    return await window.TMDirectPDF.exportElements(elements, fileName, true);
-  } catch(error) {
-    console.error("Export PDF du classement impossible :", error);
-    showAppNotice("Impossible de créer le PDF du classement. Réessaie.");
-    return false;
+    return await exportPDFDocument(rankingPdfFileName(type, selectedPage), true);
+  } finally {
+    hiddenPages.forEach(page => page.element.classList.remove("ranking-pdf-page-hidden"));
   }
 }
 
@@ -9976,15 +9921,31 @@ async function exportDoublePointageDirect(competitionIndex, showSheet, printShee
     return;
   }
   showSheet(competitionIndex);
+  let waitForBrowserPrint = null;
+  let browserPrintHandler = null;
+  const browserPrint = !(window.api && typeof window.api.exportPDF === "function");
   try {
-    // Electron doit laisser Chromium stabiliser la mise en page avant printToPDF.
-    // La PWA génère maintenant le PDF localement : ne pas retarder l’action
-    // utilisateur avant de lancer la création du fichier.
-    if(window.api && typeof window.api.exportPDF === "function" && typeof requestAnimationFrame === "function"){
+    // Laisser le navigateur terminer le rendu avant de lancer l'impression.
+    if(typeof requestAnimationFrame === "function"){
       await new Promise(resolve => requestAnimationFrame(resolve));
     }
-    return await printSheet();
+    // Sur Safari/Chrome mobile, window.print() peut rendre la main avant
+    // l'ouverture/fermeture de la feuille d'impression. Ne surtout pas
+    // remplacer le tableau par le menu pendant que le navigateur le capture.
+    if(browserPrint && typeof window.addEventListener === "function"){
+      waitForBrowserPrint = new Promise(resolve => {
+        browserPrintHandler = resolve;
+        window.addEventListener("afterprint", browserPrintHandler, { once: true });
+      });
+    }
+    const result = await printSheet();
+    if(waitForBrowserPrint) await waitForBrowserPrint;
+    return result;
   } finally {
+    if(browserPrintHandler && typeof window.removeEventListener === "function"){
+      // Nettoyage défensif si le navigateur a levé une erreur avant afterprint.
+      window.removeEventListener("afterprint", browserPrintHandler);
+    }
     showExportParticipantsMenu(competitionIndex);
   }
 }
@@ -11119,7 +11080,12 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
   const tours = Math.max(1, Math.min(12, Number(competition.tours) || 3));
   const zones = Math.max(1, Math.min(12, Number(competition.zones) || 6));
   const cravateHeight = 43 + zones * 8.5; // mm; les lignes de zone restent à 8,5 mm.
-  const printableHeight = 283; // A4 portrait, avec 7 mm de sécurité en haut et en bas.
+  // Safari iOS ajoute parfois son pied de page système (URL/date/page) dans
+  // la zone imprimable. Réserver 5 mm supplémentaires uniquement sur iPhone/iPad.
+  const ua = String(navigator.userAgent || "");
+  const isAppleMobile = /iPhone|iPad|iPod/i.test(ua)
+    || (navigator.platform === "MacIntel" && Number(navigator.maxTouchPoints || 0) > 1);
+  const printableHeight = isAppleMobile ? 278 : 283; // mm, sans changer le rendu PC/Electron.
   const rowGap = 0;
   const rowsPerPage = Math.max(1, Math.floor((printableHeight + rowGap) / (cravateHeight + rowGap)));
   const pages = [];
@@ -11155,7 +11121,7 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
     @page { size:A4 portrait; margin:0; }
     #app:has(.cravate-document){ margin:0!important;padding:0!important;width:100%!important;max-width:none!important; }
     .cravate-document{width:210mm;margin:0 auto;color:#111;background:#fff;font-family:Arial,Helvetica,sans-serif;}
-    .cravate-page{box-sizing:border-box;width:210mm;height:297mm;padding:7mm 7mm;overflow:hidden;page-break-after:always;break-after:page;background:#fff;}
+    .cravate-page{box-sizing:border-box;width:210mm;height:297mm;padding:7mm 7mm ${isAppleMobile ? "12mm" : "7mm"};overflow:hidden;page-break-after:always;break-after:page;background:#fff;}
     .cravate-page:last-child{page-break-after:auto;break-after:auto;}
     .cravate-grid{display:flex;flex-direction:column;gap:0;align-items:stretch;width:100%;}
     .cravate-row{box-sizing:border-box;width:100%;height:${cravateHeight}mm;flex:0 0 ${cravateHeight}mm;display:grid;grid-template-columns:repeat(4,48.5mm);column-gap:0;justify-content:center;align-items:start;}

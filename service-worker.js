@@ -14,8 +14,6 @@ const urlsToCache = [
 
   "./app.js",
 
-  "./pdf-export.js",
-
   "./state.js",
 
   "./manifest.json",

@@ -11,7 +11,7 @@ check(app.includes('function showAppNotice(message, type = "error")'), 'shared n
 check(app.includes('notice.setAttribute("role", type === "error" ? "alert" : "status")'), 'notice should expose an accessible role');
 check(app.includes('text.textContent = String(message || "Une erreur est survenue.")'), 'notice content should be assigned as text, not HTML');
 check(app.includes('host.insertBefore(notice, host.firstChild)'), 'notice should be placed at the top of the app');
-check(app.includes('showAppNotice("Le générateur PDF local n\'est pas disponible sur cet appareil.")'), 'PDF fallback should use a non-blocking notice');
+check(app.includes('showAppNotice("L\'export PDF n\'est pas disponible sur cet appareil.")'), 'PDF fallback should use a non-blocking notice');
 check((app.match(/showAppNotice\(/g) || []).length >= 5, 'Excel/PDF error paths should use the shared notice helper');
 check(!/\balert\s*\(/.test(app), 'blocking alert() calls should be removed from app.js');
 check(index.includes('app.js?v=117'), 'index should request the updated application script');
