@@ -18,6 +18,6 @@ assert.match(app, /finally\s*\{\s*hiddenPages\.forEach\(page => page\.element\.c
 assert.match(app, /Classement_Clubs_\$\{info\.startYear\}-\$\{info\.endYear\}/, 'club PDF must keep its established filename');
 assert.match(css, /\.ranking-pdf-page-hidden\s*\{display:none!important;\}/, 'selected PDF export must hide unselected pages');
 assert.match(html, /style\.css\?v=37/);
-assert.match(html, /app\.js\?v=116/);
-assert.match(sw, /trial-manager-cache-v127/);
+assert.match(html, /app\.js\?v=117/);
+assert.match(sw, /trial-manager-cache-v128/);
 console.log('PASS: ranking PDF category selector checks passed (12 checks).');

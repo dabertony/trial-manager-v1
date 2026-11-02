@@ -15,7 +15,7 @@ function check(condition, message) {
 async function runExport(environment, fileName = 'Test.pdf', landscape = false) {
   const sandbox = {
     window: environment.window,
-    printPDFPWA: environment.printPDFPWA || (() => {}),
+    printPDFPWA: environment.printPDFPWA || (() => Promise.resolve(true)),
     showAppNotice: environment.showAppNotice || (() => {})
   };
   vm.runInNewContext(`${sharedMatch[0]}\nthis.runHelper = exportPDFDocument;`, sandbox);
@@ -40,9 +40,9 @@ async function runExport(environment, fileName = 'Test.pdf', landscape = false) 
   check(legacyResult === true, 'an API implementation without an explicit result should remain compatible');
 
   let browserPrint = '';
-  const browserResult = await runExport({ window: { print: () => {} }, printPDFPWA: fileName => { browserPrint = fileName; } }, 'Resultats.pdf', false);
+  const browserResult = await runExport({ window: { print: () => {} }, printPDFPWA: fileName => { browserPrint = fileName; return Promise.resolve(true); } }, 'Resultats.pdf', false);
   check(browserPrint === 'Resultats.pdf', 'browser print fallback should preserve filename');
-  check(browserResult === true, 'browser fallback should report handled');
+  check(browserResult === true, 'browser fallback should report handled after the print dialog closes');
 
   let noticeMessage = '';
   const unavailableResult = await runExport({ window: {}, showAppNotice: message => { noticeMessage = message; } });

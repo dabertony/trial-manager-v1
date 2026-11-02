@@ -1,4 +1,4 @@
-const CACHE_NAME = "trial-manager-cache-v127";
+const CACHE_NAME = "trial-manager-cache-v128";
 
 const urlsToCache = [
 

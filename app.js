@@ -8884,46 +8884,41 @@ function showChampionship(jokers){
 
 function printPDFPWA(fileName, forceLight = false){
 
-  const oldTitle =
-    document.title;
+  const oldTitle = document.title;
   const wasDark = document.body.classList.contains("dark-mode");
   if(forceLight && wasDark){
     document.body.classList.remove("dark-mode");
   }
 
-  // Évite que le navigateur réimprime le nom du fichier dans son en-tête
-  // automatique au-dessus de notre véritable en-tête de compétition.
+  // iOS PWA peut retourner immédiatement de window.print(), alors que la
+  // feuille d'impression native est encore ouverte. On garde donc le document
+  // préparé jusqu'à afterprint au lieu de restaurer l'écran trop tôt.
   document.title = /^Double_Pointage_/i.test(fileName)
     ? ""
-    : fileName.replace(/\.pdf$/i,"");
+    : fileName.replace(/\.pdf$/i, "");
 
-  const restoreTitle = () => {
+  return new Promise(resolve => {
+    let finished = false;
+    const restore = () => {
+      if(finished) return;
+      finished = true;
+      document.title = oldTitle;
+      if(forceLight && wasDark){
+        document.body.classList.add("dark-mode");
+      }
+      window.removeEventListener("afterprint", restore);
+      resolve(true);
+    };
 
-    document.title =
-      oldTitle;
-
-    if(forceLight && wasDark){
-      document.body.classList.add("dark-mode");
+    window.addEventListener("afterprint", restore, { once: true });
+    try {
+      window.print();
+    } catch(error) {
+      restore();
+      showAppNotice("L'impression PDF n'a pas pu être ouverte sur cet appareil.");
     }
-
-    window.removeEventListener(
-      "afterprint",
-      restoreTitle
-    );
-
-    document.getElementById("double-pointage-page-print-style")?.remove();
-
-  };
-
-  window.addEventListener(
-    "afterprint",
-    restoreTitle
-  );
-
-  window.print();
-
+  });
 }
-
 
 // Flux PDF commun à l’application : Electron enregistre le fichier, tandis que
 // le navigateur ouvre sa boîte d’impression avec le nom de fichier demandé.
@@ -8956,8 +8951,9 @@ async function exportPDFDocument(fileName, landscape = false){
   }
 
   if(typeof window.print === "function"){
-    printPDFPWA(fileName, forceLight);
-    return true;
+    // Le retour est différé jusqu'à la fermeture de la boîte d'impression.
+    // Cela évite qu'iOS capture l'écran suivant au lieu du document préparé.
+    return printPDFPWA(fileName, forceLight);
   }
 
   showAppNotice("L'export PDF n'est pas disponible sur cet appareil.");
@@ -9922,11 +9918,14 @@ async function exportDoublePointageDirect(competitionIndex, showSheet, printShee
   }
   showSheet(competitionIndex);
   try {
-    // Laisser le navigateur calculer la mise en page avant la capture PDF,
-    // notamment dans Electron où l’appel IPC peut partir immédiatement.
-    if(typeof requestAnimationFrame === "function"){
+    // Electron a besoin d'une frame pour que printToPDF capture le nouvel
+    // écran. Dans Safari/PWA, ne surtout pas attendre une frame : cet await
+    // ferait perdre le geste utilisateur et iOS bloquerait window.print().
+    if(window.api && typeof window.api.exportPDF === "function" && typeof requestAnimationFrame === "function"){
       await new Promise(resolve => requestAnimationFrame(resolve));
     }
+    // Sur iOS, printSheet reste en attente jusqu'à afterprint ; le menu ne
+    // revient donc qu'après fermeture ou annulation de la feuille native.
     return await printSheet();
   } finally {
     showExportParticipantsMenu(competitionIndex);

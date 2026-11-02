@@ -25,7 +25,7 @@ for (const [name, source] of [['index.html', index], ['tv.html', tv]]) {
     throw new Error(`${name} must request style.css?v=37 after the CSS change`);
   }
 }
-if (!sw.includes('trial-manager-cache-v127')) {
+if (!sw.includes('trial-manager-cache-v128')) {
   throw new Error('Service-worker cache version must be bumped after the stylesheet update');
 }
 console.log('PASS: CSS consolidation and stylesheet cache-version checks passed.');

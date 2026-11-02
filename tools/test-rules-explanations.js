@@ -11,8 +11,8 @@ const checks = [
   ['N5 threshold uses January 1 reference', /nés avant le\s*<strong>1er janvier 2016<\/strong>/i],
   ['scratch-only rule and N5 FFC/NL treatment are explained', /Scratch uniquement[\s\S]*?points UFOLEP[\s\S]*?championnat UFOLEP[\s\S]*?FFC ou NL[\s\S]*?sans points UFOLEP/i],
   ['detection screen shows dynamic season start and end dates', /Du 1er septembre \$\{season\.seasonStartYear\} au 31 août \$\{season\.seasonEndYear\}/],
-  ['application script cache version bumped', /app\.js\?v=116/],
-  ['service worker cache version bumped', /trial-manager-cache-v127/]
+  ['application script cache version bumped', /app\.js\?v=117/],
+  ['service worker cache version bumped', /trial-manager-cache-v128/]
 ];
 for (const [name, pattern] of checks) {
   if (!pattern.test(app + '\n' + html + '\n' + sw)) throw new Error(`Échec : ${name}`);
