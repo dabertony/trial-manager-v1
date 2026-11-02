@@ -15,8 +15,8 @@ check(app.includes('ageScratchOnly: !!p.ageScratchOnly'), 'age-only status shoul
 check(app.includes('isUfolepRankingEligible(p)'), 'ranking and championship logic should use the UFOLEP eligibility helper');
 check(app.includes('isAgeScratchOnlyPilot(p)'), 'age-exception pilots should be marked in ranking tables');
 check(css.includes('.age-scratch-marker') && css.includes('.age-detection-check'), 'age-detection styles and pilot marker should exist');
-check(index.includes('app.js?v=118'), 'application script cache version should be updated');
-check(sw.includes('trial-manager-cache-v129'), 'service worker cache should be updated');
+check(index.includes('app.js?v=117'), 'application script cache version should be updated');
+check(sw.includes('trial-manager-cache-v128'), 'service worker cache should be updated');
 // Validate the season thresholds without loading the complete application.
 const source = app.slice(app.indexOf('function getUfolepSeasonContext'), app.indexOf('function showAgePilotDetection'));
 const context = { Date };

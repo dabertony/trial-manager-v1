@@ -1,4 +1,4 @@
-const CACHE_NAME = "trial-manager-cache-v129";
+const CACHE_NAME = "trial-manager-cache-v128";
 
 const urlsToCache = [
 
@@ -13,6 +13,8 @@ const urlsToCache = [
   "./ufolep-logo-lockup.svg",
 
   "./app.js",
+
+  "./pdf-export.js",
 
   "./state.js",
 

@@ -8884,41 +8884,46 @@ function showChampionship(jokers){
 
 function printPDFPWA(fileName, forceLight = false){
 
-  const oldTitle = document.title;
+  const oldTitle =
+    document.title;
   const wasDark = document.body.classList.contains("dark-mode");
   if(forceLight && wasDark){
     document.body.classList.remove("dark-mode");
   }
 
-  // iOS PWA peut retourner immédiatement de window.print(), alors que la
-  // feuille d'impression native est encore ouverte. On garde donc le document
-  // préparé jusqu'à afterprint au lieu de restaurer l'écran trop tôt.
+  // Évite que le navigateur réimprime le nom du fichier dans son en-tête
+  // automatique au-dessus de notre véritable en-tête de compétition.
   document.title = /^Double_Pointage_/i.test(fileName)
     ? ""
-    : fileName.replace(/\.pdf$/i, "");
+    : fileName.replace(/\.pdf$/i,"");
 
-  return new Promise(resolve => {
-    let finished = false;
-    const restore = () => {
-      if(finished) return;
-      finished = true;
-      document.title = oldTitle;
-      if(forceLight && wasDark){
-        document.body.classList.add("dark-mode");
-      }
-      window.removeEventListener("afterprint", restore);
-      resolve(true);
-    };
+  const restoreTitle = () => {
 
-    window.addEventListener("afterprint", restore, { once: true });
-    try {
-      window.print();
-    } catch(error) {
-      restore();
-      showAppNotice("L'impression PDF n'a pas pu être ouverte sur cet appareil.");
+    document.title =
+      oldTitle;
+
+    if(forceLight && wasDark){
+      document.body.classList.add("dark-mode");
     }
-  });
+
+    window.removeEventListener(
+      "afterprint",
+      restoreTitle
+    );
+
+    document.getElementById("double-pointage-page-print-style")?.remove();
+
+  };
+
+  window.addEventListener(
+    "afterprint",
+    restoreTitle
+  );
+
+  window.print();
+
 }
+
 
 // Flux PDF commun à l’application : Electron enregistre le fichier, tandis que
 // le navigateur ouvre sa boîte d’impression avec le nom de fichier demandé.
@@ -8950,14 +8955,55 @@ async function exportPDFDocument(fileName, landscape = false){
     }
   }
 
-  if(typeof window.print === "function"){
-    // Le retour est différé jusqu'à la fermeture de la boîte d'impression.
-    // Cela évite qu'iOS capture l'écran suivant au lieu du document préparé.
-    return printPDFPWA(fileName, forceLight);
+  if(window.TMDirectPDF && typeof window.TMDirectPDF.exportElements === "function"){
+    try {
+      const elements = getDirectPDFExportElements();
+      if(!elements.length) throw new Error("Aucune page à exporter.");
+      return await window.TMDirectPDF.exportElements(elements, fileName, landscape);
+    } catch(error) {
+      console.error("Génération PDF directe impossible :", error);
+      showAppNotice("Impossible de créer le PDF sur cet appareil. Réessaie.");
+      return false;
+    } finally {
+      if(typeof document !== "undefined") document.getElementById("direct-pdf-staging")?.remove();
+    }
   }
 
-  showAppNotice("L'export PDF n'est pas disponible sur cet appareil.");
+  showAppNotice("Le générateur PDF local n'est pas disponible sur cet appareil.");
   return false;
+}
+
+function getDirectPDFExportElements(){
+  const appRoot = document.getElementById("app");
+  if(!appRoot) return [];
+  const cravatePages = Array.from(appRoot.querySelectorAll(".cravate-page"));
+  if(cravatePages.length) return cravatePages;
+  const rankingPages = Array.from(appRoot.querySelectorAll(".print-page"))
+    .filter(element => element.querySelector("table"));
+  if(rankingPages.length) return rankingPages.filter(element => getComputedStyle(element).display !== "none");
+  const doublePointage = appRoot.querySelector("table.double-pointage");
+  if(doublePointage){
+    const rows = Array.from(doublePointage.tBodies[0]?.rows || []);
+    if(rows.length <= 43) return [doublePointage];
+    const staging = document.createElement("div");
+    staging.id = "direct-pdf-staging";
+    staging.style.cssText = `position:fixed;left:-10000px;top:0;width:${Math.max(1000,Math.ceil(doublePointage.getBoundingClientRect().width))}px;background:#fff;z-index:-1;`;
+    appRoot.appendChild(staging);
+    const pages = [];
+    for(let start=0; start<rows.length; start+=43){
+      const clone = doublePointage.cloneNode(true);
+      const body = clone.tBodies[0];
+      while(body.firstChild) body.removeChild(body.firstChild);
+      rows.slice(start,start+43).forEach(row=>body.appendChild(row.cloneNode(true)));
+      clone.style.width = `${Math.max(1000,Math.ceil(doublePointage.getBoundingClientRect().width))}px`;
+      staging.appendChild(clone);
+      pages.push(clone);
+    }
+    return pages;
+  }
+  const tables = Array.from(appRoot.querySelectorAll("table"));
+  if(tables.length) return tables;
+  return [appRoot];
 }
 
 // ===== EXPORT JPG DES CLASSEMENTS =====
@@ -9265,27 +9311,27 @@ async function exportRankingPagesPDF(type, selectedPage = null){
     showAppNotice("Aucun classement disponible à exporter.");
     return false;
   }
-  const hiddenPages = selectedPage
-    ? pages.filter(page => page.element !== selectedPage.element)
-    : [];
-  hiddenPages.forEach(page => page.element.classList.add("ranking-pdf-page-hidden"));
-
-  // Sur navigateur/PWA, l'orientation paysage doit être portée par le CSS
-  // avant l'ouverture de la feuille d'impression. Laisser l'utilisateur
-  // changer manuellement l'orientation provoquait une nouvelle prévisualisation
-  // iOS pendant laquelle les catégories masquées pouvaient réapparaître.
-  let pageStyle = null;
-  if(!(window.api && typeof window.api.exportPDF === "function")){
-    pageStyle = document.createElement("style");
-    pageStyle.id = "ranking-pdf-page-style";
-    pageStyle.textContent = "@page { size: A4 landscape; margin: 5mm; }";
-    document.head.appendChild(pageStyle);
+  const elements = selectedPage
+    ? [selectedPage.element]
+    : pages.map(page => page.element);
+  const fileName = rankingPdfFileName(type, selectedPage);
+  // Conserver strictement le flux Electron existant : sélection par masquage
+  // temporaire, puis export natif Chromium avec sa boîte d'enregistrement.
+  if(window.api && typeof window.api.exportPDF === "function"){
+    const hiddenPages = selectedPage ? pages.filter(page => page.element !== selectedPage.element) : [];
+    hiddenPages.forEach(page => page.element.classList.add("ranking-pdf-page-hidden"));
+    try { return await exportPDFDocument(fileName, true); }
+    finally { hiddenPages.forEach(page => page.element.classList.remove("ranking-pdf-page-hidden")); }
   }
   try {
-    return await exportPDFDocument(rankingPdfFileName(type, selectedPage), true);
-  } finally {
-    pageStyle?.remove();
-    hiddenPages.forEach(page => page.element.classList.remove("ranking-pdf-page-hidden"));
+    if(!window.TMDirectPDF || typeof window.TMDirectPDF.exportElements !== "function"){
+      throw new Error("Le générateur PDF local n'est pas disponible.");
+    }
+    return await window.TMDirectPDF.exportElements(elements, fileName, true);
+  } catch(error) {
+    console.error("Export PDF du classement impossible :", error);
+    showAppNotice("Impossible de créer le PDF du classement. Réessaie.");
+    return false;
   }
 }
 
@@ -9931,14 +9977,12 @@ async function exportDoublePointageDirect(competitionIndex, showSheet, printShee
   }
   showSheet(competitionIndex);
   try {
-    // Electron a besoin d'une frame pour que printToPDF capture le nouvel
-    // écran. Dans Safari/PWA, ne surtout pas attendre une frame : cet await
-    // ferait perdre le geste utilisateur et iOS bloquerait window.print().
+    // Electron doit laisser Chromium stabiliser la mise en page avant printToPDF.
+    // La PWA génère maintenant le PDF localement : ne pas retarder l’action
+    // utilisateur avant de lancer la création du fichier.
     if(window.api && typeof window.api.exportPDF === "function" && typeof requestAnimationFrame === "function"){
       await new Promise(resolve => requestAnimationFrame(resolve));
     }
-    // Sur iOS, printSheet reste en attente jusqu'à afterprint ; le menu ne
-    // revient donc qu'après fermeture ou annulation de la feuille native.
     return await printSheet();
   } finally {
     showExportParticipantsMenu(competitionIndex);
@@ -11074,18 +11118,8 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
 
   const tours = Math.max(1, Math.min(12, Number(competition.tours) || 3));
   const zones = Math.max(1, Math.min(12, Number(competition.zones) || 6));
-  const isElectronPDF = !!(window.api && typeof window.api.exportPDF === "function");
-  // On conserve exactement les dimensions PC/Electron déjà validées. La version
-  // PWA compacte légèrement les cravates et réserve plus d’espace au pied de page
-  // ajouté par le moteur d’impression mobile.
-  const cravateTopHeight = isElectronPDF ? 9.5 : 8.5;
-  const cravateNameHeight = isElectronPDF ? 9.5 : 8.5;
-  const cravateClubHeight = isElectronPDF ? 8 : 7;
-  const cravateBarHeight = isElectronPDF ? 8.5 : 8.3;
-  const cravateZoneHeight = isElectronPDF ? 8.5 : 8.3;
-  const cravateTotalHeight = isElectronPDF ? 7.5 : 7;
-  const cravateHeight = cravateTopHeight + cravateNameHeight + cravateClubHeight + cravateBarHeight + cravateTotalHeight + zones * cravateZoneHeight;
-  const printableHeight = isElectronPDF ? 283 : 273; // réserve supplémentaire uniquement pour l’impression PWA.
+  const cravateHeight = 43 + zones * 8.5; // mm; les lignes de zone restent à 8,5 mm.
+  const printableHeight = 283; // A4 portrait, avec 7 mm de sécurité en haut et en bas.
   const rowGap = 0;
   const rowsPerPage = Math.max(1, Math.floor((printableHeight + rowGap) / (cravateHeight + rowGap)));
   const pages = [];
@@ -11126,18 +11160,17 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
     .cravate-grid{display:flex;flex-direction:column;gap:0;align-items:stretch;width:100%;}
     .cravate-row{box-sizing:border-box;width:100%;height:${cravateHeight}mm;flex:0 0 ${cravateHeight}mm;display:grid;grid-template-columns:repeat(4,48.5mm);column-gap:0;justify-content:center;align-items:start;}
     .cravate{box-sizing:border-box;position:relative;width:48.5mm;min-width:48.5mm;max-width:48.5mm;border:0;box-shadow:none;display:flex;flex-direction:column;background:#fff;break-inside:avoid;page-break-inside:avoid;font-size:8pt;overflow:visible;}\n    .cravate::after{content:"";position:absolute;inset:-.4mm;box-sizing:border-box;border:.8mm solid #111;pointer-events:none;z-index:5;}
-    .cravate-top{box-sizing:border-box;width:100%;height:${cravateTopHeight}mm;flex:0 0 ${cravateTopHeight}mm;display:grid;grid-template-columns:1fr 1fr;font-weight:700;text-align:center;}
+    .cravate-top{box-sizing:border-box;width:100%;height:9.5mm;flex:0 0 9.5mm;display:grid;grid-template-columns:1fr 1fr;font-weight:700;text-align:center;}
     .cravate-category,.cravate-tour{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;border-bottom:.15mm solid #111;}
     .cravate-category{background:var(--cat-color);border-right:.15mm solid #111;}
     .cravate-tour{background:var(--tour-color);}
-    .cravate-name{box-sizing:border-box;width:100%;height:${cravateNameHeight}mm;flex:0 0 ${cravateNameHeight}mm;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;overflow:hidden;overflow-wrap:anywhere;border-bottom:.15mm solid #111;padding:0 .5mm;}
-    .cravate-club{box-sizing:border-box;width:100%;height:${cravateClubHeight}mm;flex:0 0 ${cravateClubHeight}mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-bottom:.15mm solid #111;font-size:7pt;font-weight:700;}
+    .cravate-name{box-sizing:border-box;width:100%;height:9.5mm;flex:0 0 9.5mm;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;overflow:hidden;overflow-wrap:anywhere;border-bottom:.15mm solid #111;padding:0 .5mm;}
+    .cravate-club{box-sizing:border-box;width:100%;height:8mm;flex:0 0 8mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-bottom:.15mm solid #111;font-size:7pt;font-weight:700;}
     .cravate-club span:first-child{grid-column:span 4;}
     .cravate-club span:nth-child(2){grid-column:span 2;}
     .cravate-club span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;overflow:hidden;overflow-wrap:anywhere;padding:0 .3mm;}
     .cravate-club span+span{position:relative;left:-.25mm;border-left:.15mm solid #111;}
-    .cravate-barème,.cravate-zone{box-sizing:border-box;width:100%;display:grid;grid-template-columns:repeat(6,1fr);height:${cravateBarHeight}mm;flex:0 0 ${cravateBarHeight}mm;}
-    .cravate-zone{height:${cravateZoneHeight}mm;flex:0 0 ${cravateZoneHeight}mm;}
+    .cravate-barème,.cravate-zone{box-sizing:border-box;width:100%;display:grid;grid-template-columns:repeat(6,1fr);height:8.5mm;flex:0 0 8.5mm;}
     .cravate-barème span,.cravate-zone span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;border-right:.15mm solid #111;border-bottom:.15mm solid #111;font-weight:700;}
     .cravate-barème span:nth-child(4),.cravate-zone span:nth-child(4){border-right:.15mm solid #111;}
     
@@ -11145,7 +11178,7 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
     .cravate-barème{background:var(--tour-color);}
     .cravate-zone{background:var(--tour-color);}
     .cravate-zone span:nth-child(4){font-size:9pt;}
-    .cravate-total{box-sizing:border-box;width:100%;height:${cravateTotalHeight}mm;flex:0 0 ${cravateTotalHeight}mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));font-weight:700;text-align:center;background:var(--tour-color);}
+    .cravate-total{box-sizing:border-box;width:100%;height:7.5mm;flex:0 0 7.5mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));font-weight:700;text-align:center;background:var(--tour-color);}
     .cravate-total span:first-child{grid-column:span 4;}
     .cravate-total span:nth-child(2){grid-column:span 2;}
     .cravate-total span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;}

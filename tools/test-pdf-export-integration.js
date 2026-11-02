@@ -1,0 +1,26 @@
+'use strict';
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
+const engine=fs.readFileSync(path.join(root,'pdf-export.js'),'utf8');
+const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const sw=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
+const packageJson=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
+const checks=[];
+function check(ok,message){if(!ok)throw new Error(message);checks.push(message);}
+const shared=app.match(/async function exportPDFDocument\(fileName, landscape = false\)\s*\{[\s\S]*?\n\}/)?.[0]||'';
+const ranking=app.match(/async function exportRankingPagesPDF\(type, selectedPage = null\)\s*\{[\s\S]*?\n\}/)?.[0]||'';
+const selector=app.match(/function getDirectPDFExportElements\(\)\s*\{[\s\S]*?\n\}/)?.[0]||'';
+check(shared.includes('window.TMDirectPDF.exportElements'),'PWA shared PDF path calls the local generator');
+check(!shared.includes('window.print(')&&!shared.includes('printPDFPWA('),'PWA shared PDF path no longer opens browser printing');
+check(shared.indexOf('window.api.exportPDF')<shared.indexOf('window.TMDirectPDF.exportElements'),'Electron native PDF export remains the first path');
+check(ranking.includes('window.api.exportPDF')&&ranking.includes('ranking-pdf-page-hidden'),'Electron ranking category selection keeps its original hidden-page flow');
+check(/selectedPage\s*\?\s*\[selectedPage\.element\]\s*:\s*pages\.map\(page => page\.element\)/.test(ranking),'PWA ranking export passes only the selected category page');
+check(selector.includes('for(let start=0; start<rows.length; start+=43)'),'long double-pointage tables are split into 43-row PDF pages');
+check(engine.includes('navigator.share')&&engine.includes('navigator.canShare'),'iOS can hand the generated PDF to the native share/save sheet');
+check(engine.includes('application/pdf')&&engine.includes('/Filter /DCTDecode'),'local engine writes a real PDF containing embedded page images');
+check(index.includes('pdf-export.js?v=1'),'PWA loads the local PDF engine');
+check(sw.includes('"./pdf-export.js"')&&sw.includes('trial-manager-cache-v128'),'local PDF engine is precached for offline use');
+check(packageJson.scripts.test.includes('test-pdf-direct-generator.js'),'direct PDF generator test is part of npm test');
+console.log(`PASS: ${checks.length} direct-PDF integration checks passed.`);

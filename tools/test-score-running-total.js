@@ -17,5 +17,5 @@ assert(app.includes('class="score-col-total"'), 'score entry table must have a t
 assert(app.includes('class="score-tour-points"'), 'validated tour points must be shown with the tour indicator');
 assert(app.includes('pilotScoreTotal += tourPoints'), 'pilot total must sum validated tours only');
 assert(css.includes('.score-tour-total{'), 'the total must have dedicated styling');
-assert(sw.includes('trial-manager-cache-v129'), 'service worker cache version must be incremented');
+assert(sw.includes('trial-manager-cache-v128'), 'service worker cache version must be incremented');
 console.log('Score running total tests passed.');

@@ -15,7 +15,7 @@ function check(condition, message) {
 async function runExport(environment, fileName = 'Test.pdf', landscape = false) {
   const sandbox = {
     window: environment.window,
-    printPDFPWA: environment.printPDFPWA || (() => Promise.resolve(true)),
+    getDirectPDFExportElements: environment.getDirectPDFExportElements || (() => [{}]),
     showAppNotice: environment.showAppNotice || (() => {})
   };
   vm.runInNewContext(`${sharedMatch[0]}\nthis.runHelper = exportPDFDocument;`, sandbox);
@@ -39,10 +39,14 @@ async function runExport(environment, fileName = 'Test.pdf', landscape = false) 
   }, 'Legacy.pdf', true);
   check(legacyResult === true, 'an API implementation without an explicit result should remain compatible');
 
-  let browserPrint = '';
-  const browserResult = await runExport({ window: { print: () => {} }, printPDFPWA: fileName => { browserPrint = fileName; return Promise.resolve(true); } }, 'Resultats.pdf', false);
-  check(browserPrint === 'Resultats.pdf', 'browser print fallback should preserve filename');
-  check(browserResult === true, 'browser fallback should report handled after the print dialog closes');
+  let browserExport = null;
+  const browserResult = await runExport({
+    window: { TMDirectPDF: { exportElements: async (elements, fileName, landscape) => { browserExport = { elements, fileName, landscape }; return true; } } },
+    getDirectPDFExportElements: () => ['page-1']
+  }, 'Resultats.pdf', true);
+  check(browserExport.fileName === 'Resultats.pdf', 'direct browser PDF should preserve filename');
+  check(browserExport.landscape === true && browserExport.elements[0] === 'page-1', 'direct browser PDF should preserve orientation and selected elements');
+  check(browserResult === true, 'direct browser PDF should report handled');
 
   let noticeMessage = '';
   const unavailableResult = await runExport({ window: {}, showAppNotice: message => { noticeMessage = message; } });
