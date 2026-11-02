@@ -17,6 +17,6 @@ check(/\.championship-ranking-heading \.section-title\s*\{[^}]*flex-wrap:nowrap/
 check(/\.championship-ranking-heading \.ranking-event-label\s*\{[^}]*white-space:nowrap/s.test(css), 'championship season label should not wrap in PDF');
 check(!/min-height:88px/.test(css), 'championship must not use a taller custom heading than competition');
 check(/\.ranking-heading\s*\{[^}]*min-height:80px/s.test(css), 'championship logo should use the same 80px heading as competition in print');
-check(index.includes('style.css?v=37') && index.includes('app.js?v=117'), 'index should request updated CSS and app');
-check(sw.includes('trial-manager-cache-v128'), 'offline cache should be bumped');
+check(index.includes('style.css?v=37') && index.includes('app.js?v=118'), 'index should request updated CSS and app');
+check(sw.includes('trial-manager-cache-v129'), 'offline cache should be bumped');
 console.log('PASS: championship header parity checks passed (12 checks).');

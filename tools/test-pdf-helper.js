@@ -4,6 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const sharedMatch = source.match(/async function exportPDFDocument\(fileName, landscape = false\)\s*\{[\s\S]*?\n\}/);
+const appleHelperMatch = source.match(/function isAppleMobilePrintBrowser\(\)\s*\{[\s\S]*?\n\}/);
 const pointageMatch = source.match(/async function printDoublePointagePDF\(sheetName, landscape = false\)\s*\{[\s\S]*?\n\}/);
 if (!sharedMatch) throw new Error('Shared PDF document export flow not found');
 if (!pointageMatch) throw new Error('Shared double-pointage PDF helper not found');
@@ -61,7 +62,7 @@ async function runExport(environment, fileName = 'Test.pdf', landscape = false) 
       pointageCalls.push({ fileName, landscape, delegated: true });
     }
   };
-  vm.runInNewContext(`${pointageMatch[0]}\nthis.runPointage = printDoublePointagePDF;`, pointageSandbox);
+  vm.runInNewContext(`${appleHelperMatch[0]}\n${pointageMatch[0]}\nthis.runPointage = printDoublePointagePDF;`, pointageSandbox);
   await pointageSandbox.runPointage('Matin');
   check(pointageCalls.length === 1, 'double-pointage should delegate to shared PDF flow once');
   check(pointageCalls[0].fileName === 'Double_Pointage_Matin_Test_26-10-2026.pdf', 'double-pointage filename should remain unchanged');
@@ -73,7 +74,7 @@ async function runExport(environment, fileName = 'Test.pdf', landscape = false) 
     formatDateForFile: () => 'date',
     exportPDFDocument: async () => { missingInfoCalls += 1; }
   };
-  vm.runInNewContext(`${pointageMatch[0]}\nthis.runPointage = printDoublePointagePDF;`, missingInfoSandbox);
+  vm.runInNewContext(`${appleHelperMatch[0]}\n${pointageMatch[0]}\nthis.runPointage = printDoublePointagePDF;`, missingInfoSandbox);
   await missingInfoSandbox.runPointage('Matin');
   check(missingInfoCalls === 0, 'missing export metadata should not start an export');
   console.log(`PASS: ${checks} shared PDF export checks passed.`);

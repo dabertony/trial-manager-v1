@@ -9,8 +9,8 @@ check(source.includes("exportCravatesPDF(${i}, 'matin')"), "Morning cravate expo
 check(source.includes("exportCravatesPDF(${i}, 'apres-midi')"), "Afternoon cravate export button is missing");
 check(source.includes("exportCravatesPDF(${i}, 'toutes')"), "All-category cravate export button is missing");
 check(source.includes("@page { size:A4 portrait; margin:0; }"), "Cravate PDF must use A4 portrait with no page margins");
-check(!source.includes("cravate-toolbar") && !source.includes("Retour aux exports</button>"), "Cravate PDF export must not show an intermediate toolbar screen");
-check(source.includes("await exportPDFDocument(fileName, false);") && source.includes("finally {\n    showExportParticipantsMenu(competitionIndex);"), "Closing or cancelling the print dialog must return to the exports menu");
+check(!source.includes("cravate-toolbar") && source.includes("Retour aux exports</button>"), "Cravate PDF must provide a manual return control on iOS without an intermediate preview step");
+check(source.includes("return await exportPDFDocument(fileName, false);") && source.includes("if(!appleMobile) showExportParticipantsMenu(competitionIndex);"), "iOS must keep the cravate document visible until the user returns manually");
 check(source.includes("width:48.5mm;min-width:48.5mm;max-width:48.5mm"), "Cravate width must remain fixed across zone counts");
 check(source.includes(".cravate::after") && source.includes("border:.8mm solid #111"), "Each cravate must use one continuous thick outer frame without changing inner grid borders");
 check(source.includes("border:0;box-shadow:none;display:flex;flex-direction:column;background:#fff"), "Cravate content must not add a second thick border under the outer frame");

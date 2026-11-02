@@ -14,8 +14,8 @@ check(app.includes('host.insertBefore(notice, host.firstChild)'), 'notice should
 check(app.includes('showAppNotice("L\'export PDF n\'est pas disponible sur cet appareil.")'), 'PDF fallback should use a non-blocking notice');
 check((app.match(/showAppNotice\(/g) || []).length >= 5, 'Excel/PDF error paths should use the shared notice helper');
 check(!/\balert\s*\(/.test(app), 'blocking alert() calls should be removed from app.js');
-check(index.includes('app.js?v=117'), 'index should request the updated application script');
-check(sw.includes('trial-manager-cache-v128'), 'offline cache should be versioned for the update');
+check(index.includes('app.js?v=118'), 'index should request the updated application script');
+check(sw.includes('trial-manager-cache-v129'), 'offline cache should be versioned for the update');
 check(!index.includes("console.log('Service Worker enregistré')"), 'successful service-worker registration should not leave routine console noise');
 check(index.includes(".catch(err => console.error('Service Worker erreur:', err))"), 'service-worker registration failures should remain diagnosable');
 console.log(`PASS: ${checks} non-blocking notice checks passed.`);

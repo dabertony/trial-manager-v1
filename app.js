@@ -8882,48 +8882,36 @@ function showChampionship(jokers){
   app.innerHTML=html;
 }
 
-function printPDFPWA(fileName, forceLight = false){
-
-  const oldTitle =
-    document.title;
-  const wasDark = document.body.classList.contains("dark-mode");
-  if(forceLight && wasDark){
-    document.body.classList.remove("dark-mode");
-  }
-
-  // Évite que le navigateur réimprime le nom du fichier dans son en-tête
-  // automatique au-dessus de notre véritable en-tête de compétition.
-  document.title = /^Double_Pointage_/i.test(fileName)
-    ? ""
-    : fileName.replace(/\.pdf$/i,"");
-
-  const restoreTitle = () => {
-
-    document.title =
-      oldTitle;
-
-    if(forceLight && wasDark){
-      document.body.classList.add("dark-mode");
-    }
-
-    window.removeEventListener(
-      "afterprint",
-      restoreTitle
-    );
-
-    document.getElementById("double-pointage-page-print-style")?.remove();
-
-  };
-
-  window.addEventListener(
-    "afterprint",
-    restoreTitle
-  );
-
-  window.print();
-
+function isAppleMobilePrintBrowser(){
+  const nav = typeof navigator !== "undefined" ? navigator : {};
+  const ua = String(nav.userAgent || "");
+  return /iPhone|iPad|iPod/i.test(ua)
+    || (nav.platform === "MacIntel" && Number(nav.maxTouchPoints || 0) > 1);
 }
 
+function printPDFPWA(fileName, forceLight = false){
+  const oldTitle = document.title;
+  const wasDark = document.body.classList.contains("dark-mode");
+  const appleMobile = isAppleMobilePrintBrowser();
+  if(forceLight && wasDark) document.body.classList.remove("dark-mode");
+
+  // Le titre sert de nom de fichier dans la feuille d’impression Apple.
+  document.title = /^Double_Pointage_/i.test(fileName) ? "" : fileName.replace(/\.pdf$/i, "");
+
+  // iOS peut émettre afterprint dès l’ouverture de sa feuille système, avant
+  // que l’utilisateur ait réellement enregistré le PDF. Ne pas restaurer ici
+  // l’écran ni les styles : cela faisait disparaître le document à imprimer.
+  if(!appleMobile){
+    const restoreTitle = () => {
+      document.title = oldTitle;
+      if(forceLight && wasDark) document.body.classList.add("dark-mode");
+      window.removeEventListener("afterprint", restoreTitle);
+      document.getElementById("double-pointage-page-print-style")?.remove();
+    };
+    window.addEventListener("afterprint", restoreTitle);
+  }
+  window.print();
+}
 
 // Flux PDF commun à l’application : Electron enregistre le fichier, tandis que
 // le navigateur ouvre sa boîte d’impression avec le nom de fichier demandé.
@@ -9273,10 +9261,13 @@ async function exportRankingPagesPDF(type, selectedPage = null){
     ? pages.filter(page => page.element !== selectedPage.element)
     : [];
   hiddenPages.forEach(page => page.element.classList.add("ranking-pdf-page-hidden"));
+  const appleMobile = isAppleMobilePrintBrowser();
   try {
+    // Sur iOS, conserver le DOM filtré pendant que la feuille d’impression
+    // système prépare le PDF. Safari peut déclencher afterprint trop tôt.
     return await exportPDFDocument(rankingPdfFileName(type, selectedPage), true);
   } finally {
-    hiddenPages.forEach(page => page.element.classList.remove("ranking-pdf-page-hidden"));
+    if(!appleMobile) hiddenPages.forEach(page => page.element.classList.remove("ranking-pdf-page-hidden"));
   }
 }
 
@@ -9888,6 +9879,7 @@ async function printDoublePointagePDF(sheetName, landscape = false){
     `;
     printDocument.head.appendChild(printStyle);
   }
+  const appleMobile = isAppleMobilePrintBrowser();
   const cleanup = () => {
     printStyle?.remove();
     if(typeof window.removeEventListener === "function") window.removeEventListener("afterprint", cleanup);
@@ -9896,7 +9888,8 @@ async function printDoublePointagePDF(sheetName, landscape = false){
     try { return await exportPDFDocument(fileName, landscape); }
     finally { cleanup(); }
   }
-  if(typeof window.addEventListener === "function") window.addEventListener("afterprint", cleanup);
+  if(!appleMobile && typeof window.addEventListener === "function") window.addEventListener("afterprint", cleanup);
+  // Sur iOS, conserver le style d'impression : afterprint peut arriver trop tôt.
   return exportPDFDocument(fileName, landscape);
 }
 
@@ -9920,33 +9913,17 @@ async function exportDoublePointageDirect(competitionIndex, showSheet, printShee
     showAppNotice("Compétition introuvable.");
     return;
   }
+  const appleMobile = isAppleMobilePrintBrowser();
   showSheet(competitionIndex);
-  let waitForBrowserPrint = null;
-  let browserPrintHandler = null;
-  const browserPrint = !(window.api && typeof window.api.exportPDF === "function");
   try {
-    // Laisser le navigateur terminer le rendu avant de lancer l'impression.
-    if(typeof requestAnimationFrame === "function"){
-      await new Promise(resolve => requestAnimationFrame(resolve));
-    }
-    // Sur Safari/Chrome mobile, window.print() peut rendre la main avant
-    // l'ouverture/fermeture de la feuille d'impression. Ne surtout pas
-    // remplacer le tableau par le menu pendant que le navigateur le capture.
-    if(browserPrint && typeof window.addEventListener === "function"){
-      waitForBrowserPrint = new Promise(resolve => {
-        browserPrintHandler = resolve;
-        window.addEventListener("afterprint", browserPrintHandler, { once: true });
-      });
-    }
-    const result = await printSheet();
-    if(waitForBrowserPrint) await waitForBrowserPrint;
-    return result;
+    // Aucun await avant window.print() : iOS exige que l’impression parte
+    // directement du geste utilisateur. Le navigateur calcule la mise en page
+    // au moment de l’appel print, une fois le DOM synchroniquement remplacé.
+    return await printSheet();
   } finally {
-    if(browserPrintHandler && typeof window.removeEventListener === "function"){
-      // Nettoyage défensif si le navigateur a levé une erreur avant afterprint.
-      window.removeEventListener("afterprint", browserPrintHandler);
-    }
-    showExportParticipantsMenu(competitionIndex);
+    // Sur iPhone/iPad, afterprint n'est pas fiable et l'écran de prévisualisation
+    // doit rester présent après la feuille système. Le bouton Retour est disponible.
+    if(!appleMobile) showExportParticipantsMenu(competitionIndex);
   }
 }
 
@@ -11158,12 +11135,17 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
   // Afficher directement la mise en page nécessaire à l'impression, sans écran
   // intermédiaire ni boutons. Après fermeture/annulation de la boîte d'impression,
   // revenir automatiquement au menu des exports.
-  app.innerHTML = `${style}<main class="cravate-document">${pages.join("")}</main>`;
+  const appleMobile = isAppleMobilePrintBrowser();
+  const returnBar = appleMobile
+    ? `<div class="topbar"><div class="topbar-title">Cravates</div><div class="topbar-actions"><button class="export-return-btn" onclick="showExportParticipantsMenu(${competitionIndex})">← Retour aux exports</button></div></div>`
+    : "";
+  app.innerHTML = `${style}${returnBar}<main class="cravate-document">${pages.join("")}</main>`;
   window.currentExportInfo = {type:"cravates", competitionName:competition.name, competitionDate:competition.date};
   try {
-    await exportPDFDocument(fileName, false);
+    // Appel sans attente préalable pour conserver l'autorisation d'impression iOS.
+    return await exportPDFDocument(fileName, false);
   } finally {
-    showExportParticipantsMenu(competitionIndex);
+    if(!appleMobile) showExportParticipantsMenu(competitionIndex);
   }
 }
 
