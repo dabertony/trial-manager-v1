@@ -1436,6 +1436,39 @@ body > button{
   min-height:46px;
 }
 
+/* Tarifs d’engagement : trois champs strictement de même largeur. */
+.competition-fees{
+  grid-column:1 / -1;
+  min-width:0;
+  margin-top:8px;
+}
+
+.competition-fees-title{
+  font-size:13px;
+  font-weight:800;
+  color:#334155;
+  margin:0 0 10px;
+}
+
+.competition-fees-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+}
+
+.competition-fees-grid .pilot-field{
+  min-width:0;
+}
+
+.competition-fees-grid .pilot-field input{
+  min-height:46px;
+}
+
+@media (max-width:700px){
+  .competition-fees-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+  .competition-fees-grid .pilot-field label{font-size:10px;letter-spacing:0;}
+}
+
 .competition-edit-grid{
   grid-template-columns:
     minmax(240px,2fr)
@@ -4501,4 +4534,4 @@ body.dark-mode .export-page .export-preview-btn{
 
 
 /* Masquage temporaire des autres catégories pendant un export PDF ciblé. */
-.ranking-pdf-page-hidden{display:none!important;}
+#app .print-page.ranking-pdf-page-hidden{display:none!important;}

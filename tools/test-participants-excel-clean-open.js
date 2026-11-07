@@ -17,29 +17,31 @@ const electronExport = section(main, 'ipcMain.handle("export-participants-excel"
 const pwaExport = section(app, 'async function exportParticipantsExcelPWA(', '\nasync function exportParticipantsExcel(');
 for (const [label, source] of [["Electron", main], ["PWA", app]]) {
   const exportBlock = label === "Electron" ? electronExport : pwaExport;
-  assert.match(exportBlock, /calcProperties\s*=\s*\{[\s\S]*?fullCalcOnLoad:\s*false/ , `${label}: Excel must not be forced to recalculate the whole workbook on open`);
+  assert.match(exportBlock, /calcProperties\s*=\s*\{[\s\S]*?fullCalcOnLoad:\s*true/ , `${label}: Excel must recalculate formulas on open`);
   const clubSheet = label === "Electron"
     ? section(source, 'function buildParticipantsClubSheet(', 'function buildParticipantsSimpleSheet(')
     : section(source, 'async function exportParticipantsExcelPWA(', '\nasync function exportParticipantsExcel(');
   const formulaCount = (clubSheet.match(/formula:/g) || []).length;
-  const cachedCount = (clubSheet.match(/result:\s*0/g) || []).length;
   assert.equal(formulaCount, 3, `${label}: expected 3 participant total formulas`);
-  assert.equal(cachedCount, 3, `${label}: each participant total formula needs an initial cached result`);
+  assert.match(clubSheet, /function sumParticipantAmounts\([\s\S]*?return Number\(total\.toFixed\(2\)\)/, `${label}: subtotal cached values must be calculated from participant amounts`);
+  assert.match(clubSheet, /function sumSubtotalAmounts\([\s\S]*?return Number\(rowNumbers\.reduce\([\s\S]*?toFixed\(2\)\)/, `${label}: grand total cached value must be calculated from club subtotals`);
+  assert.doesNotMatch(clubSheet, /result:\s*0\b/, `${label}: total formulas must not be initialized with zero`);
 }
 
-// Confirm ExcelJS serializes a formula with a cached result and the no-full-recalc flag.
+// Confirm ExcelJS serializes a formula with a cached result and requests recalculation on open.
 const ExcelJS = require(path.join(root, "exceljs.min.js"));
 (async () => {
   const workbook = new ExcelJS.Workbook();
-  workbook.calcProperties = { fullCalcOnLoad: false };
+  workbook.calcProperties = { fullCalcOnLoad: true };
   const sheet = workbook.addWorksheet("Club + Alpha");
   sheet.addRow(["Montant"]);
-  sheet.addRow([{ formula: "SUM(A1:A1)", result: 0 }]);
+  sheet.addRow([12]);
+  sheet.addRow([{ formula: "SUM(A2:A2)", result: 12 }]);
   const buffer = await workbook.xlsx.writeBuffer();
-  const formula = sheet.getCell("A2").value;
-  assert.equal(formula.formula, "SUM(A1:A1)");
-  assert.equal(sheet.getCell("A2").result, 0);
-  assert.equal(workbook.calcProperties.fullCalcOnLoad, false);
+  const formula = sheet.getCell("A3").value;
+  assert.equal(formula.formula, "SUM(A2:A2)");
+  assert.equal(sheet.getCell("A3").result, 12);
+  assert.equal(workbook.calcProperties.fullCalcOnLoad, true);
   assert.ok(buffer.byteLength > 1000, "ExcelJS must produce a non-empty XLSX workbook");
   console.log("Participants Excel clean-open: 8 checks passed.");
 })().catch(error => { console.error(error); process.exit(1); });

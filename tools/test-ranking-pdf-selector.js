@@ -16,8 +16,8 @@ assert.match(app, /pages\.forEach\(page => addOption\(type === "clubs" \? "Class
 assert.match(app, /pages\.filter\(page => page\.element !== selectedPage\.element\)/, 'single-category PDF must hide all other ranking pages');
 assert.match(app, /if\(!appleMobile\) hiddenPages\.forEach\(page => page\.element\.classList\.remove\(\"ranking-pdf-page-hidden\"\)\)/, 'iOS must preserve the selected ranking page while its native print sheet is preparing the PDF');
 assert.match(app, /Classement_Clubs_\$\{info\.startYear\}-\$\{info\.endYear\}/, 'club PDF must keep its established filename');
-assert.match(css, /\.ranking-pdf-page-hidden\s*\{display:none!important;\}/, 'selected PDF export must hide unselected pages');
-assert.match(html, /style\.css\?v=38/);
-assert.match(html, /app\.js\?v=119/);
-assert.match(sw, /trial-manager-cache-v130/);
+assert.match(css, /#app\s+\.print-page\.ranking-pdf-page-hidden\s*\{display:none!important;\}/, 'hidden category rule must override the print rule that displays every page');
+assert.match(html, /style\.css\?v=39/);
+assert.match(html, /app\.js\?v=127/);
+assert.match(sw, /trial-manager-cache-v139/);
 console.log('PASS: ranking PDF category selector checks passed (12 checks).');

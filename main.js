@@ -561,12 +561,11 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
     const workbook =
       new ExcelJS.Workbook();
 
-    // Keep formulas editable and automatically recalculated after amount entry,
-    // without forcing a full recalculation merely because the workbook is opened.
+    // Keep formulas editable and ask Excel to calculate their values on opening.
+    // Cached results are also populated below so totals are visible in viewers
+    // that do not execute spreadsheet formulas immediately.
     workbook.calcProperties = {
-      // ExcelJS only serializes fullCalcOnLoad; Excel remains in its normal
-      // automatic calculation mode when users edit amount cells.
-      fullCalcOnLoad: false
+      fullCalcOnLoad: true
     };
     const exportColorMap = { ...colorMap };
     (Array.isArray(data.customCategories) ? data.customCategories : []).forEach(category => {
@@ -582,7 +581,8 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
     buildParticipantsClubSheet(
       workbook,
       data.participants,
-      exportColorMap
+      exportColorMap,
+      data.fees || { ufolep:10, ffc:18, nl:18 }
     );
 
 
@@ -734,6 +734,19 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
     // =========================================
     // CRÉATION DU FICHIER
     // =========================================
+
+    // Reprendre les hauteurs, la police et les zones d'impression du classeur de référence.
+    workbook.worksheets.forEach(sheet => {
+      sheet.eachRow({ includeEmpty:true }, row => {
+        row.height = row.number === 1 ? 30 : 18.75;
+        row.eachCell({ includeEmpty:true }, cell => {
+          cell.font = { ...cell.font, size:12 };
+        });
+      });
+      const lastColumn = sheet.columnCount;
+      const lastRow = Math.max(sheet.rowCount, 1);
+      sheet.pageSetup.printArea = `A1:${sheet.getColumn(lastColumn).letter}${lastRow}`;
+    });
 
     await workbook.xlsx.writeFile(
       filePath
@@ -1031,10 +1044,51 @@ sheet.getRow(1).eachCell(cell => {
   return sheet;
 }
 
+function configureParticipantsPrintLayout(sheet, includeAmount = false){
+  const layouts = {
+
+    "Club + Alpha": { widths:[10, 30.14, 24.71, 17.71, 15.71, 20, 18], scale:70 },
+
+    "Catégorie + Alpha": { widths:[10, 28.57, 26.285, 15, 14.855, 17.57], scale:85 },
+
+    "Matin": { widths:[10, 26.14, 25, 15, 15.14, 21], scale:85 },
+
+    "Après-midi": { widths:[10, 30.855, 25.14, 15.71, 9.14, 19.285], scale:85 }
+
+  };
+
+  const layout = layouts[sheet.name] || layouts[includeAmount ? "Club + Alpha" : "Matin"];
+
+  layout.widths.forEach((width, index) => {
+
+    sheet.getColumn(index + 1).width = width;
+
+  });
+
+
+  // Reproduction du classeur de référence de Mamie : A4 portrait, échelle
+
+  // fixe par onglet et marges identiques. La hauteur reste multi-pages.
+
+  sheet.pageSetup = {
+
+    paperSize: 9,
+
+    orientation: "portrait",
+
+    scale: layout.scale,
+
+    margins: { left:0.315, right:0.315, top:0.748, bottom:0.748, header:0.315, footer:0.315 }
+
+  };
+
+  }
+
 function buildParticipantsClubSheet(
   workbook,
   data,
-  colorMap
+  colorMap,
+  fees = { ufolep:10, ffc:18, nl:18 }
 ){
 
   const sheet =
@@ -1054,6 +1108,8 @@ function buildParticipantsClubSheet(
 
   ];
 
+  configureParticipantsPrintLayout(sheet, true);
+
   sheet.views = [
     {
       state:"frozen",
@@ -1063,14 +1119,15 @@ function buildParticipantsClubSheet(
 
   sheet.getRow(1).font = {
     bold:true,
-    size:16
+    size:13
   };
 
-  sheet.getRow(1).height = 30;
+  sheet.getRow(1).height = 36;
 
   sheet.getRow(1).alignment = {
     horizontal:"center",
-    vertical:"middle"
+    vertical:"middle",
+    wrapText:true
   };
 
   sheet.getRow(1).eachCell(cell => {
@@ -1114,6 +1171,23 @@ function buildParticipantsClubSheet(
   let firstRowClub = null;
   let totalRows = [];
 
+  function sumParticipantAmounts(firstRow, lastRow){
+    let total = 0;
+    for(let rowNumber = firstRow; rowNumber <= lastRow; rowNumber++){
+      const value = sheet.getCell(rowNumber, 7).value;
+      if(typeof value === "number" && Number.isFinite(value)) total += value;
+    }
+    return Number(total.toFixed(2));
+  }
+
+  function sumSubtotalAmounts(rowNumbers){
+    return Number(rowNumbers.reduce((sum, rowNumber) => {
+      const value = sheet.getCell(rowNumber, 7).value;
+      const cached = value && typeof value === "object" ? Number(value.result || 0) : Number(value || 0);
+      return sum + (Number.isFinite(cached) ? cached : 0);
+    }, 0).toFixed(2));
+  }
+
   clubAlpha.forEach(p=>{
 
     if(
@@ -1132,13 +1206,13 @@ function buildParticipantsClubSheet(
     {
       formula:
         `SUM(G${firstRowClub}:G${sheet.rowCount})`,
-      result: 0
+      result: sumParticipantAmounts(firstRowClub, sheet.rowCount)
     }
   ]);
 
       totalRow.font = {
         bold:true,
-        size:14,
+        size:13,
         color:{argb:"FF0000"}
       };
 
@@ -1180,7 +1254,11 @@ function buildParticipantsClubSheet(
           ? p.birthDate.split("-").reverse().join("/")
           : "",
 
-      amount:""
+      amount:(String(p.lic || "NL").trim().toLocaleUpperCase("fr") === "UFOLEP"
+        ? fees.ufolep
+        : String(p.lic || "NL").trim().toLocaleUpperCase("fr") === "FFC"
+          ? fees.ffc
+          : fees.nl)
 
     });
 
@@ -1190,7 +1268,7 @@ function buildParticipantsClubSheet(
 
     row.font = {
       bold:true,
-      size:14
+      size:12
     };
 
     row.alignment = {
@@ -1200,7 +1278,14 @@ function buildParticipantsClubSheet(
 
     row.getCell(2).alignment = {
       horizontal:"left",
-      vertical:"middle"
+      vertical:"middle",
+      wrapText:false
+    };
+
+    row.getCell(3).alignment = {
+      horizontal:"center",
+      vertical:"middle",
+      wrapText:false
     };
 
     row.getCell(7).numFmt =
@@ -1248,13 +1333,13 @@ function buildParticipantsClubSheet(
       {
       formula:
         `SUM(G${firstRowClub}:G${sheet.rowCount})`,
-      result: 0
+      result: sumParticipantAmounts(firstRowClub, sheet.rowCount)
     }
     ]);
 
   lastClubTotal.font = {
     bold:true,
-    size:14,
+    size:13,
     color:{argb:"FF0000"}
   };
 
@@ -1291,13 +1376,13 @@ function buildParticipantsClubSheet(
         `SUM(${totalRows
           .map(r => `G${r}`)
           .join(",")})`,
-      result: 0
+      result: sumSubtotalAmounts(totalRows)
     }
     ]);
 
   grandTotal.font = {
     bold:true,
-    size:16,
+    size:15,
     color:{argb:"FF0000"}
   };
 
@@ -1338,6 +1423,8 @@ function buildParticipantsSimpleSheet(
 
   ];
 
+  configureParticipantsPrintLayout(sheet, false);
+
   sheet.views = [{
     state:"frozen",
     ySplit:1
@@ -1345,14 +1432,15 @@ function buildParticipantsSimpleSheet(
 
   sheet.getRow(1).font = {
     bold:true,
-    size:16
+    size:13
   };
 
-  sheet.getRow(1).height = 30;
+  sheet.getRow(1).height = 36;
 
   sheet.getRow(1).alignment = {
     horizontal:"center",
-    vertical:"middle"
+    vertical:"middle",
+    wrapText:true
   };
 
   sheet.getRow(1).eachCell(cell => {
@@ -1391,7 +1479,7 @@ function buildParticipantsSimpleSheet(
 
     row.font = {
       bold:true,
-      size:14
+      size:12
     };
 
     row.alignment = {
@@ -1401,7 +1489,14 @@ function buildParticipantsSimpleSheet(
 
     row.getCell(2).alignment = {
       horizontal:"left",
-      vertical:"middle"
+      vertical:"middle",
+      wrapText:false
+    };
+
+    row.getCell(3).alignment = {
+      horizontal:"center",
+      vertical:"middle",
+      wrapText:false
     };
 
     row.eachCell(cell => {

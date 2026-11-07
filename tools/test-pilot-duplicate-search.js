@@ -24,7 +24,7 @@ check(app.includes('Même nom, catégories différentes'), 'same names with diff
 check(app.includes('Plaque :') && app.includes('Catégorie :'), 'compact rows should show plate and category for both pilots');
 check(!app.slice(app.indexOf('function showPilotDuplicates()'), app.indexOf('function showPilots()')).includes('N° licence') && !app.slice(app.indexOf('function showPilotDuplicates()'), app.indexOf('function showPilots()')).includes('Naissance'), 'duplicate rows should omit unrelated pilot details');
 check(css.includes('grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)'), 'duplicate matches should be displayed compactly on one row');
-check(index.includes('style.css?v=38') && index.includes('app.js?v=119'), 'index should request updated assets');
-check(tv.includes('style.css?v=38'), 'TV view should request updated stylesheet');
-check(sw.includes('trial-manager-cache-v130'), 'offline cache should be bumped');
+check(index.includes('style.css?v=39') && index.includes('app.js?v=127'), 'index should request updated assets');
+check(tv.includes('style.css?v=39'), 'TV view should request updated stylesheet');
+check(sw.includes('trial-manager-cache-v139'), 'offline cache should be bumped');
 console.log('PASS: duplicate-search and ranking-title-color checks passed (16 checks).');

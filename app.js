@@ -313,8 +313,48 @@ let defaultClubs=[
   "VTT VAL D'ESSONNES"
 ];
 
+let pilotIdSequence = 0;
+
 function generatePilotId(){
-  return "P"+Date.now()+Math.floor(Math.random()*10000);
+  // UUID cryptographique quand disponible, avec un suffixe séquentiel local
+  // pour garantir l'unicité même si un générateur renvoie exceptionnellement
+  // deux fois la même valeur pendant cette session.
+  const cryptoApi = globalThis.crypto;
+  let randomPart = "";
+
+  if(cryptoApi && typeof cryptoApi.randomUUID === "function"){
+    randomPart = cryptoApi.randomUUID();
+  }else if(cryptoApi && typeof cryptoApi.getRandomValues === "function"){
+    const bytes = new Uint8Array(16);
+    cryptoApi.getRandomValues(bytes);
+    randomPart = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+  }else{
+    // Repli pour les environnements anciens : le contrôle de collision
+    // ci-dessous reste obligatoire avant toute attribution.
+    randomPart = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+  }
+
+  let candidate;
+  do{
+    pilotIdSequence += 1;
+    candidate = "P" + randomPart + "-" + pilotIdSequence.toString(36);
+  }while(
+    Array.isArray(state.pilots) &&
+    state.pilots.some(p => p && p.id === candidate)
+  );
+
+  return candidate;
+}
+
+function findDuplicatePilotIds(pilots){
+  const seen = new Set();
+  const duplicates = new Set();
+  (Array.isArray(pilots) ? pilots : []).forEach(p => {
+    if(!p || typeof p.id !== "string" || !p.id.trim()) return;
+    if(seen.has(p.id)) duplicates.add(p.id);
+    seen.add(p.id);
+  });
+  return [...duplicates];
 }
 
 state.competitions.forEach(c=>{
@@ -335,6 +375,7 @@ function save(){
   localStorage.setItem("pilots",JSON.stringify(state.pilots));
   localStorage.setItem("clubs",JSON.stringify(state.clubs));
   localStorage.setItem("customCategories",JSON.stringify(state.customCategories || []));
+  localStorage.setItem("lastParticipantFees",JSON.stringify(state.lastParticipantFees || { ufolep:10, ffc:18, nl:18 }));
   localStorage.setItem("competitions",JSON.stringify(state.competitions));
   localStorage.setItem("sortPilotsMode",state.sortPilotsMode);
   localStorage.setItem("sortParticipantsMode",state.sortParticipantsMode);
@@ -3820,6 +3861,60 @@ showPilots();
 
 }
 
+// Tarifs d’engagement : valeurs mémorisées pour les prochaines compétitions.
+function getParticipantFees(){
+  const source = state.lastParticipantFees || {};
+  const valid = (value, fallback) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : fallback;
+  return {
+    ufolep: valid(source.ufolep, 10),
+    ffc: valid(source.ffc, 18),
+    nl: valid(source.nl, 18)
+  };
+}
+
+function getCompetitionParticipantFees(competition){
+  const defaults = getParticipantFees();
+  const saved = competition && competition.participantFees || {};
+  const valid = (value, fallback) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : fallback;
+  return {
+    ufolep: valid(saved.ufolep, defaults.ufolep),
+    ffc: valid(saved.ffc, defaults.ffc),
+    nl: valid(saved.nl, defaults.nl)
+  };
+}
+
+function readParticipantFees(prefix){
+  const raw = {
+    ufolep: document.getElementById(prefix + "FeeUfolep").value.trim(),
+    ffc: document.getElementById(prefix + "FeeFfc").value.trim(),
+    nl: document.getElementById(prefix + "FeeNl").value.trim()
+  };
+  if(Object.values(raw).some(value => value === "")) return null;
+  const fees = {
+    ufolep: Number(raw.ufolep),
+    ffc: Number(raw.ffc),
+    nl: Number(raw.nl)
+  };
+  if(Object.values(fees).some(value => !Number.isFinite(value) || value < 0)){
+    return null;
+  }
+  return fees;
+}
+
+function renderParticipantFeeFields(prefix, fees){
+  const values = fees || getParticipantFees();
+  return `
+    <div class="competition-fees">
+      <div class="competition-fees-title">Tarifs engagements</div>
+      <div class="competition-fees-grid">
+        <div class="pilot-field"><label>UFOLEP (€)</label><input id="${prefix}FeeUfolep" type="number" min="0" step="0.01" value="${values.ufolep}"></div>
+        <div class="pilot-field"><label>FFC (€)</label><input id="${prefix}FeeFfc" type="number" min="0" step="0.01" value="${values.ffc}"></div>
+        <div class="pilot-field"><label>NL (€)</label><input id="${prefix}FeeNl" type="number" min="0" step="0.01" value="${values.nl}"></div>
+      </div>
+    </div>
+  `;
+}
+
 // ===== COMPETITIONS =====
 // La création passe par showNewCompetition() et saveNewCompetition().
 // L'ancien formulaire askForm() était inutilisé et dupliquait ce parcours.
@@ -3836,8 +3931,9 @@ function saveNewCompetition(){
 
   let tours =
     parseInt(document.getElementById("compTours").value);
+  const fees = readParticipantFees("comp");
 
-  if(!name || !date || !zones || !tours){
+  if(!name || !date || !zones || !tours || !fees){
 
     document.getElementById("formError").innerText =
       "Champs manquants";
@@ -3851,6 +3947,7 @@ state.competitions.push({
     zones,
     tours,
 
+    participantFees: fees,
     participants: [],
     scores: {},
     status: {},
@@ -3858,6 +3955,7 @@ state.competitions.push({
     locked: false
   });
 
+  state.lastParticipantFees = fees;
   save();
 
   home();
@@ -3924,6 +4022,8 @@ function showNewCompetition(){
               min="1"
               placeholder="Nombre de tours">
           </div>
+
+          ${renderParticipantFeeFields("comp", getParticipantFees())}
 
         </div>
 
@@ -4017,6 +4117,8 @@ function editCompetition(i){
               placeholder="Nombre de tours">
           </div>
 
+          ${renderParticipantFeeFields("editComp", getCompetitionParticipantFees(c))}
+
         </div>
 
         <div id="formError" class="form-error"></div>
@@ -4062,12 +4164,14 @@ function saveCompetitionEdit(i){
     parseInt(
       document.getElementById("editCompTours").value
     );
+  const fees = readParticipantFees("editComp");
 
   if(
     !newName ||
     !newDate ||
     !newZones ||
-    !newTours
+    !newTours ||
+    !fees
   ){
 
     document.getElementById("formError").innerText =
@@ -4080,6 +4184,8 @@ function saveCompetitionEdit(i){
   c.date = newDate;
   c.zones = newZones;
   c.tours = newTours;
+  c.participantFees = fees;
+  state.lastParticipantFees = fees;
 
   save();
 
@@ -8895,8 +9001,12 @@ function printPDFPWA(fileName, forceLight = false){
   const appleMobile = isAppleMobilePrintBrowser();
   if(forceLight && wasDark) document.body.classList.remove("dark-mode");
 
-  // Le titre sert de nom de fichier dans la feuille d’impression Apple.
-  document.title = /^Double_Pointage_/i.test(fileName) ? "" : fileName.replace(/\.pdf$/i, "");
+  // Seule la feuille d’impression Apple exige un titre vide pour éviter
+  // qu’iOS remplace le nom proposé. Dans Chrome/Edge, le titre devient le
+  // nom du PDF : le vider faisait enregistrer le document sous index.html.pdf.
+  document.title = appleMobile && /^Double_Pointage_/i.test(fileName)
+    ? ""
+    : fileName.replace(/\.pdf$/i, "");
 
   // iOS peut émettre afterprint dès l’ouverture de sa feuille système, avant
   // que l’utilisateur ait réellement enregistré le PDF. Ne pas restaurer ici
@@ -10592,6 +10702,7 @@ function exportBackup(){
     pilots: state.pilots,
     clubs: state.clubs,
     customCategories: state.customCategories || [],
+    lastParticipantFees: getParticipantFees(),
     competitions: state.competitions,
     sortPilotsMode: state.sortPilotsMode,
     sortParticipantsMode: state.sortParticipantsMode,
@@ -10671,6 +10782,14 @@ function handleBackupImport(event){
         throw new Error("Format de sauvegarde invalide");
       }
 
+      if(data.pilots.some(p => !p || typeof p.id !== "string" || !p.id.trim())){
+        throw new Error("INVALID_PILOT_IDS");
+      }
+
+      if(findDuplicatePilotIds(data.pilots).length){
+        throw new Error("DUPLICATE_PILOT_IDS");
+      }
+
       const ok = await askConfirm(
         "Charger cette sauvegarde remplacera toutes les données actuelles. Continuer ?"
       );
@@ -10685,6 +10804,8 @@ function handleBackupImport(event){
         data.clubs || [...defaultClubs];
 
       state.customCategories = (data.customCategories || []).filter(c => c && typeof c.name === "string" && c.name.trim() && /^#[0-9a-f]{6}$/i.test(c.color || ""));
+      state.lastParticipantFees = data.lastParticipantFees || { ufolep:10, ffc:18, nl:18 };
+      state.lastParticipantFees = getParticipantFees();
       categories = [...BUILT_IN_CATEGORIES, ...state.customCategories.map(c => c.name)];
 
       state.competitions =
@@ -10721,13 +10842,19 @@ function handleBackupImport(event){
 
     }catch(err){
 
+      const errorMessage = err && err.message === "DUPLICATE_PILOT_IDS"
+        ? "Cette sauvegarde contient plusieurs pilotes avec le même identifiant. Elle n'a pas été chargée afin d'éviter de mélanger leurs données. Corrigez les doublons puis réessayez."
+        : err && err.message === "INVALID_PILOT_IDS"
+          ? "Cette sauvegarde contient au moins un pilote sans identifiant valide. Elle n'a pas été chargée afin de protéger vos données."
+          : "Erreur lors du chargement du fichier. Vérifiez que la sauvegarde est valide.";
+
       app.innerHTML = `
 
         <h3>Erreur</h3>
 
         <div class="card">
 
-          ❌ Erreur lors du chargement du fichier
+          ❌ ${errorMessage}
 
         </div>
 
@@ -11056,14 +11183,14 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
 
   const tours = Math.max(1, Math.min(12, Number(competition.tours) || 3));
   const zones = Math.max(1, Math.min(12, Number(competition.zones) || 6));
-  const cravateHeight = 43 + zones * 8.5; // mm; les lignes de zone restent à 8,5 mm.
+  const cravateHeight = 42 + zones * 8.5; // mm; 1 mm est récupéré sur les zones d’en-tête pour conserver 3 rangées avec les espaces.
   // Safari iOS ajoute parfois son pied de page système (URL/date/page) dans
   // la zone imprimable. Réserver 5 mm supplémentaires uniquement sur iPhone/iPad.
   const ua = String(navigator.userAgent || "");
   const isAppleMobile = /iPhone|iPad|iPod/i.test(ua)
     || (navigator.platform === "MacIntel" && Number(navigator.maxTouchPoints || 0) > 1);
-  const printableHeight = isAppleMobile ? 286 : 283; // mm : trois cravates de 94 mm tiennent avec une marge basse dédiée.
-  const rowGap = 0;
+  const printableHeight = isAppleMobile ? 286 : 283; // mm : trois cravates de 93 mm et deux espaces de 1 mm tiennent avec une marge basse dédiée.
+  const rowGap = 1; // mm : espace de découpe entre deux rangées de cravates.
   const rowsPerPage = Math.max(1, Math.floor((printableHeight + rowGap) / (cravateHeight + rowGap)));
   const pages = [];
   const rows = [];
@@ -11100,15 +11227,15 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
     .cravate-document{width:210mm;margin:0 auto;color:#111;background:#fff;font-family:Arial,Helvetica,sans-serif;}
     .cravate-page{box-sizing:border-box;width:210mm;height:297mm;padding:${isAppleMobile ? "4mm 7mm 7mm" : "7mm"};overflow:hidden;page-break-after:always;break-after:page;background:#fff;}
     .cravate-page:last-child{page-break-after:auto;break-after:auto;}
-    .cravate-grid{display:flex;flex-direction:column;gap:0;align-items:stretch;width:100%;}
-    .cravate-row{box-sizing:border-box;width:100%;height:${cravateHeight}mm;flex:0 0 ${cravateHeight}mm;display:grid;grid-template-columns:repeat(4,48.5mm);column-gap:0;justify-content:center;align-items:start;}
-    .cravate{box-sizing:border-box;position:relative;width:48.5mm;min-width:48.5mm;max-width:48.5mm;border:0;box-shadow:none;display:flex;flex-direction:column;background:#fff;break-inside:avoid;page-break-inside:avoid;font-size:8pt;overflow:visible;}\n    .cravate::after{content:"";position:absolute;inset:-.4mm;box-sizing:border-box;border:.8mm solid #111;pointer-events:none;z-index:5;}
-    .cravate-top{box-sizing:border-box;width:100%;height:9.5mm;flex:0 0 9.5mm;display:grid;grid-template-columns:1fr 1fr;font-weight:700;text-align:center;}
+    .cravate-grid{display:flex;flex-direction:column;gap:${rowGap}mm;align-items:stretch;width:100%;}
+    .cravate-row{box-sizing:border-box;width:100%;height:${cravateHeight}mm;flex:0 0 ${cravateHeight}mm;display:grid;grid-template-columns:repeat(4,48.25mm);column-gap:1mm;justify-content:center;align-items:start;}
+    .cravate{box-sizing:border-box;position:relative;width:48.25mm;min-width:48.25mm;max-width:48.25mm;border:0;box-shadow:none;display:flex;flex-direction:column;background:#fff;break-inside:avoid;page-break-inside:avoid;font-size:8pt;overflow:visible;}\n    .cravate::after{content:"";position:absolute;inset:0;box-sizing:border-box;border:.8mm solid #111;pointer-events:none;z-index:5;}
+    .cravate-top{box-sizing:border-box;width:100%;height:9.25mm;flex:0 0 9.25mm;display:grid;grid-template-columns:1fr 1fr;font-weight:700;text-align:center;}
     .cravate-category,.cravate-tour{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;border-bottom:.15mm solid #111;}
     .cravate-category{background:var(--cat-color);border-right:.15mm solid #111;}
     .cravate-tour{background:var(--tour-color);}
-    .cravate-name{box-sizing:border-box;width:100%;height:9.5mm;flex:0 0 9.5mm;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;overflow:hidden;overflow-wrap:anywhere;border-bottom:.15mm solid #111;padding:0 .5mm;}
-    .cravate-club{box-sizing:border-box;width:100%;height:8mm;flex:0 0 8mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-bottom:.15mm solid #111;font-size:7pt;font-weight:700;}
+    .cravate-name{box-sizing:border-box;width:100%;height:9.25mm;flex:0 0 9.25mm;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;overflow:hidden;overflow-wrap:anywhere;border-bottom:.15mm solid #111;padding:0 .5mm;}
+    .cravate-club{box-sizing:border-box;width:100%;height:7.75mm;flex:0 0 7.75mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-bottom:.15mm solid #111;font-size:7pt;font-weight:700;}
     .cravate-club span:first-child{grid-column:span 4;}
     .cravate-club span:nth-child(2){grid-column:span 2;}
     .cravate-club span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;overflow:hidden;overflow-wrap:anywhere;padding:0 .3mm;}
@@ -11121,7 +11248,7 @@ async function exportCravatesPDF(competitionIndex, selection = "toutes"){
     .cravate-barème{background:var(--tour-color);}
     .cravate-zone{background:var(--tour-color);}
     .cravate-zone span:nth-child(4){font-size:9pt;}
-    .cravate-total{box-sizing:border-box;width:100%;height:7.5mm;flex:0 0 7.5mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));font-weight:700;text-align:center;background:var(--tour-color);}
+    .cravate-total{box-sizing:border-box;width:100%;height:7.25mm;flex:0 0 7.25mm;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));font-weight:700;text-align:center;background:var(--tour-color);}
     .cravate-total span:first-child{grid-column:span 4;}
     .cravate-total span:nth-child(2){grid-column:span 2;}
     .cravate-total span{box-sizing:border-box;min-width:0;display:flex;align-items:center;justify-content:center;}
@@ -11603,13 +11730,60 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
     const workbook =
       new ExcelJS.Workbook();
 
-    // Keep formulas editable and automatically recalculated after amount entry,
-    // without forcing a full recalculation merely because the workbook is opened.
-    workbook.calcProperties = {
-      // ExcelJS only serializes fullCalcOnLoad; Excel remains in its normal
-      // automatic calculation mode when users edit amount cells.
-      fullCalcOnLoad: false
+    const participantFees = getCompetitionParticipantFees(c);
+    const getPilotEngagementFee = pilot => {
+      const licence = String(pilot?.lic || "NL").trim().toLocaleUpperCase("fr");
+      if(licence === "UFOLEP") return participantFees.ufolep;
+      if(licence === "FFC") return participantFees.ffc;
+      return participantFees.nl;
     };
+
+    // Keep formulas editable and ask Excel to calculate their values on opening.
+    // Cached results are also populated below so totals are visible in viewers
+    // that do not execute spreadsheet formulas immediately.
+    workbook.calcProperties = {
+      fullCalcOnLoad: true
+    };
+
+    function configureParticipantsPrintLayout(sheet, includeAmount = false){
+      const layouts = {
+
+        "Club + Alpha": { widths:[10, 30.14, 24.71, 17.71, 15.71, 20, 18], scale:70 },
+
+        "Catégorie + Alpha": { widths:[10, 28.57, 26.285, 15, 14.855, 17.57], scale:85 },
+
+        "Matin": { widths:[10, 26.14, 25, 15, 15.14, 21], scale:85 },
+
+        "Après-midi": { widths:[10, 30.855, 25.14, 15.71, 9.14, 19.285], scale:85 }
+
+      };
+
+      const layout = layouts[sheet.name] || layouts[includeAmount ? "Club + Alpha" : "Matin"];
+
+      layout.widths.forEach((width, index) => {
+
+        sheet.getColumn(index + 1).width = width;
+
+      });
+
+
+      // Reproduction du classeur de référence de Mamie : A4 portrait, échelle
+
+      // fixe par onglet et marges identiques. La hauteur reste multi-pages.
+
+      sheet.pageSetup = {
+
+        paperSize: 9,
+
+        orientation: "portrait",
+
+        scale: layout.scale,
+
+        margins: { left:0.315, right:0.315, top:0.748, bottom:0.748, header:0.315, footer:0.315 }
+
+      };
+
+      }
 
     /*
      * ================================
@@ -11626,17 +11800,19 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
         bold:true,
 
-        size:16
+        size:13
 
       };
 
-      headerRow.height = 30;
+      headerRow.height = 36;
 
       headerRow.alignment = {
 
         horizontal:"center",
 
-        vertical:"middle"
+        vertical:"middle",
+
+        wrapText:true
 
       };
 
@@ -11693,7 +11869,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
         bold:true,
 
-        size:14
+        size:12
 
       };
 
@@ -11709,7 +11885,19 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
         horizontal:"left",
 
-        vertical:"middle"
+        vertical:"middle",
+
+        wrapText:false
+
+      };
+
+      row.getCell(3).alignment = {
+
+        horizontal:"center",
+
+        vertical:"middle",
+
+        wrapText:false
 
       };
 
@@ -11820,6 +12008,8 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
       ];
 
+      configureParticipantsPrintLayout(sheet, true);
+
       sheet.views = [
 
         {
@@ -11860,6 +12050,23 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
       const totalRows = [];
 
+  function sumParticipantAmounts(firstRow, lastRow){
+    let total = 0;
+    for(let rowNumber = firstRow; rowNumber <= lastRow; rowNumber++){
+      const value = sheet.getCell(rowNumber, 7).value;
+      if(typeof value === "number" && Number.isFinite(value)) total += value;
+    }
+    return Number(total.toFixed(2));
+  }
+
+  function sumSubtotalAmounts(rowNumbers){
+    return Number(rowNumbers.reduce((sum, rowNumber) => {
+      const value = sheet.getCell(rowNumber, 7).value;
+      const cached = value && typeof value === "object" ? Number(value.result || 0) : Number(value || 0);
+      return sum + (Number.isFinite(cached) ? cached : 0);
+    }, 0).toFixed(2));
+  }
+
       clubAlpha.forEach(p=>{
 
         if(
@@ -11881,7 +12088,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
                 formula:
                   `SUM(G${firstRowClub}:G${sheet.rowCount})`,
-      result: 0
+              result: sumParticipantAmounts(firstRowClub, sheet.rowCount)
 
               }
 
@@ -11891,7 +12098,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
             bold:true,
 
-            size:14,
+            size:13,
 
             color:{
               argb:"FF0000"
@@ -11965,7 +12172,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
                     .join("/")
                 : "",
 
-            amount:""
+            amount:getPilotEngagementFee(p)
 
           });
 
@@ -12006,7 +12213,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
               formula:
                 `SUM(G${firstRowClub}:G${sheet.rowCount})`,
-      result: 0
+              result: sumParticipantAmounts(firstRowClub, sheet.rowCount)
 
             }
 
@@ -12016,7 +12223,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
           bold:true,
 
-          size:14,
+          size:13,
 
           color:{
             argb:"FF0000"
@@ -12079,7 +12286,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
                     .map(r => `G${r}`)
                     .join(",")
                 })`,
-              result: 0
+              result: sumSubtotalAmounts(totalRows)
 
             }
 
@@ -12090,7 +12297,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
           bold:true,
 
-          size:16,
+          size:15,
 
           color:{
             argb:"FF0000"
@@ -12189,6 +12396,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
       ];
 
+      configureParticipantsPrintLayout(sheet, false);
 
       sheet.views = [
 
@@ -13152,6 +13360,20 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
       `Participants_${c.name}_${dateFR}.xlsx`
         .replaceAll(" ","_");
 
+    // Appliquer les hauteurs, la police et la zone d'impression du modèle Mamie.
+    workbook.worksheets.forEach(sheet => {
+      sheet.eachRow({ includeEmpty:true }, row => {
+        row.height = row.number === 1 ? 30 : 18.75;
+        row.eachCell({ includeEmpty:true }, cell => {
+          cell.font = { ...cell.font, size:12 };
+        });
+      });
+      const lastColumn = sheet.columnCount;
+      const lastRow = Math.max(sheet.rowCount, 1);
+      const lastColumnLetter = sheet.getColumn(lastColumn).letter;
+      sheet.pageSetup.printArea = `A1:${lastColumnLetter}${lastRow}`;
+    });
+
     const buffer =
       await workbook.xlsx.writeBuffer();
 
@@ -13285,6 +13507,7 @@ async function exportParticipantsExcel(i, mode = "sessions"){
         participants,
 
         customCategories: state.customCategories || [],
+        fees: getCompetitionParticipantFees(c),
 
         competitionName:
           c.name,

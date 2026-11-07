@@ -11,7 +11,7 @@ check(source.includes("exportCravatesPDF(${i}, 'toutes')"), "All-category cravat
 check(source.includes("@page { size:A4 portrait; margin:0; }"), "Cravate PDF must use A4 portrait with no page margins");
 check(!source.includes("cravate-toolbar") && source.includes("Retour aux exports</button>"), "Cravate PDF must provide a manual return control on iOS without an intermediate preview step");
 check(source.includes("return await exportPDFDocument(fileName, false);") && source.includes("if(!appleMobile) showExportParticipantsMenu(competitionIndex);"), "iOS must keep the cravate document visible until the user returns manually");
-check(source.includes("width:48.5mm;min-width:48.5mm;max-width:48.5mm"), "Cravate width must remain fixed across zone counts");
+check(source.includes("width:48.25mm;min-width:48.25mm;max-width:48.25mm"), "Cravate width must remain fixed across zone counts and leave room for cutting gaps");
 check(source.includes(".cravate::after") && source.includes("border:.8mm solid #111"), "Each cravate must use one continuous thick outer frame without changing inner grid borders");
 check(source.includes("border:0;box-shadow:none;display:flex;flex-direction:column;background:#fff"), "Cravate content must not add a second thick border under the outer frame");
 check(!source.includes(".cravate-row .cravate:not(:first-child){border-left:0;}"), "Every cravate must retain its own left outer contour");
@@ -24,7 +24,9 @@ check(source.includes("for(let start = 0; start < participants.length; start += 
 check(source.includes("const row = Array.from({length:4}, (_, columnIndex) =>"), "Every row must reserve four slots and fill unused slots with blank cravates");
 check(source.includes("group[columnIndex]") && source.includes("buildCravateHTML({}, tourIndex, zones, true)"), "Real pilots must be followed by blank cravates only when the last group is incomplete");
 check(!source.includes("pages.push(`<article class=\"cravate-page\"><div class=\"cravate-grid\">${blankRows.join(\"\")}</div></article>`);"), "A separate final blank page must not be appended");
-check(source.includes("padding:${isAppleMobile ? \"4mm 7mm 7mm\" : \"7mm\"}") && source.includes("grid-template-columns:repeat(4,48.5mm);column-gap:0;justify-content:center"), "Cravate pages must include printer-safe padding while preserving four centered fixed-width columns");
+check(source.includes("padding:${isAppleMobile ? \"4mm 7mm 7mm\" : \"7mm\"}") && source.includes("grid-template-columns:repeat(4,48.25mm);column-gap:1mm;justify-content:center"), "Cravate pages must include printer-safe padding and 1 mm gaps between four centered columns");
+check(source.includes("const rowGap = 1;") && source.includes("gap:${rowGap}mm;align-items:stretch;width:100%;"), "Cravate rows must have 1 mm cutting gaps");
+check(source.includes("const cravateHeight = 42 + zones * 8.5;") && source.includes("height:9.25mm;flex:0 0 9.25mm;") && source.includes("height:7.75mm;flex:0 0 7.75mm;") && source.includes("height:7.25mm;flex:0 0 7.25mm;"), "Small header reductions must preserve three 6-zone cravates on one page with 1 mm row gaps");
 check(source.includes("grid-template-columns:repeat(6,minmax(0,1fr))") && source.includes(".cravate-club span:first-child{grid-column:span 4;}") && source.includes(".cravate-total span:first-child{grid-column:span 4;}"), "Right edge of N column must align with club and penalty total divider");
 check(source.includes(".cravate-barème span:nth-child(4),.cravate-zone span:nth-child(4){border-right:.15mm solid #111;}"), "The N column divider must remain thin; only the cravate outer contour is thick");
 check(!source.includes("layout-horizontal") && !source.includes("verticalThreeTourMode"), "Cravates must always remain vertical");

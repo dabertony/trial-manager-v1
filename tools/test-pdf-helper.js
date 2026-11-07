@@ -5,9 +5,11 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const sharedMatch = source.match(/async function exportPDFDocument\(fileName, landscape = false\)\s*\{[\s\S]*?\n\}/);
 const appleHelperMatch = source.match(/function isAppleMobilePrintBrowser\(\)\s*\{[\s\S]*?\n\}/);
+const pwaPrintMatch = source.match(/function printPDFPWA\(fileName, forceLight = false\)\s*\{[\s\S]*?\n\}/);
 const pointageMatch = source.match(/async function printDoublePointagePDF\(sheetName, landscape = false\)\s*\{[\s\S]*?\n\}/);
 if (!sharedMatch) throw new Error('Shared PDF document export flow not found');
 if (!pointageMatch) throw new Error('Shared double-pointage PDF helper not found');
+if (!pwaPrintMatch) throw new Error('PWA print helper not found');
 let checks = 0;
 function check(condition, message) {
   checks += 1;
@@ -44,6 +46,22 @@ async function runExport(environment, fileName = 'Test.pdf', landscape = false) 
   const browserResult = await runExport({ window: { print: () => {} }, printPDFPWA: fileName => { browserPrint = fileName; } }, 'Resultats.pdf', false);
   check(browserPrint === 'Resultats.pdf', 'browser print fallback should preserve filename');
   check(browserResult === true, 'browser fallback should report handled');
+
+  // Chrome/Edge must retain the requested double-pointage filename; only iOS
+  // uses an empty title to avoid overriding the name in its system print sheet.
+  const printCases = [
+    { apple: false, expected: 'Double_Pointage_Matin_Test_26-10-2026' },
+    { apple: true, expected: '' }
+  ];
+  for (const item of printCases) {
+    const listeners = {};
+    const document = { title: 'index.html', body: { classList: { contains: () => false, remove: () => {}, add: () => {} } }, getElementById: () => null };
+    const nav = item.apple ? { userAgent: 'iPhone' } : { userAgent: 'Chrome' };
+    const sandbox = { document, navigator: nav, window: { print: () => {}, addEventListener: (name, fn) => { listeners[name] = fn; }, removeEventListener: () => {} } };
+    vm.runInNewContext(`${appleHelperMatch[0]}\n${pwaPrintMatch[0]}\nthis.runPrint = printPDFPWA;`, sandbox);
+    sandbox.runPrint('Double_Pointage_Matin_Test_26-10-2026.pdf', false);
+    check(document.title === item.expected, `${item.apple ? 'iOS' : 'Chrome/Edge'} double-pointage print title should be correct`);
+  }
 
   let noticeMessage = '';
   const unavailableResult = await runExport({ window: {}, showAppNotice: message => { noticeMessage = message; } });
