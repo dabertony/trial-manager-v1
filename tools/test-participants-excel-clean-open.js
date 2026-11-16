@@ -19,8 +19,8 @@ for (const [label, source] of [["Electron", main], ["PWA", app]]) {
   const exportBlock = label === "Electron" ? electronExport : pwaExport;
   assert.match(exportBlock, /calcProperties\s*=\s*\{[\s\S]*?fullCalcOnLoad:\s*true/ , `${label}: Excel must recalculate formulas on open`);
   const clubSheet = label === "Electron"
-    ? section(source, 'function buildParticipantsClubSheet(', 'function buildParticipantsSimpleSheet(')
-    : section(source, 'async function exportParticipantsExcelPWA(', '\nasync function exportParticipantsExcel(');
+    ? section(source, 'function buildParticipantsClubSheet(', 'function buildParticipantsAttendanceSheet(')
+    : section(source, 'async function exportParticipantsExcelPWA(', 'ONGLET PRÉSENCES + RÈGLEMENTS');
   const formulaCount = (clubSheet.match(/formula:/g) || []).length;
   assert.equal(formulaCount, 3, `${label}: expected 3 participant total formulas`);
   assert.match(clubSheet, /function sumParticipantAmounts\([\s\S]*?return Number\(total\.toFixed\(2\)\)/, `${label}: subtotal cached values must be calculated from participant amounts`);

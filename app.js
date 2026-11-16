@@ -449,6 +449,100 @@ function getPilotById(id){
   return state.pilots.find(p=>p.id===id);
 }
 
+// Une fiche remplacée reste visible pour préserver et expliquer l'historique.
+// Les anciennes données utilisant archived=true sont reconnues comme historiques,
+// mais les nouvelles duplications n'archivent plus la fiche d'origine.
+function isHistoricalPilot(p){
+  return !!(p && (p.isHistoricalVersion === true || p.archived === true || p.replacedByPilotId));
+}
+
+function getAllPilotRecords(){
+  return (Array.isArray(state.pilots) ? state.pilots : []).filter(Boolean);
+}
+
+// Les fiches historiques restent visibles, mais ne sont jamais proposées comme
+// choix pour une nouvelle compétition ni dans les exports de pilotes courants.
+function getActivePilots(){
+  return getAllPilotRecords().filter(p => !isHistoricalPilot(p));
+}
+
+function hasValidatedPilotHistory(id){
+  return (Array.isArray(state.competitions) ? state.competitions : []).some(c =>
+    c && c.locked === true && Array.isArray(c.participants) && c.participants.includes(id)
+  );
+}
+
+function isPilotCategoryChangePending(p){
+  return !!(p && p.categoryChangePending === true);
+}
+
+// Quand une fiche est remplacée, seules les compétitions non verrouillées
+// basculent vers le nouvel identifiant. Les compétitions validées restent
+// strictement liées à l'ancienne fiche.
+function migratePilotToNewIdInEditableCompetitions(oldId, newId, categoryChanged = true){
+  (Array.isArray(state.competitions) ? state.competitions : []).forEach(c => {
+    if (!c || c.locked === true) return;
+
+    if (Array.isArray(c.participants) && c.participants.includes(oldId)) {
+      c.participants = c.participants.map(id => id === oldId ? newId : id);
+    }
+
+    if (c.scores && typeof c.scores === "object") {
+      Object.keys(c.scores).forEach(key => {
+        if (!key.startsWith(oldId + "-")) return;
+        const replacementKey = newId + key.slice(oldId.length);
+        if (!Object.prototype.hasOwnProperty.call(c.scores, replacementKey)) {
+          c.scores[replacementKey] = c.scores[key];
+        }
+        delete c.scores[key];
+      });
+    }
+
+    if (c.status && Object.prototype.hasOwnProperty.call(c.status, oldId)) {
+      c.status[newId] = c.status[oldId];
+      delete c.status[oldId];
+    }
+
+    if (c.participantPlates && Object.prototype.hasOwnProperty.call(c.participantPlates, oldId)) {
+      // La nouvelle fiche porte désormais la plaque de référence. On retire
+      // l'éventuelle ancienne surcharge pour éviter de réafficher l'ancienne plaque.
+      delete c.participantPlates[oldId];
+    }
+
+    if (c.tiebreaks && typeof c.tiebreaks === "object") {
+      Object.keys(c.tiebreaks).forEach(key => {
+        const order = c.tiebreaks[key];
+        if (!key.includes(oldId) && !(Array.isArray(order) && order.includes(oldId))) return;
+        if (categoryChanged) {
+          // Le groupe peut avoir changé : le départage doit être recalculé.
+          delete c.tiebreaks[key];
+          return;
+        }
+        // Si seule la plaque change, le départage reste valable : on remplace
+        // simplement l'identifiant dans sa clé et dans l'ordre mémorisé.
+        const replacementKey = key.split(oldId).join(newId);
+        const replacementOrder = Array.isArray(order)
+          ? order.map(id => id === oldId ? newId : id)
+          : order;
+        if (replacementKey !== key) delete c.tiebreaks[key];
+        c.tiebreaks[replacementKey] = replacementOrder;
+      });
+    }
+  });
+}
+
+function clearPilotTieBreaksInEditableCompetitions(id){
+  (Array.isArray(state.competitions) ? state.competitions : []).forEach(c => {
+    if (!c || c.locked === true || !c.tiebreaks) return;
+    Object.keys(c.tiebreaks).forEach(key => {
+      const order = c.tiebreaks[key];
+      if (key.includes(id) || (Array.isArray(order) && order.includes(id))) {
+        delete c.tiebreaks[key];
+      }
+    });
+  });
+}
+
 // Détection réglementaire fondée sur la saison UFOLEP au jour du clic.
 function getUfolepSeasonContext(date = new Date()){
   const month = date.getMonth() + 1;
@@ -476,7 +570,7 @@ function isUfolepRankingEligible(p){
 }
 function getAgeDetectionCandidates(kind, date = new Date()){
   const season = getUfolepSeasonContext(date);
-  return (state.pilots || []).filter(p => {
+  return getActivePilots().filter(p => {
     const year = pilotBirthYear(p);
     if (year === null) return false;
     const cat = String(p.cat || '').trim();
@@ -2973,7 +3067,7 @@ function findPilotDuplicateGroups(pilots){
 
 function showPilotDuplicates(){
   state.ui.currentScreen = "pilots";
-  const pairs = findPilotDuplicateGroups(Array.isArray(state.pilots) ? state.pilots : []);
+  const pairs = findPilotDuplicateGroups(getActivePilots());
   let html = `
     <div class="pilots-page">
       <div class="pilots-header">
@@ -3022,7 +3116,7 @@ function showPilots(){
   state.ui.currentScreen = "pilots";
 
   let pilots = sortPilots(
-    state.pilots
+    getAllPilotRecords()
   );
 
   const editingPilot =
@@ -3030,11 +3124,9 @@ function showPilots(){
       ? getPilotById(editingPilotId)
       : null;
 
-  const pilotUsed =
+  const pilotHasValidatedHistory =
     editingPilotId
-      ? state.competitions.some(c =>
-          c.participants.includes(editingPilotId)
-        )
+      ? hasValidatedPilotHistory(editingPilotId)
       : false;
 
 
@@ -3044,7 +3136,7 @@ function showPilots(){
 
     <!-- ===== EN-TÊTE ===== -->
 
-    <div class="pilots-header">
+    <div class="pilots-header pilots-header-sticky">
 
       <div class="pilots-header-title">
 
@@ -3087,10 +3179,10 @@ function showPilots(){
             </strong>
 
             ${
-              pilotUsed
+              pilotHasValidatedHistory
               ? `
-                <span>
-                  — Catégorie verrouillée
+                <span style="display:block;margin-top:5px;color:#b91c1c;font-weight:600">
+                  — Si la catégorie change, une nouvelle fiche sera créée pour préserver les anciens résultats. Un simple changement de plaque ne crée pas de nouvelle fiche.
                 </span>
               `
               : ""
@@ -3173,11 +3265,6 @@ function showPilots(){
           <select
             id="cat"
             onchange="toggleCategory()"
-            ${
-              editingPilotId && pilotUsed
-                ? "disabled"
-                : ""
-            }
           >
 
             <option value="">
@@ -3482,7 +3569,7 @@ function showPilots(){
     html += `
 
       <tr
-        class="pilot-row"
+        class="pilot-row${isHistoricalPilot(p) ? ' pilot-historical-row' : ''}"
         data-name="${(p.name || "").toLowerCase()}"
         data-plaque="${(p.plaque || "").toLowerCase()}"
         data-club="${(p.club || "").toLowerCase()}"
@@ -3497,9 +3584,10 @@ function showPilots(){
 
         <td>
           ${isAgeScratchOnlyPilot(p) ? '<span class="age-scratch-marker" title="Scratch uniquement" aria-label="Scratch uniquement"></span>' : ''}
-          <strong>
-            ${p.name}
+          <strong style="${isHistoricalPilot(p) || isPilotCategoryChangePending(p) ? 'color:#b91c1c' : ''}">
+            ${escapeHtml(p.name || '')}
           </strong>
+          ${isHistoricalPilot(p) ? '<small class="pilot-history-label">⛔ Ancienne fiche – historique, ne pas sélectionner</small>' : (isPilotCategoryChangePending(p) ? '<small style="display:block;color:#b91c1c;font-weight:700">⚠ Changement récent – à vérifier</small>' : '')}
         </td>
 
         <td>
@@ -3536,7 +3624,7 @@ function showPilots(){
 
         <td class="col-actions pilot-actions-cell">
 
-          <button
+          ${!isHistoricalPilot(p) ? `<button
             class="pilot-action-btn"
             title="Modifier"
             onclick="
@@ -3546,10 +3634,10 @@ function showPilots(){
 
             ✏️
 
-          </button>
+          </button>` : '<span class="pilot-history-action" title="Fiche historique non modifiable">Historique</span>'}
 
           ${
-            deleteModePilots
+            deleteModePilots && !isHistoricalPilot(p)
             ? `
 
               <button
@@ -4516,7 +4604,7 @@ function manageParticipants(i){
 
   let list =
   sortParticipants(
-    state.pilots,
+    getAllPilotRecords(),
     c
   );
 
@@ -4631,12 +4719,12 @@ list.forEach((p)=>{
   html += `
 
 <tr
-  class="participant-select-row"
+  class="participant-select-row${isHistoricalPilot(p) ? ' pilot-historical-row' : ''}"
   data-name="${String(p.name || "").toLowerCase().replace(/&/g,"&amp;").replace(/"/g,"&quot;")}"
   data-plaque="${String(c.participantPlates[p.id] ?? p.plaque ?? "").toLowerCase().replace(/&/g,"&amp;").replace(/"/g,"&quot;")}"
   data-club="${String(p.club || "").toLowerCase().replace(/&/g,"&amp;").replace(/"/g,"&quot;")}"
-  onclick="toggleP(${i},'${p.id}')"
-  style="cursor:pointer"
+  onclick="${isHistoricalPilot(p) ? '' : `toggleP(${i},'${p.id}')` }"
+  style="${isHistoricalPilot(p) ? 'cursor:not-allowed;opacity:.88' : 'cursor:pointer'}"
 >
 
   <td>
@@ -4704,7 +4792,8 @@ this.value
   </td>
 
   <td>
-    ${p.name}
+    <strong style="${isHistoricalPilot(p) || isPilotCategoryChangePending(p) ? 'color:#b91c1c' : ''}">${escapeHtml(p.name || '')}</strong>
+    ${isHistoricalPilot(p) ? '<small class="pilot-history-label">⛔ Ancienne fiche – non sélectionnable</small>' : (isPilotCategoryChangePending(p) ? '<small style="display:block;color:#b91c1c;font-weight:700">⚠ Nouvelle fiche : vérifier catégorie et plaque</small>' : '')}
   </td>
 
   <td>
@@ -4790,6 +4879,7 @@ function changeParticipantPlate(ci,id,value){
 function toggleP(ci,id){
 
   let c=state.competitions[ci];
+  if(isHistoricalPilot(getPilotById(id))) return;
 if(c.locked){
     return;
   }
@@ -4811,6 +4901,13 @@ if(c.locked){
 // ===== SAISIE =====
 
 let currentScores=[];
+let scoreEntryListScrollTop = null;
+
+function captureScoreEntryListPosition(){
+  if(document.querySelector(".score-entry-page") && scoreEntryListScrollTop === null){
+    scoreEntryListScrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+  }
+}
 
 function selectPilot(i){
 
@@ -5219,6 +5316,11 @@ else if(pilotStarted){
     filterScoreEntryList(scoreEntrySearchValue);
   }
 
+  if(scoreEntryListScrollTop !== null){
+    window.scrollTo(0, scoreEntryListScrollTop);
+    scoreEntryListScrollTop = null;
+  }
+
 }
 
 function filterScoreEntryList(value){
@@ -5386,6 +5488,8 @@ function changeSortEntry(mode,i){
 }
 
 function pilotDetail(ci,id){
+
+  captureScoreEntryListPosition();
 
   let c = state.competitions[ci];
 
@@ -5721,6 +5825,8 @@ if(c.locked){
 }
 
 function enterScore(ci,id,t){
+
+  captureScoreEntryListPosition();
 
   let c = state.competitions[ci];
 
@@ -6591,6 +6697,13 @@ save();
 
 updateTVResults(ci);
 
+// Après une validation faite depuis une recherche, réafficher toute la liste.
+// Sans recherche, selectPilot restaure la position exacte du tableau.
+if(scoreEntrySearchValue.trim()){
+  scoreEntrySearchValue = "";
+  scoreEntryListScrollTop = 0;
+}
+
 selectPilot(ci);
 
 }
@@ -6771,7 +6884,7 @@ final.push(found);
 function renderTable(title,list,c,htmlRef,ci,provisional){
 
   htmlRef+=`
-  <div class="print-page">
+  <div class="print-page" data-intermediaire="${provisional ? "true" : "false"}">
 
   <div class="ranking-heading">
     <div class="section-title">
@@ -7619,7 +7732,7 @@ function editPilot(id){
 
   let p = getPilotById(id);
 
-  if(!p) return;
+  if(!p || isHistoricalPilot(p)) return;
 
   editingPilotId = id;
   editingPilotCat = p.cat;
@@ -7652,77 +7765,137 @@ function editPilot(id){
   },0);
 }
 
-function savePilotEdit(){
+async function savePilotEdit(){
 
   let p = getPilotById(editingPilotId);
 
-  if(!p) return;
+  if(!p || isHistoricalPilot(p)) return;
 
-  let name =
-    document.getElementById("name").value;
+  let name = document.getElementById("name").value;
+  let clubSelect = document.getElementById("club").value;
+  let lic = document.getElementById("lic").value;
+  let cat = document.getElementById("cat").value;
 
-  let clubSelect =
-    document.getElementById("club").value;
-
-  let lic =
-    document.getElementById("lic").value;
-
-  let cat =
-  document.getElementById("cat").value;
-
-  if(cat==="__NEW_CATEGORY__"){
-    cat=addCustomCategoryFromForm();
+  if(cat === "__NEW_CATEGORY__"){
+    cat = addCustomCategoryFromForm();
     if(!cat) return;
   }
-
-  let plaque =
-  document.getElementById("plaque").value.trim();
-
-  let licenceNumber =
-  document.getElementById("licenceNumber").value.trim();
-
-  let birthDate =
-  document.getElementById("birthDate").value;
-
-  let club = clubSelect;
-
-  if(clubSelect === "NEW"){
-
-    club =
-      document.getElementById("newClub").value;
-
-    if(
-      club &&
-      !state.clubs.includes(club)
-    ){
-      state.clubs.push(club);
-    }
+  if(!cat){
+    document.getElementById("cat").style.border = "2px solid #dc2626";
+    document.getElementById("cat").focus();
+    return;
   }
 
-  p.name = format(name);
+  let plaque = document.getElementById("plaque").value.trim();
+  let licenceNumber = document.getElementById("licenceNumber").value.trim();
+  let birthDate = document.getElementById("birthDate").value;
+  let club = clubSelect;
+
+  if(!String(name || "").trim()){
+    document.getElementById("name").style.border = "2px solid #dc2626";
+    document.getElementById("name").focus();
+    return;
+  }
+
+  if(clubSelect === "NEW"){
+    club = format(document.getElementById("newClub").value || "");
+    if(!club){
+      const clubInput = document.getElementById("newClub");
+      clubInput.style.border = "2px solid #dc2626";
+      clubInput.focus();
+      return;
+    }
+    if(!state.clubs.includes(club)) state.clubs.push(club);
+  }
+
+  const normalizedName = format(name);
+  const categoryChanged = String(p.cat || "").trim() !== String(cat || "").trim();
+  const originalPlaque = String(p.plaque || "");
+  const plateChanged = originalPlaque.trim() !== String(plaque || "").trim();
+  const hasValidatedHistory = hasValidatedPilotHistory(p.id);
+
+  // Seul un changement de catégorie après une compétition validée crée
+  // une nouvelle identité active. Un changement de plaque seul reste une
+  // modification de la fiche existante, car il ne change pas les classements.
+  if(hasValidatedHistory && categoryChanged){
+    const ok = await askConfirm(
+      `Ce pilote possède déjà des résultats dans une compétition validée.\n\nPour préserver ces résultats, Trial Manager va conserver son ancienne fiche dans l'historique et créer une nouvelle fiche active pour sa nouvelle catégorie, avec la plaque correspondante. Les compétitions non validées seront transférées vers cette nouvelle fiche.\n\nContinuer ?`
+    );
+    if(!ok) return;
+
+    const newId = generatePilotId();
+    const newPilot = {
+      ...p,
+      id: newId,
+      name: normalizedName,
+      cat,
+      club,
+      lic,
+      plaque,
+      licenceNumber,
+      birthDate,
+      ageScratchOnly: ['N5','N5 F','N5 V'].includes(String(cat || '').trim()) ? !!p.ageScratchOnly : false,
+      archived: false,
+      categoryChangePending: true,
+      replacesPilotId: p.id
+    };
+
+    // L'ancienne fiche reste consultable dans la liste, en rouge, mais n'est
+    // plus sélectionnable pour les compétitions futures.
+    p.archived = false;
+    p.isHistoricalVersion = true;
+    p.replacedByPilotId = newId;
+    migratePilotToNewIdInEditableCompetitions(p.id, newId, categoryChanged);
+    state.pilots.push(newPilot);
+
+    editingPilotId = null;
+    editingPilotCat = null;
+    save();
+    showPilots();
+    return;
+  }
+
+  // Sans historique validé, la fiche reste la même : les compétitions en
+  // préparation continuent donc de pointer vers cet identifiant.
+  p.name = normalizedName;
   p.club = club;
   p.lic = lic;
-  // La catégorie ne peut être modifiée
-// que si le pilote n'est utilisé dans aucune compétition.
-
-const pilotUsed =
-  state.competitions.some(c =>
-    c.participants.includes(editingPilotId)
-  );
-
-if(!pilotUsed){
   p.cat = cat;
-  if(!['N5','N5 F','N5 V'].includes(String(cat || '').trim())) p.ageScratchOnly = false;
-}
   p.plaque = plaque;
   p.licenceNumber = licenceNumber;
   p.birthDate = birthDate;
+  if(!['N5','N5 F','N5 V'].includes(String(cat || '').trim())) p.ageScratchOnly = false;
+
+  if(categoryChanged){
+    clearPilotTieBreaksInEditableCompetitions(p.id);
+  }
+  if(plateChanged){
+    (Array.isArray(state.competitions) ? state.competitions : []).forEach(c => {
+      if(!c || !Array.isArray(c.participants) || !c.participants.includes(p.id)) return;
+      c.participantPlates ??= {};
+
+      if(c.locked === true){
+        // Figer l'ancienne plaque dans les compétitions validées avant de
+        // modifier la fiche maître, afin que leurs documents historiques
+        // continuent d'afficher la plaque utilisée à l'époque.
+        if(!Object.prototype.hasOwnProperty.call(c.participantPlates, p.id)){
+          c.participantPlates[p.id] = originalPlaque;
+        }
+        return;
+      }
+
+      // Dans les compétitions encore modifiables, appliquer la nouvelle plaque
+      // même si une surcharge existait déjà. Sans surcharge, la fiche maître
+      // mise à jour fournit naturellement la nouvelle valeur.
+      if(Object.prototype.hasOwnProperty.call(c.participantPlates, p.id)){
+        c.participantPlates[p.id] = plaque;
+      }
+    });
+  }
 
   editingPilotId = null;
   editingPilotCat = null;
-
   save();
-
   showPilots();
 }
 
@@ -7736,6 +7909,11 @@ function toggleDeletePilots(){
 async function deletePilot(id){
 
 let pilot = state.pilots.find(p => p.id === id);
+
+  if(pilot && isHistoricalPilot(pilot)){
+    showPilots();
+    return;
+  }
 
   if(!pilot){
   console.warn(
@@ -8149,6 +8327,13 @@ function confirmLockCompetition(i){
   let c = state.competitions[i];
 
   c.locked = true;
+
+  (Array.isArray(c.participants) ? c.participants : []).forEach(id => {
+    const pilot = getPilotById(id);
+    if(pilot && pilot.categoryChangePending === true){
+      pilot.categoryChangePending = false;
+    }
+  });
 
   save();
 
@@ -9080,7 +9265,11 @@ function getRankingJpgPages(type){
     const category = label
       ? label.replace(/^CLASSEMENT\s*/i, "").trim()
       : (type === "clubs" ? "Clubs" : `Classement_${index + 1}`);
-    return { element, category };
+    return {
+      element,
+      category,
+      intermediaire: element.dataset.intermediaire === "true"
+    };
   }).filter(page => page.element.querySelector("table"));
 }
 
@@ -9350,7 +9539,10 @@ function rankingPdfFileName(type, page){
   if(type === "competition"){
     const safeName = safeRankingFilePart(info.name);
     const safeDate = safeRankingFilePart(formatDateForFile(info.date));
-    const suffix = info.intermediaire ? "_INTERMEDIAIRE" : "";
+    const intermediate = page
+      ? page.intermediaire
+      : getRankingJpgPages(type).some(item => item.intermediaire);
+    const suffix = intermediate ? "_INTERMEDIAIRE" : "";
     base = `Resultats_${safeName}_${safeDate}${suffix}`;
   } else if(type === "championship"){
     base = `Classement_Championnat_UFOLEP_${info.startYear}-${info.endYear}`;
@@ -9444,7 +9636,7 @@ function openRankingJPGSelector(type){
       if(type === "competition"){
         const safeName = safeRankingFilePart(info.name);
         const safeDate = safeRankingFilePart(formatDateForFile(info.date));
-        const suffix = info.intermediaire ? "_INTERMEDIAIRE" : "";
+        const suffix = page.intermediaire ? "_INTERMEDIAIRE" : "";
         base = `Resultats_${safeName}_${safeDate}${suffix}`;
       } else {
         base = `Classement_Championnat_UFOLEP_${info.startYear}-${info.endYear}`;
@@ -10083,6 +10275,7 @@ async function exportPilotsExcelPWA(){
      */
 
     const categoryOrder = getTrialManagerCategoryOrder();
+    const activePilots = getActivePilots();
 
     /*
      * ================================
@@ -10090,7 +10283,7 @@ async function exportPilotsExcelPWA(){
      * ================================
      */
 
-    const alpha = [...state.pilots].sort((a,b)=>
+    const alpha = [...activePilots].sort((a,b)=>
 
       (a.name || "").localeCompare(
         b.name || ""
@@ -10104,7 +10297,7 @@ async function exportPilotsExcelPWA(){
      * ================================
      */
 
-    const plaque = [...state.pilots].sort((a,b)=>{
+    const plaque = [...activePilots].sort((a,b)=>{
 
       const catDiff =
         categoryOrder.indexOf(a.cat)
@@ -10134,13 +10327,25 @@ async function exportPilotsExcelPWA(){
      * ================================
      */
 
-    const club = [...state.pilots].sort((a,b)=>
+    const club = [...activePilots].sort((a,b)=>{
 
-      (a.club || "").localeCompare(
-        b.club || ""
-      )
+      const clubDiff = String(a.club || "").localeCompare(
+        String(b.club || ""),
+        "fr",
+        { sensitivity:"base" }
+      );
 
-    );
+      if(clubDiff !== 0){
+        return clubDiff;
+      }
+
+      return String(a.name || "").localeCompare(
+        String(b.name || ""),
+        "fr",
+        { sensitivity:"base" }
+      );
+
+    });
 
     /*
      * ================================
@@ -10148,7 +10353,7 @@ async function exportPilotsExcelPWA(){
      * ================================
      */
 
-    const categorie = [...state.pilots].sort((a,b)=>{
+    const categorie = [...activePilots].sort((a,b)=>{
 
       const diff =
         categoryOrder.indexOf(a.cat)
@@ -10381,11 +10586,13 @@ async function exportPilotsExcelPWA(){
         const day =
           Number(parts[2]);
 
-        return new Date(
+        // ExcelJS convertit les Date en numéro Excel à partir de l’horodatage UTC.
+        // Construire la date en UTC évite le décalage d’un jour en fuseau français.
+        return new Date(Date.UTC(
           year,
           month - 1,
           day
-        );
+        ));
 
       })()
     : ""
@@ -10653,7 +10860,7 @@ async function exportPilotsExcel(){
 
     let ok =
       await window.api.exportExcel({
-        pilots: state.pilots,
+        pilots: getActivePilots(),
         customCategories: state.customCategories || []
       });
 
@@ -11750,6 +11957,8 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
         "Club + Alpha": { widths:[10, 30.14, 24.71, 17.71, 15.71, 20, 18], scale:70 },
 
+        "Présences + règlements": { widths:[8.5, 10, 30.14, 24.71, 11.5, 10.5, 20, 18, 6.5], fitToWidth:1 },
+
         "Catégorie + Alpha": { widths:[10, 28.57, 26.285, 15, 14.855, 17.57], scale:85 },
 
         "Matin": { widths:[10, 26.14, 25, 15, 15.14, 21], scale:85 },
@@ -11777,7 +11986,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
         orientation: "portrait",
 
-        scale: layout.scale,
+        ...(layout.fitToWidth ? { fitToPage:true, fitToWidth:1, fitToHeight:0 } : { scale:layout.scale }),
 
         margins: { left:0.315, right:0.315, top:0.748, bottom:0.748, header:0.315, footer:0.315 }
 
@@ -12338,6 +12547,116 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
     }
 
+
+    /*
+     * ================================
+     * ONGLET PRÉSENCES + RÈGLEMENTS
+     * ================================
+     */
+    {
+      const sheet = workbook.addWorksheet("Présences + règlements");
+      sheet.columns = [
+        { header:"Prés.\nmatin", key:"morningPresence", width:6.5 },
+        { header:"Plaque", key:"plaque", width:10 },
+        { header:"Nom", key:"name", width:30.14 },
+        { header:"Club", key:"club", width:24.71 },
+        { header:"Catégorie", key:"cat", width:11.5 },
+        { header:"Licence", key:"lic", width:10.5 },
+        { header:"Date naissance", key:"birthDate", width:20 },
+        { header:"Montant", key:"amount", width:18 },
+        { header:"Payé", key:"paid", width:6.5 }
+      ];
+      configureParticipantsPrintLayout(sheet, false);
+      sheet.views = [{ state:"frozen", ySplit:1 }];
+      styleHeader(sheet);
+
+      const clubAlpha = [...participants].sort((a,b) => {
+        const clubDiff = (a.club || "").localeCompare(b.club || "");
+        return clubDiff !== 0 ? clubDiff : (a.name || "").localeCompare(b.name || "");
+      });
+      let currentClub = null;
+      let firstRowClub = null;
+      const totalRows = [];
+
+      function sumAttendanceAmounts(firstRow, lastRow){
+        let total = 0;
+        for(let rowNumber=firstRow; rowNumber<=lastRow; rowNumber++){
+          const value = sheet.getCell(rowNumber, 8).value;
+          if(typeof value === "number" && Number.isFinite(value)) total += value;
+        }
+        return Number(total.toFixed(2));
+      }
+      function addAttendanceClubTotal(){
+        if(firstRowClub === null) return;
+        const lastDataRow = sheet.rowCount;
+        const totalRow = sheet.addRow(["", "", "", "", "", "", "TOTAL", {
+          formula:`SUM(H${firstRowClub}:H${lastDataRow})`,
+          result:sumAttendanceAmounts(firstRowClub, lastDataRow)
+        }, ""]);
+        totalRow.font = { bold:true, size:13, color:{argb:"FF0000"} };
+        totalRow.getCell(8).numFmt = '# ##0.00 €';
+        totalRow.eachCell({includeEmpty:true}, cell => {
+          cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
+        });
+        totalRows.push(totalRow.number);
+        sheet.addRow([]);
+        firstRowClub = null;
+      }
+
+      clubAlpha.forEach(p => {
+        if(currentClub !== null && currentClub !== p.club) addAttendanceClubTotal();
+        currentClub = p.club;
+        const row = sheet.addRow([
+          "☐", p.plaque || "", p.name || "", p.club || "", p.cat || "", p.lic || "",
+          p.birthDate ? p.birthDate.split("-").reverse().join("/") : "",
+          getPilotEngagementFee(p), "☐"
+        ]);
+        if(firstRowClub === null) firstRowClub = row.number;
+        row.height = 22;
+        row.font = { bold:true, size:12 };
+        row.alignment = { horizontal:"center", vertical:"middle" };
+        row.getCell(3).alignment = { horizontal:"left", vertical:"middle", wrapText:false };
+        row.getCell(8).numFmt = '# ##0.00 €';
+        [1,9].forEach(column => {
+          row.getCell(column).font = { name:"Segoe UI Symbol", bold:false, size:16 };
+          row.getCell(column).alignment = { horizontal:"center", vertical:"middle" };
+        });
+        row.eachCell({includeEmpty:true}, cell => {
+          cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
+        });
+        const color = colorMap[p.cat];
+        if(color) row.getCell(5).fill = { type:"pattern", pattern:"solid", fgColor:{argb:color} };
+      });
+
+      if(firstRowClub !== null){
+        const lastDataRow = sheet.rowCount;
+        const lastTotal = sheet.addRow(["", "", "", "", "", "", "TOTAL", {
+          formula:`SUM(H${firstRowClub}:H${lastDataRow})`,
+          result:sumAttendanceAmounts(firstRowClub, lastDataRow)
+        }, ""]);
+        lastTotal.font = { bold:true, size:13, color:{argb:"FF0000"} };
+        lastTotal.getCell(8).numFmt = '# ##0.00 €';
+        lastTotal.eachCell({includeEmpty:true}, cell => {
+          cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
+        });
+        totalRows.push(lastTotal.number);
+        sheet.addRow([]);
+        const grandTotalValue = totalRows.reduce((sum, rowNumber) => {
+          const value = sheet.getCell(rowNumber, 8).value;
+          const cached = value && typeof value === "object" ? Number(value.result || 0) : Number(value || 0);
+          return sum + (Number.isFinite(cached) ? cached : 0);
+        }, 0);
+        const grandTotal = sheet.addRow(["", "", "", "", "", "", "TOTAL GÉNÉRAL", {
+          formula:`SUM(${totalRows.map(rowNumber => `H${rowNumber}`).join(",")})`,
+          result:Number(grandTotalValue.toFixed(2))
+        }, ""]);
+        grandTotal.font = { bold:true, size:15, color:{argb:"FF0000"} };
+        grandTotal.getCell(8).numFmt = '# ##0.00 €';
+        grandTotal.eachCell({includeEmpty:true}, cell => {
+          cell.border = { top:{style:"medium"}, left:{style:"medium"}, bottom:{style:"medium"}, right:{style:"medium"} };
+        });
+      }
+    }
 
     /*
      * ================================
@@ -13363,9 +13682,12 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
     // Appliquer les hauteurs, la police et la zone d'impression du modèle Mamie.
     workbook.worksheets.forEach(sheet => {
       sheet.eachRow({ includeEmpty:true }, row => {
-        row.height = row.number === 1 ? 30 : 18.75;
+        row.height = sheet.name === "Présences + règlements"
+          ? (row.number === 1 ? 30 : 22)
+          : (row.number === 1 ? 30 : 18.75);
         row.eachCell({ includeEmpty:true }, cell => {
-          cell.font = { ...cell.font, size:12 };
+          const isPaperCheckbox = sheet.name === "Présences + règlements" && row.number > 1 && [1,9].includes(cell.col);
+          cell.font = { ...cell.font, size:isPaperCheckbox ? 16 : 12 };
         });
       });
       const lastColumn = sheet.columnCount;

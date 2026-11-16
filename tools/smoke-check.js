@@ -180,8 +180,8 @@ function cssRuleBodies(selector) {
 
 // Print note classes are emitted by app.js and must keep their visual treatment.
 const scoreButtonRules = cssRuleBodies('.score-btn{');
-check(scoreButtonRules.some(body => body.includes('width:43px;') && body.includes('height:38px;')),
-  'score-entry buttons must retain their compact 43x38px base dimensions');
+check(scoreButtonRules.some(body => body.includes('width:43px;') && body.includes('height:44px;')),
+  'score-entry buttons must retain 43px width and use the more forgiving 44px desktop height');
 check(!scoreButtonRules.some(body => body.includes('min-width:70px;') || body.includes('min-height:70px;')),
   'obsolete 70px minimums must not inflate the compact score-entry buttons');
 

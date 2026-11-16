@@ -11,7 +11,7 @@
     name="viewport"
     content="width=device-width,initial-scale=1">
 
-  <link rel="stylesheet" href="style.css?v=39">
+  <link rel="stylesheet" href="style.css?v=44">
 
   <style>
 
@@ -205,11 +205,11 @@ let tvScrollAnimation = null;
 
 
 /*
- * Durée d'une page :
- * 7 secondes.
+ * Durée d'affichage de chaque catégorie :
+ * 14 secondes (contre 7 auparavant).
  */
 
-const TV_PAGE_DURATION = 7000;
+const TV_PAGE_DURATION = 14000;
 
 
 /*
@@ -512,9 +512,8 @@ function loadTVVersion(pages){
 
   tvCurrentPage = 0;
 
-
-  showTVPage(0);
-
+  // L'affichage de la première page est déclenché
+  // par startTVCycle() ou finishTVCycle().
 }
 
 
@@ -566,6 +565,13 @@ function finishTVCycle(){
 
   tvCycleRunning = true;
 
+  /*
+   * IMPORTANT : réactiver réellement la première page.
+   * Sans cet appel, le compteur revient à zéro mais
+   * la page précédente reste affichée : la première
+   * catégorie (Elite) est alors sautée à chaque boucle.
+   */
+  showTVPage(0);
 
   scheduleNextTVPage();
 

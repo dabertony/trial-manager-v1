@@ -303,10 +303,19 @@ ipcMain.handle("export-excel", async (event, data) => {
   });
 
   const club = [...pilots]
-  .sort((a,b)=>
-    (a.club || "")
-    .localeCompare(b.club || "")
-  );
+  .sort((a,b)=>{
+    const clubDiff = String(a.club || "").localeCompare(
+      String(b.club || ""),
+      "fr",
+      { sensitivity:"base" }
+    );
+    if(clubDiff !== 0) return clubDiff;
+    return String(a.name || "").localeCompare(
+      String(b.name || ""),
+      "fr",
+      { sensitivity:"base" }
+    );
+  });
 
   const categorie = [...pilots]
   .sort((a,b)=>{
@@ -585,6 +594,14 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
       data.fees || { ufolep:10, ffc:18, nl:18 }
     );
 
+    // Deuxième onglet papier pour le contrôle de présence du matin et des règlements.
+    buildParticipantsAttendanceSheet(
+      workbook,
+      data.participants,
+      exportColorMap,
+      data.fees || { ufolep:10, ffc:18, nl:18 }
+    );
+
 
     // =========================================
     // CATÉGORIE + ALPHA
@@ -738,9 +755,12 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
     // Reprendre les hauteurs, la police et les zones d'impression du classeur de référence.
     workbook.worksheets.forEach(sheet => {
       sheet.eachRow({ includeEmpty:true }, row => {
-        row.height = row.number === 1 ? 30 : 18.75;
+        row.height = sheet.name === "Présences + règlements"
+          ? (row.number === 1 ? 30 : 22)
+          : (row.number === 1 ? 30 : 18.75);
         row.eachCell({ includeEmpty:true }, cell => {
-          cell.font = { ...cell.font, size:12 };
+          const isPaperCheckbox = sheet.name === "Présences + règlements" && row.number > 1 && [1,9].includes(cell.col);
+          cell.font = { ...cell.font, size:isPaperCheckbox ? 16 : 12 };
         });
       });
       const lastColumn = sheet.columnCount;
@@ -844,7 +864,9 @@ function openTVWindow(){
     width: tvDisplay.bounds.width,
     height: tvDisplay.bounds.height,
 
-    fullscreen: false,
+    // La fenêtre TV démarre directement en plein écran sur le téléviseur.
+    // La mise en page et les défilements restent gérés par tv.html.
+    fullscreen: true,
 
     frame: true,
 
@@ -860,8 +882,7 @@ function openTVWindow(){
 
   });
 
-  tvWindow.maximize();
-
+  // Pas de maximize() ici : la fenêtre est déjà en plein écran réel.
   tvWindow.loadFile(
     path.join(__dirname, "tv.html")
   );
@@ -967,11 +988,13 @@ function buildPilotSheet(workbook,name,pilots,colorMap){
         const day =
           Number(parts[2]);
 
-        return new Date(
+        // ExcelJS convertit les Date en numéro Excel à partir de l’horodatage UTC.
+        // Construire la date en UTC évite le décalage d’un jour en fuseau français.
+        return new Date(Date.UTC(
           year,
           month - 1,
           day
-        );
+        ));
 
       })()
     : ""
@@ -1400,6 +1423,143 @@ function buildParticipantsClubSheet(
 
   });
 
+}
+
+function buildParticipantsAttendanceSheet(workbook, data, colorMap, fees = { ufolep:10, ffc:18, nl:18 }){
+  const sheet = workbook.addWorksheet("Présences + règlements");
+
+  sheet.columns = [
+    { header:"Prés.\nmatin", key:"morningPresence", width:8.5 },
+    { header:"Plaque", key:"plaque", width:10 },
+    { header:"Nom", key:"name", width:30.14 },
+    { header:"Club", key:"club", width:24.71 },
+    { header:"Catégorie", key:"cat", width:11.5 },
+    { header:"Licence", key:"lic", width:10.5 },
+    { header:"Date naissance", key:"birthDate", width:20 },
+    { header:"Montant", key:"amount", width:18 },
+    { header:"Payé", key:"paid", width:6.5 }
+  ];
+
+  sheet.views = [{ state:"frozen", ySplit:1 }];
+  sheet.pageSetup = {
+    paperSize:9,
+    orientation:"portrait",
+    fitToPage:true,
+    fitToWidth:1,
+    fitToHeight:0,
+    margins:{ left:0.315, right:0.315, top:0.748, bottom:0.748, header:0.315, footer:0.315 }
+  };
+
+  const header = sheet.getRow(1);
+  header.font = { bold:true, size:13 };
+  header.height = 30;
+  header.alignment = { horizontal:"center", vertical:"middle", wrapText:true };
+  header.eachCell(cell => {
+    cell.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"E5E7EB"} };
+    cell.border = { top:{style:"medium"}, left:{style:"medium"}, bottom:{style:"medium"}, right:{style:"medium"} };
+  });
+
+  const clubAlpha = [...data].sort((a,b) => {
+    const clubDiff = (a.club || "").localeCompare(b.club || "");
+    return clubDiff !== 0 ? clubDiff : (a.name || "").localeCompare(b.name || "");
+  });
+
+  let currentClub = null;
+  let firstRowClub = null;
+  const totalRows = [];
+
+  function sumAmounts(firstRow, lastRow){
+    let total = 0;
+    for(let rowNumber=firstRow; rowNumber<=lastRow; rowNumber++){
+      const value = sheet.getCell(rowNumber, 8).value;
+      if(typeof value === "number" && Number.isFinite(value)) total += value;
+    }
+    return Number(total.toFixed(2));
+  }
+
+  function addClubTotal(){
+    if(firstRowClub === null) return;
+    const lastDataRow = sheet.rowCount;
+    const totalRow = sheet.addRow(["", "", "", "", "", "", "TOTAL", {
+      formula:`SUM(H${firstRowClub}:H${lastDataRow})`,
+      result:sumAmounts(firstRowClub, lastDataRow)
+    }, ""]);
+    totalRow.font = { bold:true, size:13, color:{argb:"FF0000"} };
+    totalRow.getCell(8).numFmt = '# ##0.00 €';
+    totalRow.eachCell({includeEmpty:true}, cell => {
+      cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
+    });
+    totalRows.push(totalRow.number);
+    sheet.addRow([]);
+    firstRowClub = null;
+  }
+
+  clubAlpha.forEach(p => {
+    if(currentClub !== null && currentClub !== p.club) addClubTotal();
+    currentClub = p.club;
+
+    const licence = String(p.lic || "NL").trim().toLocaleUpperCase("fr");
+    const amount = licence === "UFOLEP" ? fees.ufolep : licence === "FFC" ? fees.ffc : fees.nl;
+    const row = sheet.addRow([
+      "☐",
+      p.plaque || "",
+      p.name || "",
+      p.club || "",
+      p.cat || "",
+      p.lic || "",
+      p.birthDate ? p.birthDate.split("-").reverse().join("/") : "",
+      amount,
+      "☐"
+    ]);
+    if(firstRowClub === null) firstRowClub = row.number;
+
+    row.height = 22;
+    row.font = { bold:true, size:12 };
+    row.alignment = { horizontal:"center", vertical:"middle" };
+    row.getCell(3).alignment = { horizontal:"left", vertical:"middle", wrapText:false };
+    row.getCell(8).numFmt = '# ##0.00 €';
+    [1,9].forEach(column => {
+      row.getCell(column).font = { name:"Segoe UI Symbol", bold:false, size:16 };
+      row.getCell(column).alignment = { horizontal:"center", vertical:"middle" };
+    });
+    row.eachCell({includeEmpty:true}, cell => {
+      cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
+    });
+    const color = colorMap[p.cat];
+    if(color) row.getCell(5).fill = { type:"pattern", pattern:"solid", fgColor:{argb:color} };
+  });
+
+  if(firstRowClub !== null){
+    const lastDataRow = sheet.rowCount;
+    const lastTotal = sheet.addRow(["", "", "", "", "", "", "TOTAL", {
+      formula:`SUM(H${firstRowClub}:H${lastDataRow})`,
+      result:sumAmounts(firstRowClub, lastDataRow)
+    }, ""]);
+    lastTotal.font = { bold:true, size:13, color:{argb:"FF0000"} };
+    lastTotal.getCell(8).numFmt = '# ##0.00 €';
+    lastTotal.eachCell({includeEmpty:true}, cell => {
+      cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
+    });
+    totalRows.push(lastTotal.number);
+    sheet.addRow([]);
+
+    const grandTotalValue = totalRows.reduce((sum, rowNumber) => {
+      const value = sheet.getCell(rowNumber, 8).value;
+      const cached = value && typeof value === "object" ? Number(value.result || 0) : Number(value || 0);
+      return sum + (Number.isFinite(cached) ? cached : 0);
+    }, 0);
+    const grandTotal = sheet.addRow(["", "", "", "", "", "", "TOTAL GÉNÉRAL", {
+      formula:`SUM(${totalRows.map(rowNumber => `H${rowNumber}`).join(",")})`,
+      result:Number(grandTotalValue.toFixed(2))
+    }, ""]);
+    grandTotal.font = { bold:true, size:15, color:{argb:"FF0000"} };
+    grandTotal.getCell(8).numFmt = '# ##0.00 €';
+    grandTotal.eachCell({includeEmpty:true}, cell => {
+      cell.border = { top:{style:"medium"}, left:{style:"medium"}, bottom:{style:"medium"}, right:{style:"medium"} };
+    });
+  }
+
+  return sheet;
 }
 
 function buildParticipantsSimpleSheet(

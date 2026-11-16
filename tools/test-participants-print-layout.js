@@ -29,8 +29,8 @@ for (const [label, source, start, end] of [
 }
 
 for (const [label, source] of [["Electron", main], ["PWA", app]]) {
-  assert.match(source, /row\.height = row\.number === 1 \? 30 : 18\.75/ , `${label}: Mamie's row heights`);
-  assert.match(source, /cell\.font = \{ \.\.\.cell\.font, size:12 \}/, `${label}: 12pt font`);
+  assert.match(source, /row\.height = sheet\.name === "Présences \+ règlements"[\s\S]*?: \(row\.number === 1 \? 30 : 18\.75\)/, `${label}: standard row heights remain unchanged`);
+  assert.match(source, /cell\.font = \{ \.\.\.cell\.font, size:isPaperCheckbox \? 16 : 12 \}/, `${label}: standard 12pt font and larger printed checkboxes`);
   assert.match(source, /pageSetup\.printArea = `A1:/, `${label}: explicit print area`);
 }
 
