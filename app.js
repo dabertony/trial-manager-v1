@@ -6073,9 +6073,36 @@ function deleteScoreTour(ci,id,t){
 
 }
 
+function getDoublePointageTourCount(competition){
+  return Math.max(1, Math.min(12, Math.trunc(Number(competition?.tours) || 3)));
+}
+
+function buildDoublePointageColumnGroup(tourCount){
+  const count = getDoublePointageTourCount({ tours:tourCount });
+  const tourWidth = (36 / count).toFixed(4);
+  // Les trois premières colonnes restent strictement fixes ; seul l'espace
+  // réservé aux colonnes de tours (36 %) est réparti selon leur nombre.
+  return `<colgroup><col style="width:10%"><col style="width:38%"><col style="width:16%">${Array.from({length:count}, () => `<col style="width:${tourWidth}%">`).join("")}</colgroup>`;
+}
+
+function buildDoublePointageTourHeaders(tourCount){
+  const count = getDoublePointageTourCount({ tours:tourCount });
+  const width = (36 / count).toFixed(4);
+  return Array.from({length:count}, (_, index) =>
+    `<th style="width:${width}%">Tour ${index + 1}</th>`
+  ).join("");
+}
+
+function buildDoublePointageTourCells(tourCount){
+  const count = getDoublePointageTourCount({ tours:tourCount });
+  return Array.from({length:count}, () => "<td></td>").join("");
+}
+
 function showDoublePointageMatin(i){
 
   let c = state.competitions[i];
+
+  const tourCount = getDoublePointageTourCount(c);
 
   let participants = getCompetitionParticipantsWithPlates(c);
 
@@ -6135,9 +6162,9 @@ function showDoublePointageMatin(i){
 </div>
 
 <table class="double-pointage">
-
+${buildDoublePointageColumnGroup(tourCount)}
 <thead>
-${buildDoublePointagePrintHeader({competitionName:c.name, competitionDate:c.date})}
+${buildDoublePointagePrintHeader({competitionName:c.name, competitionDate:c.date, columnCount:3 + tourCount})}
 <tr>
 
 <th style="width:10%">
@@ -6152,17 +6179,7 @@ Nom
 Catégorie
 </th>
 
-<th style="width:12%">
-Tour 1
-</th>
-
-<th style="width:12%">
-Tour 2
-</th>
-
-<th style="width:12%">
-Tour 3
-</th>
+${buildDoublePointageTourHeaders(tourCount)}
 
 </tr>
 </thead>
@@ -6196,11 +6213,7 @@ background:${getCategoryColor(p.cat)};
 ${p.cat}
 </td>
 
-<td></td>
-
-<td></td>
-
-<td></td>
+${buildDoublePointageTourCells(tourCount)}
 
 </tr>
 
@@ -6223,9 +6236,7 @@ ${p.cat}
 <td>&nbsp;</td>
 <td></td>
 <td></td>
-<td></td>
-<td></td>
-<td></td>
+${buildDoublePointageTourCells(tourCount)}
 
 </tr>
 
@@ -6248,7 +6259,8 @@ ${p.cat}
 
     competitionName:c.name,
 
-    competitionDate:c.date
+    competitionDate:c.date,
+    tourCount
 
   };
 
@@ -6260,6 +6272,8 @@ ${p.cat}
 function showDoublePointageApresMidi(i){
 
   let c = state.competitions[i];
+
+  const tourCount = getDoublePointageTourCount(c);
 
   let participants = getCompetitionParticipantsWithPlates(c);
 
@@ -6319,9 +6333,9 @@ function showDoublePointageApresMidi(i){
 </div>
 
 <table class="double-pointage">
-
+${buildDoublePointageColumnGroup(tourCount)}
 <thead>
-${buildDoublePointagePrintHeader({competitionName:c.name, competitionDate:c.date})}
+${buildDoublePointagePrintHeader({competitionName:c.name, competitionDate:c.date, columnCount:3 + tourCount})}
 <tr>
 
 <th style="width:10%">
@@ -6336,17 +6350,7 @@ Nom
 Catégorie
 </th>
 
-<th style="width:12%">
-Tour 1
-</th>
-
-<th style="width:12%">
-Tour 2
-</th>
-
-<th style="width:12%">
-Tour 3
-</th>
+${buildDoublePointageTourHeaders(tourCount)}
 
 </tr>
 </thead>
@@ -6384,11 +6388,7 @@ background:${getCategoryColor(p.cat)};
 ${p.cat}
 </td>
 
-<td></td>
-
-<td></td>
-
-<td></td>
+${buildDoublePointageTourCells(tourCount)}
 
 </tr>
 
@@ -6411,9 +6411,7 @@ ${p.cat}
 <td>&nbsp;</td>
 <td></td>
 <td></td>
-<td></td>
-<td></td>
-<td></td>
+${buildDoublePointageTourCells(tourCount)}
 
 </tr>
 
@@ -6436,7 +6434,8 @@ ${p.cat}
 
     competitionName:c.name,
 
-    competitionDate:c.date
+    competitionDate:c.date,
+    tourCount
 
   };
 
@@ -6448,6 +6447,8 @@ ${p.cat}
 function showDoublePointageToutesCategories(i){
 
   let c = state.competitions[i];
+
+  const tourCount = getDoublePointageTourCount(c);
 
   let participants = getCompetitionParticipantsWithPlates(c);
 
@@ -6507,9 +6508,9 @@ function showDoublePointageToutesCategories(i){
 </div>
 
 <table class="double-pointage">
-
+${buildDoublePointageColumnGroup(tourCount)}
 <thead>
-${buildDoublePointagePrintHeader({competitionName:c.name, competitionDate:c.date})}
+${buildDoublePointagePrintHeader({competitionName:c.name, competitionDate:c.date, columnCount:3 + tourCount})}
 <tr>
 
 <th style="width:10%">
@@ -6524,17 +6525,7 @@ Nom
 Catégorie
 </th>
 
-<th style="width:12%">
-Tour 1
-</th>
-
-<th style="width:12%">
-Tour 2
-</th>
-
-<th style="width:12%">
-Tour 3
-</th>
+${buildDoublePointageTourHeaders(tourCount)}
 
 </tr>
 </thead>
@@ -6572,11 +6563,7 @@ background:${getCategoryColor(p.cat)};
 ${p.cat}
 </td>
 
-<td></td>
-
-<td></td>
-
-<td></td>
+${buildDoublePointageTourCells(tourCount)}
 
 </tr>
 
@@ -6599,9 +6586,7 @@ ${p.cat}
 <td>&nbsp;</td>
 <td></td>
 <td></td>
-<td></td>
-<td></td>
-<td></td>
+${buildDoublePointageTourCells(tourCount)}
 
 </tr>
 
@@ -6624,7 +6609,8 @@ ${p.cat}
 
     competitionName:c.name,
 
-    competitionDate:c.date
+    competitionDate:c.date,
+    tourCount
 
   };
 
@@ -10135,6 +10121,7 @@ async function printClubPDF(){
 
 // En-tête intégré au thead : il se répète avec les colonnes sur chaque page.
 function buildDoublePointagePrintHeader(info){
+  const columnCount = Math.max(4, Math.min(15, Math.trunc(Number(info?.columnCount) || 6)));
   const escape = value => String(value ?? "").replace(/[&<>\"']/g, char => ({
     "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;"
   }[char]));
@@ -10144,7 +10131,7 @@ function buildDoublePointagePrintHeader(info){
   const competitionDate = rawDate.includes("/") ? rawDate : formatBirthDate(rawDate);
   return `
     <tr class="double-pointage-print-header-row">
-      <th colspan="6">
+      <th colspan="${columnCount}">
         <div class="double-pointage-print-header">
           <div class="double-pointage-print-heading">
             <strong class="double-pointage-print-title">${escape(info.competitionName || "Compétition")}</strong>
@@ -11952,18 +11939,20 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
       fullCalcOnLoad: true
     };
 
+    // Lignes de référence des montants dans "Club + Alpha".
+    // Les feuilles Matin et Après-midi pointeront directement vers ces cellules.
+    const clubAlphaAmountRowByPilotId = new Map();
+
     function configureParticipantsPrintLayout(sheet, includeAmount = false){
       const layouts = {
 
         "Club + Alpha": { widths:[10, 30.14, 24.71, 17.71, 15.71, 20, 18], scale:70 },
 
-        "Présences + règlements": { widths:[8.5, 10, 30.14, 24.71, 11.5, 10.5, 20, 18, 6.5], fitToWidth:1 },
-
         "Catégorie + Alpha": { widths:[10, 28.57, 26.285, 15, 14.855, 17.57], scale:85 },
 
-        "Matin": { widths:[10, 26.14, 25, 15, 15.14, 21], scale:85 },
+        "Matin": { widths:[8.43, 10, 24.29, 19, 11.43, 10.43, 17.29, 13.71, 6.43], scale:80 },
 
-        "Après-midi": { widths:[10, 30.855, 25.14, 15.71, 9.14, 19.285], scale:85 }
+        "Après-midi": { widths:[8.43, 10, 25.43, 21, 11.43, 10.43, 17.43, 14.29, 6.43], scale:75 }
 
       };
 
@@ -12385,6 +12374,10 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
           });
 
+        if(p.id !== undefined && p.id !== null){
+          clubAlphaAmountRowByPilotId.set(String(p.id), row.number);
+        }
+
         if(firstRowClub === null){
 
           firstRowClub =
@@ -12550,116 +12543,6 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
     /*
      * ================================
-     * ONGLET PRÉSENCES + RÈGLEMENTS
-     * ================================
-     */
-    {
-      const sheet = workbook.addWorksheet("Présences + règlements");
-      sheet.columns = [
-        { header:"Prés.\nmatin", key:"morningPresence", width:6.5 },
-        { header:"Plaque", key:"plaque", width:10 },
-        { header:"Nom", key:"name", width:30.14 },
-        { header:"Club", key:"club", width:24.71 },
-        { header:"Catégorie", key:"cat", width:11.5 },
-        { header:"Licence", key:"lic", width:10.5 },
-        { header:"Date naissance", key:"birthDate", width:20 },
-        { header:"Montant", key:"amount", width:18 },
-        { header:"Payé", key:"paid", width:6.5 }
-      ];
-      configureParticipantsPrintLayout(sheet, false);
-      sheet.views = [{ state:"frozen", ySplit:1 }];
-      styleHeader(sheet);
-
-      const clubAlpha = [...participants].sort((a,b) => {
-        const clubDiff = (a.club || "").localeCompare(b.club || "");
-        return clubDiff !== 0 ? clubDiff : (a.name || "").localeCompare(b.name || "");
-      });
-      let currentClub = null;
-      let firstRowClub = null;
-      const totalRows = [];
-
-      function sumAttendanceAmounts(firstRow, lastRow){
-        let total = 0;
-        for(let rowNumber=firstRow; rowNumber<=lastRow; rowNumber++){
-          const value = sheet.getCell(rowNumber, 8).value;
-          if(typeof value === "number" && Number.isFinite(value)) total += value;
-        }
-        return Number(total.toFixed(2));
-      }
-      function addAttendanceClubTotal(){
-        if(firstRowClub === null) return;
-        const lastDataRow = sheet.rowCount;
-        const totalRow = sheet.addRow(["", "", "", "", "", "", "TOTAL", {
-          formula:`SUM(H${firstRowClub}:H${lastDataRow})`,
-          result:sumAttendanceAmounts(firstRowClub, lastDataRow)
-        }, ""]);
-        totalRow.font = { bold:true, size:13, color:{argb:"FF0000"} };
-        totalRow.getCell(8).numFmt = '# ##0.00 €';
-        totalRow.eachCell({includeEmpty:true}, cell => {
-          cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
-        });
-        totalRows.push(totalRow.number);
-        sheet.addRow([]);
-        firstRowClub = null;
-      }
-
-      clubAlpha.forEach(p => {
-        if(currentClub !== null && currentClub !== p.club) addAttendanceClubTotal();
-        currentClub = p.club;
-        const row = sheet.addRow([
-          "☐", p.plaque || "", p.name || "", p.club || "", p.cat || "", p.lic || "",
-          p.birthDate ? p.birthDate.split("-").reverse().join("/") : "",
-          getPilotEngagementFee(p), "☐"
-        ]);
-        if(firstRowClub === null) firstRowClub = row.number;
-        row.height = 22;
-        row.font = { bold:true, size:12 };
-        row.alignment = { horizontal:"center", vertical:"middle" };
-        row.getCell(3).alignment = { horizontal:"left", vertical:"middle", wrapText:false };
-        row.getCell(8).numFmt = '# ##0.00 €';
-        [1,9].forEach(column => {
-          row.getCell(column).font = { name:"Segoe UI Symbol", bold:false, size:16 };
-          row.getCell(column).alignment = { horizontal:"center", vertical:"middle" };
-        });
-        row.eachCell({includeEmpty:true}, cell => {
-          cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
-        });
-        const color = colorMap[p.cat];
-        if(color) row.getCell(5).fill = { type:"pattern", pattern:"solid", fgColor:{argb:color} };
-      });
-
-      if(firstRowClub !== null){
-        const lastDataRow = sheet.rowCount;
-        const lastTotal = sheet.addRow(["", "", "", "", "", "", "TOTAL", {
-          formula:`SUM(H${firstRowClub}:H${lastDataRow})`,
-          result:sumAttendanceAmounts(firstRowClub, lastDataRow)
-        }, ""]);
-        lastTotal.font = { bold:true, size:13, color:{argb:"FF0000"} };
-        lastTotal.getCell(8).numFmt = '# ##0.00 €';
-        lastTotal.eachCell({includeEmpty:true}, cell => {
-          cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
-        });
-        totalRows.push(lastTotal.number);
-        sheet.addRow([]);
-        const grandTotalValue = totalRows.reduce((sum, rowNumber) => {
-          const value = sheet.getCell(rowNumber, 8).value;
-          const cached = value && typeof value === "object" ? Number(value.result || 0) : Number(value || 0);
-          return sum + (Number.isFinite(cached) ? cached : 0);
-        }, 0);
-        const grandTotal = sheet.addRow(["", "", "", "", "", "", "TOTAL GÉNÉRAL", {
-          formula:`SUM(${totalRows.map(rowNumber => `H${rowNumber}`).join(",")})`,
-          result:Number(grandTotalValue.toFixed(2))
-        }, ""]);
-        grandTotal.font = { bold:true, size:15, color:{argb:"FF0000"} };
-        grandTotal.getCell(8).numFmt = '# ##0.00 €';
-        grandTotal.eachCell({includeEmpty:true}, cell => {
-          cell.border = { top:{style:"medium"}, left:{style:"medium"}, bottom:{style:"medium"}, right:{style:"medium"} };
-        });
-      }
-    }
-
-    /*
-     * ================================
      * FONCTION ONGLET SIMPLE
      * ================================
      */
@@ -12770,6 +12653,72 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
 
     }
 
+
+    // Feuilles de suivi imprimables : présence, tarif lié à Club + Alpha,
+    // et règlement. Les formules suivent toute modification du tarif source.
+    function buildSessionSheet(sheetName, list){
+      const sheet = workbook.addWorksheet(sheetName);
+      sheet.columns = [
+        { header:"Présent", key:"presence", width:8.5 },
+        { header:"Plaque", key:"plaque", width:10 },
+        { header:"Nom", key:"name", width:30 },
+        { header:"Club", key:"club", width:24 },
+        { header:"Catégorie", key:"cat", width:11.5 },
+        { header:"Licence", key:"lic", width:10.5 },
+        { header:"Date naissance", key:"birthDate", width:20 },
+        { header:"Montant", key:"amount", width:18 },
+        { header:"Payé", key:"paid", width:6.5 }
+      ];
+      configureParticipantsPrintLayout(sheet, false);
+      sheet.views = [{ state:"frozen", ySplit:1 }];
+      styleHeader(sheet);
+
+      list.forEach(p => {
+        const referenceRow = clubAlphaAmountRowByPilotId.get(String(p.id));
+        if(!referenceRow){
+          throw new Error(`Montant de référence introuvable pour ${p.name || p.id} dans Club + Alpha.`);
+        }
+        const row = sheet.addRow([
+          "☐",
+          p.plaque || "",
+          p.name || "",
+          p.club || "",
+          p.cat || "",
+          p.lic || "",
+          p.birthDate ? p.birthDate.split("-").reverse().join("/") : "",
+          { formula:`'Club + Alpha'!$G$${referenceRow}`, result:getPilotEngagementFee(p) },
+          "☐"
+        ]);
+        row.height = 22;
+        row.font = { bold:true, size:12 };
+        row.alignment = { horizontal:"center", vertical:"middle" };
+        row.getCell(3).alignment = { horizontal:"left", vertical:"middle", wrapText:false };
+        row.getCell(8).numFmt = '# ##0.00 €';
+        [1,9].forEach(column => {
+          row.getCell(column).font = { name:"Segoe UI Symbol", bold:false, size:16 };
+          row.getCell(column).alignment = { horizontal:"center", vertical:"middle" };
+        });
+        row.eachCell({ includeEmpty:true }, cell => {
+          cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
+        });
+        const color = colorMap[p.cat];
+        if(color) row.getCell(5).fill = { type:"pattern", pattern:"solid", fgColor:{argb:color} };
+      });
+
+      if(list.length){
+        const lastDataRow = sheet.rowCount;
+        const cachedTotal = Number(list.reduce((sum,p) => sum + getPilotEngagementFee(p), 0).toFixed(2));
+        const totalRow = sheet.addRow(["", "", "", "", "", "", "TOTAL", {
+          formula:`SUM(H2:H${lastDataRow})`, result:cachedTotal
+        }, ""]);
+        totalRow.font = { bold:true, size:13, color:{argb:"FF0000"} };
+        totalRow.getCell(8).numFmt = '# ##0.00 €';
+        totalRow.eachCell({ includeEmpty:true }, cell => {
+          cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
+        });
+      }
+      return sheet;
+    }
 
     /*
      * ================================
@@ -13615,7 +13564,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
         );
 
 
-      buildSimpleSheet(
+      buildSessionSheet(
         "Matin",
         matin
       );
@@ -13644,7 +13593,7 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
         );
 
 
-      buildSimpleSheet(
+      buildSessionSheet(
         "Après-midi",
         apresMidi
       );
@@ -13682,11 +13631,12 @@ async function exportParticipantsExcelPWA(i, mode = "sessions"){
     // Appliquer les hauteurs, la police et la zone d'impression du modèle Mamie.
     workbook.worksheets.forEach(sheet => {
       sheet.eachRow({ includeEmpty:true }, row => {
-        row.height = sheet.name === "Présences + règlements"
+        const isSessionSheet = ["Matin", "Après-midi"].includes(sheet.name);
+        row.height = isSessionSheet
           ? (row.number === 1 ? 30 : 22)
           : (row.number === 1 ? 30 : 18.75);
         row.eachCell({ includeEmpty:true }, cell => {
-          const isPaperCheckbox = sheet.name === "Présences + règlements" && row.number > 1 && [1,9].includes(cell.col);
+          const isPaperCheckbox = isSessionSheet && row.number > 1 && [1,9].includes(cell.col);
           cell.font = { ...cell.font, size:isPaperCheckbox ? 16 : 12 };
         });
       });

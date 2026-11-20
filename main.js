@@ -587,19 +587,14 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
     // DONNÉES COMMUNES
     // =========================================
 
+    const participantFees = data.fees || { ufolep:10, ffc:18, nl:18 };
+    const amountRowByPilotId = new Map();
     buildParticipantsClubSheet(
       workbook,
       data.participants,
       exportColorMap,
-      data.fees || { ufolep:10, ffc:18, nl:18 }
-    );
-
-    // Deuxième onglet papier pour le contrôle de présence du matin et des règlements.
-    buildParticipantsAttendanceSheet(
-      workbook,
-      data.participants,
-      exportColorMap,
-      data.fees || { ufolep:10, ffc:18, nl:18 }
+      participantFees,
+      amountRowByPilotId
     );
 
 
@@ -712,11 +707,13 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
           );
 
 
-      buildParticipantsSimpleSheet(
+      buildParticipantsSessionSheet(
         workbook,
         "Matin",
         matin,
-        exportColorMap
+        exportColorMap,
+        amountRowByPilotId,
+        participantFees
       );
 
 
@@ -736,11 +733,13 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
           );
 
 
-      buildParticipantsSimpleSheet(
+      buildParticipantsSessionSheet(
         workbook,
         "Après-midi",
         apresMidi,
-        exportColorMap
+        exportColorMap,
+        amountRowByPilotId,
+        participantFees
       );
 
 
@@ -755,11 +754,12 @@ ipcMain.handle("export-participants-excel", async (event, data) => {
     // Reprendre les hauteurs, la police et les zones d'impression du classeur de référence.
     workbook.worksheets.forEach(sheet => {
       sheet.eachRow({ includeEmpty:true }, row => {
-        row.height = sheet.name === "Présences + règlements"
+        const isSessionSheet = ["Matin", "Après-midi"].includes(sheet.name);
+        row.height = isSessionSheet
           ? (row.number === 1 ? 30 : 22)
           : (row.number === 1 ? 30 : 18.75);
         row.eachCell({ includeEmpty:true }, cell => {
-          const isPaperCheckbox = sheet.name === "Présences + règlements" && row.number > 1 && [1,9].includes(cell.col);
+          const isPaperCheckbox = isSessionSheet && row.number > 1 && [1,9].includes(cell.col);
           cell.font = { ...cell.font, size:isPaperCheckbox ? 16 : 12 };
         });
       });
@@ -1074,9 +1074,9 @@ function configureParticipantsPrintLayout(sheet, includeAmount = false){
 
     "Catégorie + Alpha": { widths:[10, 28.57, 26.285, 15, 14.855, 17.57], scale:85 },
 
-    "Matin": { widths:[10, 26.14, 25, 15, 15.14, 21], scale:85 },
+    "Matin": { widths:[8.43, 10, 24.29, 19, 11.43, 10.43, 17.29, 13.71, 6.43], scale:80 },
 
-    "Après-midi": { widths:[10, 30.855, 25.14, 15.71, 9.14, 19.285], scale:85 }
+    "Après-midi": { widths:[8.43, 10, 25.43, 21, 11.43, 10.43, 17.43, 14.29, 6.43], scale:75 }
 
   };
 
@@ -1111,7 +1111,8 @@ function buildParticipantsClubSheet(
   workbook,
   data,
   colorMap,
-  fees = { ufolep:10, ffc:18, nl:18 }
+  fees = { ufolep:10, ffc:18, nl:18 },
+  amountRowByPilotId = new Map()
 ){
 
   const sheet =
@@ -1285,6 +1286,10 @@ function buildParticipantsClubSheet(
 
     });
 
+    if(p.id !== undefined && p.id !== null){
+      amountRowByPilotId.set(String(p.id), row.number);
+    }
+
     if(firstRowClub === null){
       firstRowClub = row.number;
     }
@@ -1423,13 +1428,14 @@ function buildParticipantsClubSheet(
 
   });
 
+  return amountRowByPilotId;
+
 }
 
-function buildParticipantsAttendanceSheet(workbook, data, colorMap, fees = { ufolep:10, ffc:18, nl:18 }){
-  const sheet = workbook.addWorksheet("Présences + règlements");
-
+function buildParticipantsSessionSheet(workbook, sheetName, participants, colorMap, amountRowByPilotId, fees = { ufolep:10, ffc:18, nl:18 }){
+  const sheet = workbook.addWorksheet(sheetName);
   sheet.columns = [
-    { header:"Prés.\nmatin", key:"morningPresence", width:8.5 },
+    { header:"Présent", key:"presence", width:8.5 },
     { header:"Plaque", key:"plaque", width:10 },
     { header:"Nom", key:"name", width:30.14 },
     { header:"Club", key:"club", width:24.71 },
@@ -1439,16 +1445,8 @@ function buildParticipantsAttendanceSheet(workbook, data, colorMap, fees = { ufo
     { header:"Montant", key:"amount", width:18 },
     { header:"Payé", key:"paid", width:6.5 }
   ];
-
+  configureParticipantsPrintLayout(sheet, false);
   sheet.views = [{ state:"frozen", ySplit:1 }];
-  sheet.pageSetup = {
-    paperSize:9,
-    orientation:"portrait",
-    fitToPage:true,
-    fitToWidth:1,
-    fitToHeight:0,
-    margins:{ left:0.315, right:0.315, top:0.748, bottom:0.748, header:0.315, footer:0.315 }
-  };
 
   const header = sheet.getRow(1);
   header.font = { bold:true, size:13 };
@@ -1459,60 +1457,19 @@ function buildParticipantsAttendanceSheet(workbook, data, colorMap, fees = { ufo
     cell.border = { top:{style:"medium"}, left:{style:"medium"}, bottom:{style:"medium"}, right:{style:"medium"} };
   });
 
-  const clubAlpha = [...data].sort((a,b) => {
-    const clubDiff = (a.club || "").localeCompare(b.club || "");
-    return clubDiff !== 0 ? clubDiff : (a.name || "").localeCompare(b.name || "");
-  });
-
-  let currentClub = null;
-  let firstRowClub = null;
-  const totalRows = [];
-
-  function sumAmounts(firstRow, lastRow){
-    let total = 0;
-    for(let rowNumber=firstRow; rowNumber<=lastRow; rowNumber++){
-      const value = sheet.getCell(rowNumber, 8).value;
-      if(typeof value === "number" && Number.isFinite(value)) total += value;
+  participants.forEach(p => {
+    const referenceRow = amountRowByPilotId.get(String(p.id));
+    if(!referenceRow){
+      throw new Error(`Montant de référence introuvable pour ${p.name || p.id} dans Club + Alpha.`);
     }
-    return Number(total.toFixed(2));
-  }
-
-  function addClubTotal(){
-    if(firstRowClub === null) return;
-    const lastDataRow = sheet.rowCount;
-    const totalRow = sheet.addRow(["", "", "", "", "", "", "TOTAL", {
-      formula:`SUM(H${firstRowClub}:H${lastDataRow})`,
-      result:sumAmounts(firstRowClub, lastDataRow)
-    }, ""]);
-    totalRow.font = { bold:true, size:13, color:{argb:"FF0000"} };
-    totalRow.getCell(8).numFmt = '# ##0.00 €';
-    totalRow.eachCell({includeEmpty:true}, cell => {
-      cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
-    });
-    totalRows.push(totalRow.number);
-    sheet.addRow([]);
-    firstRowClub = null;
-  }
-
-  clubAlpha.forEach(p => {
-    if(currentClub !== null && currentClub !== p.club) addClubTotal();
-    currentClub = p.club;
-
     const licence = String(p.lic || "NL").trim().toLocaleUpperCase("fr");
-    const amount = licence === "UFOLEP" ? fees.ufolep : licence === "FFC" ? fees.ffc : fees.nl;
+    const cachedAmount = licence === "UFOLEP" ? fees.ufolep : licence === "FFC" ? fees.ffc : fees.nl;
     const row = sheet.addRow([
-      "☐",
-      p.plaque || "",
-      p.name || "",
-      p.club || "",
-      p.cat || "",
-      p.lic || "",
+      "☐", p.plaque || "", p.name || "", p.club || "", p.cat || "", p.lic || "",
       p.birthDate ? p.birthDate.split("-").reverse().join("/") : "",
-      amount,
+      { formula:`'Club + Alpha'!$G$${referenceRow}`, result:cachedAmount },
       "☐"
     ]);
-    if(firstRowClub === null) firstRowClub = row.number;
-
     row.height = 22;
     row.font = { bold:true, size:12 };
     row.alignment = { horizontal:"center", vertical:"middle" };
@@ -1522,43 +1479,28 @@ function buildParticipantsAttendanceSheet(workbook, data, colorMap, fees = { ufo
       row.getCell(column).font = { name:"Segoe UI Symbol", bold:false, size:16 };
       row.getCell(column).alignment = { horizontal:"center", vertical:"middle" };
     });
-    row.eachCell({includeEmpty:true}, cell => {
+    row.eachCell({ includeEmpty:true }, cell => {
       cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
     });
     const color = colorMap[p.cat];
     if(color) row.getCell(5).fill = { type:"pattern", pattern:"solid", fgColor:{argb:color} };
   });
 
-  if(firstRowClub !== null){
+  if(participants.length){
     const lastDataRow = sheet.rowCount;
-    const lastTotal = sheet.addRow(["", "", "", "", "", "", "TOTAL", {
-      formula:`SUM(H${firstRowClub}:H${lastDataRow})`,
-      result:sumAmounts(firstRowClub, lastDataRow)
+    const cachedTotal = Number(participants.reduce((sum,p) => {
+      const licence = String(p.lic || "NL").trim().toLocaleUpperCase("fr");
+      return sum + (licence === "UFOLEP" ? fees.ufolep : licence === "FFC" ? fees.ffc : fees.nl);
+    }, 0).toFixed(2));
+    const totalRow = sheet.addRow(["", "", "", "", "", "", "TOTAL", {
+      formula:`SUM(H2:H${lastDataRow})`, result:cachedTotal
     }, ""]);
-    lastTotal.font = { bold:true, size:13, color:{argb:"FF0000"} };
-    lastTotal.getCell(8).numFmt = '# ##0.00 €';
-    lastTotal.eachCell({includeEmpty:true}, cell => {
+    totalRow.font = { bold:true, size:13, color:{argb:"FF0000"} };
+    totalRow.getCell(8).numFmt = '# ##0.00 €';
+    totalRow.eachCell({ includeEmpty:true }, cell => {
       cell.border = { top:{style:"thin"}, left:{style:"thin"}, bottom:{style:"thin"}, right:{style:"thin"} };
     });
-    totalRows.push(lastTotal.number);
-    sheet.addRow([]);
-
-    const grandTotalValue = totalRows.reduce((sum, rowNumber) => {
-      const value = sheet.getCell(rowNumber, 8).value;
-      const cached = value && typeof value === "object" ? Number(value.result || 0) : Number(value || 0);
-      return sum + (Number.isFinite(cached) ? cached : 0);
-    }, 0);
-    const grandTotal = sheet.addRow(["", "", "", "", "", "", "TOTAL GÉNÉRAL", {
-      formula:`SUM(${totalRows.map(rowNumber => `H${rowNumber}`).join(",")})`,
-      result:Number(grandTotalValue.toFixed(2))
-    }, ""]);
-    grandTotal.font = { bold:true, size:15, color:{argb:"FF0000"} };
-    grandTotal.getCell(8).numFmt = '# ##0.00 €';
-    grandTotal.eachCell({includeEmpty:true}, cell => {
-      cell.border = { top:{style:"medium"}, left:{style:"medium"}, bottom:{style:"medium"}, right:{style:"medium"} };
-    });
   }
-
   return sheet;
 }
 

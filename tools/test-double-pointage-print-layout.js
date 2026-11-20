@@ -6,7 +6,7 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
 const sw = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
 function check(condition, message) { if (!condition) throw new Error(message); }
-check((app.match(/buildDoublePointagePrintHeader\(\{competitionName:c\.name, competitionDate:c\.date\}\)/g) || []).length === 3, 'all three views include competition title header');
+check((app.match(/buildDoublePointagePrintHeader\(\{competitionName:c\.name, competitionDate:c\.date, columnCount:3 \+ tourCount\}\)/g) || []).length === 3, 'all three views include competition title header with dynamic column count');
 check((app.match(/<thead>\s*\$\{buildDoublePointagePrintHeader/g) || []).length === 3, 'competition header is part of each repeating table thead');
 check(app.includes('class="double-pointage-print-zone"') && app.includes('class="double-pointage-zone-circle"'), 'header includes ZONE and handwritten circle');
 check(app.includes('class="double-pointage-print-date"') && app.includes('formatBirthDate(rawDate)'), 'header displays the competition date from the saved competition, not the current system date');
@@ -16,5 +16,5 @@ check(app.includes('@page { size: A4 portrait; margin: 8mm; }'), 'print page mar
 check(css.includes('.double-pointage thead{display:table-header-group;}') && css.includes('break-inside:avoid'), 'table headings repeat and rows do not split');
 check(!/\.double-pointage\s+th\s*,\s*\.double-pointage\s+td\s*\{[^}]*height\s*:/s.test(css), 'cell heights remain unchanged');
 check(main.includes('displayHeaderFooter: false') && main.includes('headerTemplate: "<div></div>"') && main.includes('footerTemplate: "<div></div>"'), 'Electron suppresses automatic date/title headers and footers');
-check(html.includes('app.js?v=134') && html.includes('style.css?v=44') && sw.includes('trial-manager-cache-v152'), 'assets and cache versions bumped');
+check(html.includes('app.js?v=137') && html.includes('style.css?v=45') && sw.includes('trial-manager-cache-v155'), 'assets and cache versions bumped');
 console.log('PASS: double-pointage print header, pagination, and unchanged cell sizing checks passed.');

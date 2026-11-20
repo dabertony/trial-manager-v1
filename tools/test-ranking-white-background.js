@@ -25,10 +25,10 @@ if (!/\.ranking-non-ufolep\s*\{[^}]*background\s*:\s*#d7fcde/s.test(css)) {
 if (!/clone\.style\.background\s*=\s*"#ffffff"/.test(app)) {
   throw new Error('JPG ranking export must retain its white capture background.');
 }
-if (!index.includes('style.css?v=44') || !tv.includes('style.css?v=44')) {
+if (!index.includes('style.css?v=45') || !tv.includes('style.css?v=45')) {
   throw new Error('Main and TV views must request the updated stylesheet.');
 }
-if (!sw.includes('trial-manager-cache-v152')) {
+if (!sw.includes('trial-manager-cache-v155')) {
   throw new Error('Offline cache must be incremented for the stylesheet change.');
 }
 console.log('PASS: ranking pages use a white background on screen and preserve JPG/category styling.');

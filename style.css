@@ -1857,6 +1857,11 @@ body > button{
   width:50px;
 }
 
+.double-pointage{
+  width:100%;
+  table-layout:fixed;
+}
+
 .double-pointage th,
 .double-pointage td{
   font-weight:bold;

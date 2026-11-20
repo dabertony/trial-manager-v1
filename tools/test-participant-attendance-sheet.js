@@ -7,37 +7,46 @@ const app = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 
 for (const [label, source] of [["Electron", main], ["PWA", app]]) {
-  assert.match(source, /Présences \+ règlements/, `${label}: new worksheet exists`);
-  assert.match(source, /header:"Prés\.\\nmatin"/, `${label}: morning attendance column is first`);
-  assert.match(source, /header:"Payé"/, `${label}: payment checkbox column exists`);
+  assert.doesNotMatch(source, /Présences \+ règlements/, `${label}: obsolete standalone attendance sheet removed`);
+  assert.match(source, /header:"Présent"/, `${label}: session sheet has a presence column`);
+  assert.match(source, /header:"Payé"/, `${label}: session sheet has a payment column`);
   assert.match(source, /"☐"/, `${label}: printable empty checkbox glyph exists`);
-  assert.match(source, /fitToPage:true,\s*fitToWidth:1,\s*fitToHeight:0/, `${label}: fit to one page wide, multiple pages tall`);
-  assert.match(source, /width:11\.5\s*\},\s*\{\s*header:"Licence"[^}]*width:10\.5/, `${label}: category and licence columns narrowed`);
+  assert.match(source, /'Club \+ Alpha'!\$G\$\$\{referenceRow\}/, `${label}: amount links to the matching Club + Alpha cell`);
+  assert.match(source, /formula:`SUM\(H2:H\$\{lastDataRow\}\)`/, `${label}: session total recalculates from linked amounts`);
+  assert.match(source, /"Matin": \{ widths:\[8\.43, 10, 24\.29, 19, 11\.43, 10\.43, 17\.29, 13\.71, 6\.43\], scale:80/);
+  assert.match(source, /"Après-midi": \{ widths:\[8\.43, 10, 25\.43, 21, 11\.43, 10\.43, 17\.43, 14\.29, 6\.43\], scale:75/);
 }
 
 const electronExport = main.slice(main.indexOf('ipcMain.handle("export-participants-excel"'), main.indexOf('ipcMain.handle("open-tv"'));
-assert.ok(electronExport.indexOf('buildParticipantsClubSheet(') < electronExport.indexOf('buildParticipantsAttendanceSheet('), "Electron: attendance sheet follows fee sheet");
-assert.ok(electronExport.indexOf('buildParticipantsAttendanceSheet(') < electronExport.indexOf('// CATÉGORIE + ALPHA'), "Electron: attendance sheet precedes category/alpha");
+assert.ok(electronExport.includes('buildParticipantsSessionSheet('), "Electron: Matin/Après-midi use the attendance session sheet builder");
+assert.ok(!electronExport.includes('buildParticipantsAttendanceSheet('), "Electron: old standalone sheet is not called");
 const pwaStart = app.indexOf('async function exportParticipantsExcelPWA');
 const pwaEnd = app.indexOf('async function exportParticipantsExcel(', pwaStart);
 const pwaExport = app.slice(pwaStart, pwaEnd);
-assert.ok(pwaExport.indexOf('workbook.addWorksheet(\n          "Club + Alpha"') < pwaExport.indexOf('workbook.addWorksheet("Présences + règlements")'), "PWA: attendance sheet follows fee sheet");
-assert.ok(pwaExport.indexOf('workbook.addWorksheet("Présences + règlements")') < pwaExport.indexOf('buildSimpleSheet(\n      \"Catégorie + Alpha\"'), "PWA: attendance sheet precedes category/alpha");
-assert.ok(pwaExport.includes('getPilotEngagementFee(p)'), "PWA: attendance sheet reuses the same participant fee logic");
-assert.ok(pkg.scripts.test.includes('test-participant-attendance-sheet.js'), "new regression test is part of npm test");
+assert.ok(pwaExport.includes('buildSessionSheet('), "PWA: Matin/Après-midi use the attendance session sheet builder");
+assert.ok(!pwaExport.includes('workbook.addWorksheet("Présences + règlements")'), "PWA: old standalone sheet is not created");
+assert.ok(pkg.scripts.test.includes('test-participant-attendance-sheet.js'), "regression test remains part of npm test");
 
 const ExcelJS = require(path.join(root, "exceljs.min.js"));
 (async () => {
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Présences + règlements");
-  sheet.pageSetup = { paperSize:9, orientation:"portrait", fitToPage:true, fitToWidth:1, fitToHeight:0 };
-  sheet.addRow(["Prés.\nmatin", "Plaque", "Nom", "Club", "Catégorie", "Licence", "Date naissance", "Montant", "Payé"]);
-  sheet.addRow(["☐", "123", "PILOTE TEST", "CLUB", "N4", "UFOLEP", "01/01/2010", 10, "☐"]);
+  workbook.calcProperties = { fullCalcOnLoad:true };
+  const reference = workbook.addWorksheet("Club + Alpha");
+  reference.addRow(["Plaque", "Nom", "Club", "Catégorie", "Licence", "Date", "Montant"]);
+  reference.addRow(["123", "PILOTE TEST", "CLUB", "N4", "UFOLEP", "01/01/2010", 10]);
+  const session = workbook.addWorksheet("Matin");
+  session.pageSetup = { paperSize:9, orientation:"portrait", scale:80 };
+  session.addRow(["Présent", "Plaque", "Nom", "Club", "Catégorie", "Licence", "Date naissance", "Montant", "Payé"]);
+  session.addRow(["☐", "123", "PILOTE TEST", "CLUB", "N4", "UFOLEP", "01/01/2010", {formula:"'Club + Alpha'!$G$2", result:10}, "☐"]);
+  session.addRow(["", "", "", "", "", "", "TOTAL", {formula:"SUM(H2:H2)", result:10}, ""]);
   const buffer = await workbook.xlsx.writeBuffer();
-  assert.ok(buffer.byteLength > 1000, "attendance workbook can be serialized");
-  assert.equal(sheet.pageSetup.fitToWidth, 1);
-  assert.equal(sheet.pageSetup.fitToHeight, 0);
-  assert.equal(sheet.getCell("A2").value, "☐");
-  assert.equal(sheet.getCell("I2").value, "☐");
-  console.log("PASS: participant attendance and payment sheet, tab order, printable checkboxes and page width.");
+  assert.ok(buffer.byteLength > 1000, "session workbook can be serialized");
+  assert.equal(session.getCell("H2").value.formula, "'Club + Alpha'!$G$2");
+  assert.equal(session.getCell("H2").result, 10);
+  assert.equal(session.getCell("H3").value.formula, "SUM(H2:H2)");
+  assert.equal(session.getCell("A2").value, "☐");
+  assert.equal(session.getCell("I2").value, "☐");
+  assert.equal(session.pageSetup.scale, 80);
+  assert.equal(workbook.worksheets.some(sheet => sheet.name === "Présences + règlements"), false);
+  console.log("PASS: session sheets contain linked fees, presence/payment checkboxes, automatic totals and Mamie's print layout.");
 })().catch(error => { console.error(error); process.exit(1); });

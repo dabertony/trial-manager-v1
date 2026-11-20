@@ -20,8 +20,8 @@ for (const [label, source, start, end] of [
   const helper = section(source, start, end);
   assert.match(helper, /"Club \+ Alpha":\s*\{\s*widths:\[10, 30\.14, 24\.71, 17\.71, 15\.71, 20, 18\],\s*scale:70/);
   assert.match(helper, /"Catégorie \+ Alpha":\s*\{\s*widths:\[10, 28\.57, 26\.285, 15, 14\.855, 17\.57\],\s*scale:85/);
-  assert.match(helper, /"Matin":\s*\{\s*widths:\[10, 26\.14, 25, 15, 15\.14, 21\],\s*scale:85/);
-  assert.match(helper, /"Après-midi":\s*\{\s*widths:\[10, 30\.855, 25\.14, 15\.71, 9\.14, 19\.285\],\s*scale:85/);
+  assert.match(helper, /"Matin":\s*\{\s*widths:\[8\.43, 10, 24\.29, 19, 11\.43, 10\.43, 17\.29, 13\.71, 6\.43\],\s*scale:80/);
+  assert.match(helper, /"Après-midi":\s*\{\s*widths:\[8\.43, 10, 25\.43, 21, 11\.43, 10\.43, 17\.43, 14\.29, 6\.43\],\s*scale:75/);
   assert.match(helper, /paperSize:\s*9/);
   assert.match(helper, /orientation:\s*["']portrait["']/);
   assert.match(helper, /scale:\s*layout\.scale/);
@@ -29,7 +29,7 @@ for (const [label, source, start, end] of [
 }
 
 for (const [label, source] of [["Electron", main], ["PWA", app]]) {
-  assert.match(source, /row\.height = sheet\.name === "Présences \+ règlements"[\s\S]*?: \(row\.number === 1 \? 30 : 18\.75\)/, `${label}: standard row heights remain unchanged`);
+  assert.match(source, /const isSessionSheet = \["Matin", "Après-midi"\]\.includes\(sheet\.name\)/, `${label}: session sheets receive special row sizing`);
   assert.match(source, /cell\.font = \{ \.\.\.cell\.font, size:isPaperCheckbox \? 16 : 12 \}/, `${label}: standard 12pt font and larger printed checkboxes`);
   assert.match(source, /pageSetup\.printArea = `A1:/, `${label}: explicit print area`);
 }
